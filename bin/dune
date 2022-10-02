@@ -1,0 +1,4 @@
+(executable
+ (public_name qdbp)
+ (name main)
+ (libraries qdbp))
