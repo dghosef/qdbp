@@ -1,2 +1,6 @@
 (library
  (name qdbp))
+(ocamllex lexer)
+(menhir
+ (modules parser)
+ (flags --explain))

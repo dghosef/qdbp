@@ -1,2 +1,3 @@
 (test
- (name qdbp))
+ (name qdbp)
+ (libraries qdbp))
