@@ -1,3 +1,12 @@
+(* TODO: Unicode *)
+(* TODO: Import mechanism *)
+(* TODO: multiline comments including nesting *)
+(* TODO: Make sure whitespace/newlines are robust *)
+(* TODO: BIGNUMS, NEGATIVES *)
+(* FIXME: Make sure EVERY name in every file makes sense *)
+(* FIXME: Error handling *)
+(* FIXME: Figure out what to do about syntax of assigns in records and variables *)
+(* FIXME: Return error *)
 {
   open Parser
   open Lexing
@@ -9,31 +18,28 @@
                 pos_lnum = pos.pos_lnum + 1
       }
 }
-
+(*FIXME: Allow ' in variable names?*)
 let digit = ['0' - '9']
-let id = ['a'-'z'] ['A'-'Z' 'a'-'z' '0'-'9' '_']*
-let message_name = ['_' 'A'-'Z'] ['A'-'Z' 'a'-'z' '0'-'9' '_']*
-let variant_message_name = '#' ['A'-'Z' 'a'-'z' '0'-'9' '_']+
+let lower = ['a' - 'z']
+let upper = ['A' - 'Z']
+let symbol = ['!' '%' '&' '*' '~' '-' '+' '=' '\\' '/' '>' '<']
+let underscore = '_'
+let upper_id = (symbol | upper) (symbol | upper | lower | digit | underscore)*
+let lower_id = (lower) (upper | lower | digit | underscore)*
 let white = [' ' '\t']+
 let newline = '\r' | '\n' | "\r\n"
 
 rule token = parse
-| white (* also ignore newlines, not only whitespace and tabs *)
+| white
     { token lexbuf }
 | newline
     { next_line lexbuf; token lexbuf}
-(* TODO: multiline comments *)
-(* TODO: Rename tokens to be better named *)
 | "//" [ ^ '\n']*
     { token lexbuf }
 | '.'
     { PERIOD }
-| ','
-    { COMMA }
-| ';'
-    { SEMICOLON }
 | ":="
-    { ASSIGNMENT }
+    { DECLARATION }
 | '|'
     { PIPE }
 | '['
@@ -48,20 +54,21 @@ rule token = parse
     { LBRACKET }
 | '}'
     { RBRACKET }
-| variant_message_name '?' as s
-    { TAG_MESSAGE (s) }
-| variant_message_name as s
-    { TAG (s) }
-| id as s ':'
-    { MESSAGE_ARG (s) }
-(* TODO: BIGNUMS, NEGATIVES *)
-| digit+ as i
-    { INT (int_of_string i) }
-| message_name as s
-    { MESSAGE_ID (s) }
-| id as s
-    { ID (s) }
+| '#'
+    { TAG }
+| '?'
+    { QUESTION }
+| '$'
+    { MONEY }
+| upper_id as s
+    { UPPER_ID (s) }
+| lower_id as s ':'
+    { ARG (s) }
+| ':'
+ {ARG ("val")}
+| lower_id as s
+    { LOWER_ID (s) }
 | eof
     { EOF }
 | _
-    { raise (Error (Printf.sprintf "At offset %d: unexpected character.\n" (Lexing.lexeme_start lexbuf))) }
+    { raise (Error (Printf.sprintf "At line %d: unexpected character.\n" (lexbuf.lex_curr_p.pos_lnum))) }
