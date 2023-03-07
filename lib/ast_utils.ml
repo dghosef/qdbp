@@ -28,7 +28,7 @@ let ast_local_fold_map fn ast acc=
                                             fst (fn f.field_value.method_body acc)}} in
     let extension = fst (fn re.extension acc) in
     (Ast.RecordExtension {re with field = f; extension = extension}), acc
-  | EmptyRecord id -> (Ast.EmptyRecord id), acc
+  | EmptyRecord -> (Ast.EmptyRecord), acc
   | Ast.Record_Message message ->
     (* No threading accumulator do all the args *)
     let process_arg (arg: Ast.argument) =
@@ -50,8 +50,8 @@ let ast_local_fold_map fn ast acc=
     Ast.Declaration {decl with decl_rhs = rhs}, acc'
   | Ast.Variable variable -> Ast.Variable variable, acc
   | Ast.OcamlCall call ->
-    let arg, acc = fn call.fn_arg acc in
-    Ast.OcamlCall {call with fn_arg = arg}, acc
+    let args = List.map (fun arg -> fst (fn arg acc)) call.fn_args in
+    Ast.OcamlCall {call with fn_args = args}, acc
 
 let ast_map fn ast =
   let fn' ast _ =
@@ -89,8 +89,8 @@ let rec string_of_ast ast indent =
     let value = meth_to_string f.field_value in 
     let extension = string_of_ast re.extension (indent + 1) in 
     "{" ^ name ^ " " ^ (id_to_str re.extension_id) ^ " = " ^ value ^ "..." ^ do_indent (indent + 1) ^ extension ^ "}" ^ id_to_str re.extension_id
-  | EmptyRecord id ->
-    "{EmptyRecord}" ^ id_to_str id
+  | EmptyRecord ->
+    "{EmptyRecord}"
   | Record_Message rm ->
     let process_arg acc (arg: Ast.argument) =
       let name = arg.name in 
@@ -112,5 +112,6 @@ let rec string_of_ast ast indent =
   | Variable v -> 
     "(" ^ v.var_name ^ " origin=" ^ origin_to_str v.origin ^ ")" ^ (id_to_str v.var_id)
   | OcamlCall c -> 
-    let arg = string_of_ast c.fn_arg indent in 
-    "$" ^ c.fn_name ^ "(" ^ arg ^ ")"
+    let args = List.map (fun arg -> string_of_ast arg 0) c.fn_args in 
+    let args = String.concat ", " args in
+    "$" ^ c.fn_name ^ "(" ^ args ^ ")"

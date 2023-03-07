@@ -2,27 +2,26 @@
 (* FIXME:Rename everything with "field"? *)
 (* FIXME: Rename everythign? *)
 (* FIXME: loc should be an option and have a start and end *)
-type loc = Lexing.position
+(* FIXME: Make separate cases and variant ast nodes *)
+(* FIXME: Add wildcard variatn? *)
 type id = int option
 type argument = {
-  arg_id: id;
   name: string; 
   value: expr;
 }
 and record_field = {
-  field_id: id;
   field_name: string; 
   field_value: meth;
-  field_location: loc;
 }
 and meth = {
   meth_id: id;
-  location: loc; 
   args: string list; 
   arg_ids: id list;
-  method_body: expr
+  method_body: expr;
+  case: (string * expr) option (* variable, expr *);
 }
 and record_extension = {
+  variant_expr: (string * expr) option;
   field: record_field;
   (* FIXME: Add a position to the extension too*)
   extension: expr;
@@ -31,39 +30,35 @@ and record_extension = {
 (* TODO: Refactor so that location is independent of the rest*)
 and record_message_expr = {
   rm_id: id;
-  rm_location: loc; 
   rm_message: string; 
   rm_arguments: argument list;
-  rm_receiver: expr
+  rm_receiver: expr;
+  cases: (expr * ((string * string * expr) list)) option
 }
 and sequence_expr = {
   seq_id: id;
-  seq_location: loc;
   l: expr;
   r: expr;
 }
 and declaration_expr = {
   decl_id: id;
-  decl_location: loc; 
   decl_lhs: string; 
   decl_rhs: expr;
 }
 and var_expr = {
   var_id: id;
-  var_location: loc; 
   var_name: string;
   origin: id option;
 }
 and ocaml_call = {
   call_id: id;
-  call_location: loc;
   fn_name: string;
-  fn_arg: expr
+  fn_args: expr list
 }
 and expr = 
   | RecordExtension of record_extension
   (* FIXME: Make this a struct *)
-  | EmptyRecord of id
+  | EmptyRecord
   (* Are they really messages? If not rename *)
   | Record_Message  of record_message_expr
   | Sequence        of sequence_expr
@@ -72,19 +67,18 @@ and expr =
   | Variable        of var_expr
   | OcamlCall         of ocaml_call
 
-let emit_closure loc args body = 
+let emit_closure args body = 
   let args = "self" :: args in
   let fld = {
-    field_location = loc;
-    field_id = None;
     field_name = "!:" ^ (String.concat ":" args); 
     field_value = {
       meth_id = None;
-      location = loc;
+      case = None;
       args = args;
       method_body = body;
       arg_ids = List.map (fun _ -> None) args}} in
-  (RecordExtension {field= fld; extension = ((EmptyRecord None)); extension_id = None})
+  (RecordExtension {field= fld; extension = ((EmptyRecord)); extension_id = None;
+  variant_expr = None})
 (* Need to make sure arg names make sense *)
 (*
   x = #Tag expr
@@ -103,26 +97,32 @@ let emit_closure loc args body =
     #C [self| #C body]
   }
 *)
-let emit_variant_message receiver location messages =
+let emit_variant_message receiver messages =
   (*FIXME: Rename*)
   let selector = 
     List.fold_left (fun acc elem -> (RecordExtension 
-    {field = elem; extension = acc; extension_id = None })) ((EmptyRecord None)) messages
+    {field = elem; extension = acc; extension_id = None; variant_expr = None })) ((EmptyRecord)) messages
   in
+  let tag_names = List.map (fun elem -> elem.field_name) messages in
+  let cases = List.map (fun elem -> elem.field_value.case) messages in
+  let cases = List.map(fun elem -> match elem with
+    | Some (name, expr) -> (name, expr)
+    | None -> failwith "No case for variant message") cases in
+  let cases = List.map2 (fun tagname (varname, e) -> (tagname, varname, e)) tag_names cases in
+  let cases = receiver, cases in
 Record_Message
   {
     rm_id = None;
+    cases = Some cases;
     rm_receiver = receiver;
-    rm_arguments = [{name = "Self"; value = receiver; arg_id = None}; {name = "Receiver"; value = selector; arg_id = None}];
+    rm_arguments = [{name = "Self"; value = receiver;}; {name = "Receiver"; value = selector; }];
     (* FIXME: Use something other than !*)
     rm_message = "!";
-    rm_location = location;
   }
-let emit_variant loc tag expr =
+let emit_variant tag expr =
   let var = Declaration
     {
       decl_id = None;
-      decl_location = loc;
       (* FIXME: Change this name? *)
       decl_lhs = "Expr";
       decl_rhs = expr
@@ -132,10 +132,9 @@ let emit_variant loc tag expr =
   let message =
     Record_Message {
       rm_id = None;
-      rm_location = loc;
+      cases = None;
       rm_receiver = Variable 
         {
-          var_location = loc;
           var_id = None;
           (* FIXME: Rename Receiver to something else? *)
           var_name = "Receiver";
@@ -143,9 +142,7 @@ let emit_variant loc tag expr =
         };
       rm_arguments = [{
         name = "Self";
-        arg_id = None;
         value = Variable {
-          var_location = loc;
           var_id = None;
           (* FIXME: Change this name? *)
           (* FIXME: Put all change this name? fixme into variables and change to TODOs *)
@@ -158,7 +155,6 @@ let emit_variant loc tag expr =
     }
   in
   let body = Sequence {
-    seq_location = loc;
     seq_id = None;
     l = var;
     r = message
@@ -168,13 +164,12 @@ let emit_variant loc tag expr =
   (* FIXME: Rename Receiver to something else? *)
   let args = ["Self"; "Receiver"] in
   let fld = {
-    field_location = loc;
-    field_id = None;
     field_name = "!"; 
     field_value = {
       meth_id = None;
-      location = loc;
+      case = None;
       args = args;
       method_body = body;
       arg_ids = List.map (fun _ -> None) args}} in
-  (RecordExtension {field= fld; extension = ((EmptyRecord None)); extension_id = None})
+  (RecordExtension {field= fld; extension = ((EmptyRecord)); extension_id = None;
+    variant_expr = Some (tag, expr)})

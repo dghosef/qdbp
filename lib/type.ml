@@ -10,7 +10,6 @@ type ty =
   | TRowExtend of name * ty * row     (* row extension: `<a : _ | ...>` *)
   | TRecord of row                    (* record type: `{<...>}` *)
 and row = ty    (* the kind of rows - empty row, row variable, or row extension *)
-(* URGENT: Recursive link *)
 and tvar =
   | Unbound of id * level
   | Link of ty

@@ -23,7 +23,7 @@ let rec name_resolve expr names =
     let f = {f with field_value = resolve_method f.field_value names} in
     let extension, _ = name_resolve r.extension names in
     Ast.RecordExtension {r with extension = extension; field = f}, names
-  | Ast.EmptyRecord id -> Ast.EmptyRecord id, names
+  | Ast.EmptyRecord -> Ast.EmptyRecord, names
   | Ast.Declaration decl ->
     let rhs, names = name_resolve decl.decl_rhs names in 
     Ast.Declaration {decl with decl_rhs = rhs}, add_name decl.decl_lhs (decl.decl_id) names

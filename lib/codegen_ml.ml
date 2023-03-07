@@ -20,7 +20,7 @@ let rec ocaml_of_ast ast =
     "field_name = \"" ^ name ^ "\"; " ^
     "field_method = " ^ meth ^ "; " ^
     "extension = (" ^ rest ^ ")})"
-  | EmptyRecord _ -> "(emptyrecord)"
+  | EmptyRecord -> "(emptyrecord)"
   | Record_Message rm -> 
     "((select (\"" ^ rm.rm_message ^ "\") (" ^ (ocaml_of_ast rm.rm_receiver) ^ ")) [" ^
     List.fold_left (fun acc param -> 
@@ -34,7 +34,11 @@ let rec ocaml_of_ast ast =
     "let " ^ (varname d.decl_id) ^ " = " ^ (ocaml_of_ast d.decl_rhs) ^ " in emptyrecord"
   | Variable v -> varname2 v.origin
   | OcamlCall oc -> 
-    "((" ^ oc.fn_name ^ " (" ^ (ocaml_of_ast oc.fn_arg) ^ ")); emptyrecord)"
+    let args = List.map ocaml_of_ast oc.fn_args in 
+    let paren s = "(" ^ s ^ ")" in 
+    let args = List.map paren args in 
+    let args = String.concat " " args in 
+    "((" ^ oc.fn_name ^ " (" ^ (args) ^ ")); emptyrecord)"
 and ocaml_fn_of_method meth =
   let param_decls = List.fold_left
       (fun acc arg_id -> acc ^ 

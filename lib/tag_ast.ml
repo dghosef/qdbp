@@ -3,9 +3,7 @@ let rec tag_ast id (* id to set current node to *) ast =
   | Ast.RecordExtension re ->
     (* Comment this *)
     let re = { re with extension_id = Some id } in 
-    let id = id + 1 in 
     let field = re.field in 
-    let field = {field with field_id = Some id} in
     let id = id + 1 in
     let meth = field.field_value in 
     let meth = {meth with meth_id = Some id} in
@@ -17,15 +15,11 @@ let rec tag_ast id (* id to set current node to *) ast =
     let id, extension = tag_ast id re.extension in
     let re = {re with field = field; extension = extension} in
     id, (Ast.RecordExtension re)
-  | Ast.EmptyRecord _ -> id + 1, (Ast.EmptyRecord (Some id))
+  | Ast.EmptyRecord -> id, (Ast.EmptyRecord )
   | Ast.Record_Message rm ->
     let rm = { rm with rm_id = Some id } in
     let id = id + 1 in
     let args = rm.rm_arguments in
-    let id, (args: Ast.argument list) = List.fold_left_map 
-        (fun id (arg: Ast.argument) -> 
-          (id + 1, {arg with arg_id = Some id})) id args 
-        in
     let id, args = List.fold_left_map 
         (fun id (arg: Ast.argument) -> 
            let id, value = tag_ast id arg.value in 
@@ -50,5 +44,5 @@ let rec tag_ast id (* id to set current node to *) ast =
   | Ast.OcamlCall oc ->
     let oc = { oc with call_id = Some id } in
     let id = id + 1 in
-    let id, arg = tag_ast id oc.fn_arg in
-    id, Ast.OcamlCall {oc with fn_arg = arg}
+    let id, args = List.fold_left_map tag_ast id oc.fn_args in
+    id, Ast.OcamlCall {oc with fn_args = args}
