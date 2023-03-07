@@ -1,8 +1,8 @@
-% FIXME: Change the order of prototypes throughout
-% FIXME: Comment syntax is different too
-# Why qdbp? A case for the little language that could
+<!--- FIXME: Change the order of prototypes throughout
+ FIXME: Comment syntax is different too --->
+# A case for the little language that could
 
-A lot can be learned from the tagline of a language. qdbp's went through a number of iterations - "object orientation done right," "safe, small, and expressive," and "simplicity that excites" were all trialed. That these were all considered was no accident. Each of these taglines describes a goal or feature of qdbp. However, none of these taglines encapsulates the fundamental philosophy of the language as well quite as the final iteration does.
+A lot can be learned from the tagline of a language. qdbp's went through a number of iterations - "object orientation done right," "safe, small, and expressive," and "simplicity that excites" were all trialed. That these were all considered was no accident. Each of these taglines describes a goal or feature of qdbp. However, none of these taglines encapsulates the fundamental philosophy of the language as well quite as its final iteration, "the little language that could," does.
 
 Programming language design is as much a human computer interaction problem as it is a systems and theory problem. Every  language has to grapple with the problem of how to present what is essentially a sequence of bit manipulation operations in a manner that is easy to understand to users. qdbp does this through a small set of core constructs that, when combined with its innovative syntax can be combined to build up intuitive abstractions.
 
@@ -331,7 +331,7 @@ qdbp is not "A little language that could" - it is "*The* little language that c
 Lisps are frequently designed with the same goal in mind as qdbp. Most of them have pretty small base languages that can be extended with macros. This approach is unsatisfying because macros, in effect, grow the language itself. As a result, while lisps start as small languages, as developers add more macros, the language itself becomes larger, harder to reason about, and more and more complex. 
 
 # The future of qdbp
-While the base implementation and language design of qdbp is complete, compiler and language ecosystem implementation is a project that takes tens of man years. Here is a shortlist, in no particular order, of next steps for qdbp:
+Compiler and language ecosystem implementation is a project that takes tens of man years. Here is a shortlist, in no particular order, of next steps for qdbp:
 - Better compiler error messages
 - Imports
 - Standard Library
@@ -345,5 +345,11 @@ While the base implementation and language design of qdbp is complete, compiler 
 - Debugger
 - An LSP
 
+# The Little Language that Could
+Virtually every language designer pours hours and hours of their own personal time into their language. They read countless papers, fret over small syntax decisions, and wrestle with parser generators, to name a few, knowing from the get-go that, by far, the most likely outcome is that they are going to be the only user. As over-dramatic as it sounds, designing a programming language often brings up a host of existential questions. What is the point? What makes a language successful? How can I justify my commitment?
 
-Something about elegance
+For qdbp, the answer to all of these questions is neither adoption nor recognition. qdbp will likely never gain a single user nor reach the attention of anyone outside of [r/ProgrammingLanguages](reddit.com/r/programminglanguages), a forum for language design nerds. qdbp will never be published in a reputable academic journal and its expected lifetime monetary value is less than that of searching the streets for dropped money for an hour.
+
+The goal of qdbp was to discover something beautiful, and by that measure, the language is an overwhelming success. qdbp elegantly combines a small set of constructs with an innovative syntax into something that is much, much greater than the sum of its parts. It is an extistential proof of the oxymoron that extremely expressive languages can be extremely simple, and that in and of itself is beautiful.
+
+Of course, getting the language to a more mature point, gaining adopters, or even inspiring other languages would all be added bonuses. But qdbp is already a success because it is the little language that could.
