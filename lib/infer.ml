@@ -1,7 +1,6 @@
 (* Largely ripped off from https://github.com/tomprimozic/type-systems/blob/master/extensible_rows/infer.ml *)
 (* But with fixpoint types and limited extension *)
 (* FIXME: Better error propogation *)
-(* URGENT: Include TVariant and TRecord *)
 open Type
 open Ast
 let current_id = ref 0

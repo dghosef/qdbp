@@ -30,7 +30,7 @@ program:
 
 expr:
 | LPAREN; e = expr; RPAREN; {e}
-| e = record                {e} (* URGENT: Make it a top to bottom order *)
+| e = record                {e}
 | e = variant               {e}
 | e = record_message        {e}
 | e = variant_message       {e}
@@ -74,32 +74,43 @@ arg_list:
 (* FIXME: Make sure method fields have self stuff *)
 (* FIXME: Don't allow {...asdf} by itself? *)
 record:
-| LBRACKET; r = record_body_first; RBRACKET
+| LBRACKET; r = record_body; RBRACKET
   {r}
+| LBRACKET; RBRACKET
+  {Ast.EmptyRecord}
 | c = closure
   {c}
-record_body_first:
-| id = UPPER_ID; m = meth; rest = record_body_rest ;
-{
-  let (m: Ast.meth) = m in
-  (Ast.RecordExtension
+
+record_field:
+| id = UPPER_ID; m = meth; 
+  {let (m: Ast.meth) = m in
+  let (field: Ast.record_field) = {
+    field_name = id ^ ":" ^ (String.concat ":" m.args);
+    field_value = m;
+  } in field
+  }
+
+record_body:
+| extension = expr; fields = record_field+; 
   {
-    field = {
-      field_name = id ^ ":" ^ (String.concat ":" m.args);
-      field_value = m;
-    };
-    extension = rest;
-    extension_id = None;
-    variant_expr = None;
-  })
-}
-| {(Ast.EmptyRecord)}
-
-record_body_rest:
-| first = record_body_first {first}
-| e = expr {e}
-
-
+    List.fold_left (fun (acc: Ast.expr) (field: Ast.record_field) -> 
+      Ast.RecordExtension {
+        field = field;
+        extension = acc;
+        extension_id = None;
+        variant_expr = None;
+      })  extension fields
+  }
+| fields = record_field+; 
+  {
+    List.fold_right (fun (field: Ast.record_field) (acc: Ast.expr) -> 
+      Ast.RecordExtension {
+        field = field;
+        extension = acc;
+        extension_id = None;
+        variant_expr = None;
+      }) fields Ast.EmptyRecord
+  }
 (* FIXME: Make first arg not necessarily require a colon *)
 
 record_message:
