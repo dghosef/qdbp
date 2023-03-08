@@ -9,6 +9,7 @@ type ty =
   | TRowEmpty                         (* empty row: `<>` *)
   | TRowExtend of name * ty * row     (* row extension: `<a : _ | ...>` *)
   | TRecord of row                    (* record type: `{<...>}` *)
+  | TVariant of row                    (* record type: `{<...>}` *)
 and row = ty    (* the kind of rows - empty row, row variable, or row extension *)
 and tvar =
   | Unbound of id * level
@@ -72,6 +73,7 @@ let rec eager_print_ty ty =
     eager_print_ty row;
     prerr_string ">"
   | TRecord row -> prerr_string "{"; eager_print_ty row; prerr_string "}"
+  | TVariant row -> prerr_string "<|"; eager_print_ty row; prerr_string "|>"
 
 let string_of_ty indent ty: string =
   let curr_id = ref 0 in
@@ -114,7 +116,9 @@ let string_of_ty indent ty: string =
         (nl (indent + 1)) ^
         string_of_ty (indent + 1) row ^ ">"
       | TRecord row ->
-        "{" ^ string_of_ty indent row ^ "}" in 
+        "{" ^ string_of_ty indent row ^ "}" 
+      | TVariant row ->
+        "<|" ^ string_of_ty indent row ^ "|>" in 
     ty_str 
   in string_of_ty indent ty
 let fields_of ty =
@@ -155,6 +159,8 @@ let labels_of indent ty: string =
       | TRowExtend (name, _, row) ->
         name ^ ", " ^ labels_of indent row
       | TRecord row ->
-        "{" ^ labels_of indent row ^ "}" in 
+        "{" ^ labels_of indent row ^ "}"
+      | TVariant row ->
+        "<|" ^ labels_of indent row ^ "|>" in 
     ty_str 
   in labels_of indent ty

@@ -1,6 +1,7 @@
 (* Largely ripped off from https://github.com/tomprimozic/type-systems/blob/master/extensible_rows/infer.ml *)
 (* But with fixpoint types and limited extension *)
 (* FIXME: Better error propogation *)
+(* URGENT: Include TVariant and TRecord *)
 open Type
 open Ast
 let current_id = ref 0
@@ -51,6 +52,8 @@ let occurs_check_adjust_levels _ tvar_level ty =
       f return_ty
     | TRecord row ->
       f row
+    | TVariant row ->
+      f row
     | TRowExtend(_, field_ty, row) -> f field_ty ;
       f row
     | TRowEmpty -> ()
@@ -98,6 +101,8 @@ let rec unify ty1 ty2 labels_found =
             tvar := Link ty;
             (* Make a recursive link if adjust levels indicates so *)
           | TRecord row1, TRecord row2 -> 
+            unify row1 row2 labels_found
+          | TVariant row1, TVariant row2 -> 
             unify row1 row2 labels_found
           | TRowEmpty, TRowEmpty ->
             ()
@@ -147,7 +152,8 @@ let generalize level =
         | Some newvar -> TVar newvar
       end
     (* RecLink - same but make sure we don't loop too many times *)
-    | TRecord row -> (generalize level row)
+    | TRecord row -> TRecord (generalize level row)
+    | TVariant row -> TVariant (generalize level row)
     | TRowExtend(label, field_ty, row) ->
       TRowExtend(label, generalize level field_ty , generalize level row)
     | TVar {contents = Generic _} | TVar {contents = Unbound _} | TRowEmpty as ty -> ty
@@ -182,7 +188,8 @@ let instantiate level ty =
       ty
     | TArrow(param_ty_list, return_ty) ->
       TArrow(List.map (fun param -> fst param, f (snd param)) param_ty_list, f return_ty)
-    | TRecord row -> (f row)
+    | TRecord row -> TRecord (f row)
+    | TVariant row -> TVariant (f row)
     | TRowEmpty ->
       ty
     | TRowExtend(label, field_ty, row) ->
@@ -214,6 +221,7 @@ let rec get_row row label =
     else get_row rest_row label
   | TVar {contents = Link row} -> get_row row label
   | TRecord row -> get_row row label
+  | TVariant row -> get_row row label
   | _ -> None
 let rec row_is_complete row =
   match row with
@@ -221,6 +229,7 @@ let rec row_is_complete row =
   | TRowExtend(_, _, rest_row) -> row_is_complete rest_row
   | TVar {contents = Link row} -> row_is_complete row
   | TRecord row -> row_is_complete row
+  | TVariant row -> row_is_complete row
   | _ -> false
 
 let rec infer_method env level meth =
@@ -234,7 +243,7 @@ let rec infer_method env level meth =
 and infer_record_select env level rm =
   let rest_row_ty = new_var level in
   let field_ty = new_var level in
-  let param_ty = (TRowExtend(rm.rm_message, field_ty, rest_row_ty)) in
+  let param_ty = TRecord (TRowExtend(rm.rm_message, field_ty, rest_row_ty)) in
   let return_ty = field_ty in
   unify param_ty (fst (infer env level rm.rm_receiver)) StringSet.empty ;
   return_ty, env
@@ -247,7 +256,7 @@ and infer env level = function
           let rest_row_ty = new_var level in
           let variant_ty = new_var level in
           let param_ty = variant_ty in
-          let return_ty = (TRowExtend(label, variant_ty, rest_row_ty)) in
+          let return_ty = TVariant (TRowExtend(label, variant_ty, rest_row_ty)) in
           let e_ty, _ = (infer env level expr) in
           unify param_ty e_ty StringSet.empty ; 
           return_ty, env
@@ -256,11 +265,11 @@ and infer env level = function
           let rest_row_ty = new_var level in
           let field_ty = new_var level in
           let param1_ty = field_ty in
-          let param2_ty = rest_row_ty in
-          let return_ty = (TRowExtend(re.field.field_name, field_ty, rest_row_ty)) in
+          let param2_ty = TRecord rest_row_ty in
+          let return_ty = TRecord (TRowExtend(re.field.field_name, field_ty, rest_row_ty)) in
           let extension_ty = fst (infer env level re.extension) in 
           unify param1_ty (fst (infer_method env level re.field.field_value)) StringSet.empty ;
-          unify param2_ty (extension_ty) StringSet.empty ;
+          unify ( param2_ty) (extension_ty) StringSet.empty ;
           (* If we know for sure that the label doesn't exist then extend*)
           if row_is_complete param2_ty && get_row param2_ty re.field.field_name = None then
             return_ty, env
@@ -270,14 +279,14 @@ and infer env level = function
               let field_ty1 = param1_ty in
               let field_ty2 = new_var level in
               let rest_row_ty2 = new_var level in
-              unify extension_ty (TRowExtend(re.field.field_name, field_ty2, rest_row_ty2)) StringSet.empty ;
+              unify extension_ty (TRecord (TRowExtend(re.field.field_name, field_ty2, rest_row_ty2))) StringSet.empty ;
               ignore field_ty1;
               unify field_ty1 field_ty2 StringSet.empty ;
               extension_ty, env
             end
         end
     end
-  | EmptyRecord | OcamlCall _ -> TRowEmpty, env
+  | EmptyRecord | OcamlCall _ -> TRecord TRowEmpty, env
   | Record_Message rm ->
     begin
       match rm.cases with 
@@ -287,7 +296,7 @@ and infer env level = function
           let expr_ty, _ = infer env level expr in
           let cases_row = infer_cases env level return_ty TRowEmpty cases in
           prerr_endline (Ast_utils.string_of_ast expr 0);
-          unify expr_ty (cases_row) StringSet.empty;
+          unify expr_ty (TVariant cases_row) StringSet.empty;
           return_ty, env
         end
       | None -> 

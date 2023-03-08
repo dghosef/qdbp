@@ -2,12 +2,12 @@
  FIXME: Comment syntax is different too --->
 # A case for the little language that could
 
-A lot can be learned from the tagline of a language. qdbp's went through a number of iterations - "object orientation done right," "safe, small, and expressive," and "simplicity that excites" were all trialed. That these were all considered was no accident. Each of these taglines describes a goal or feature of qdbp. However, none of these taglines encapsulates the fundamental philosophy of the language as well quite as its final iteration, "the little language that could," does.
+A lot can be learned from the tagline of a language. qdbp's went through a number of iterations - "object orientation done right," "safe, small, and expressive," and "simplicity that excites" were all trialed. That these were all considered was no accident. Each of these taglines describes a goal or feature of qdbp. However, none of these taglines encapsulates the fundamental philosophy of the language quite as well as its final iteration, "the little language that could," does.
 
-Programming language design is as much a human computer interaction problem as it is a systems and theory problem. Every  language has to grapple with the problem of how to present what is essentially a sequence of bit manipulation operations in a manner that is easy to understand to users. qdbp does this through a small set of core constructs that, when combined with its innovative syntax can be combined to build up intuitive abstractions.
+Programming language design is as much a human computer interaction problem as it is a systems and theory problem. Every  language has to grapple with the problem of how to present what is essentially a sequence of bit manipulation operations in a manner that is easy to understand to users. qdbp does this through a small set of core constructs that, when combined with its innovative syntax, can be combined to build up a host of intuitive abstractions.
 
 # Little Language
-qdbp is little. In fact, here is an example simple implementation of a stack that demonstrates *every* core construct of the language
+qdbp is little. In fact, here is an example simple implementation of a stack of booleans that demonstrates *every* core construct of the language
 ```ocaml
 empty_stack := {
   Stack [ #Empty{} ]
@@ -152,7 +152,7 @@ tagged_object
 The result of the above program depends on the tag assigned to `tagged_object`. If the tag is `#Tag1`, result is `body1` with `val1` equal to the associated object. And the same is true with `#Tag2`, `body2`, and `val2` respectively
 
 ##### Types
-qdbp is statically typed. The type system is beyond the scope of this document, but is detailed in [this paper](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/scopedlabels.pdf). While it `qdbp` is statically typed, it is structurally typed and all types are inferred, giving it the feel and simplicity of dynamically typed languages while retaining the safety of statically typed languages.
+qdbp is statically typed. The type system is beyond the scope of this document, but is detailed in [this paper](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/scopedlabels.pdf). While `qdbp` is statically typed, it is structurally typed and all types are inferred, giving it the feel and simplicity of dynamically typed languages while retaining the safety of statically typed languages.
 
 # That Could
 qdbp simply being little doesn't make it great. For example, the joke language [Brainfuck](https://en.wikipedia.org/wiki/Brainfuck) is even smaller, and nobody even considers using it. What makes qdbp useful is that its 7 core constructs can be composed to make a variety of useful abstractions. The rest of this section shows how qdbp's features combine to emulate a host of abstractions that other languages have.
@@ -161,7 +161,7 @@ qdbp simply being little doesn't make it great. For example, the joke language [
 qdbp doesn't include functions. However, functions can be emulated by prototypes with a single label. By convention, we use `!` For example, here is the identity function
 ```ocaml
 identity := {val | val}
-identity! val: x
+identity! val: x.
 ```
 Even though qdbp has no concept of first class functions, for the rest of the document we refer to "function" as a prototype with the label `!`.
 
@@ -180,7 +180,7 @@ Alternatively, rather than having `if` be a function, we could just have it be a
 true :=
   {
     BoolVal[#True{}]
-    If [
+    If [ then else | 
       self BoolVal.
         True? [then!.]  
         False? [else!.].
@@ -203,7 +203,7 @@ empty_list := {
     curr_list := self
     {
       CurrVal[#Some val]
-      Next[curr_list]
+      Next[#Some curr_list]
       curr_list
     }
   ]
@@ -223,10 +223,10 @@ Operators are simply labels made of symbols. Here is how we would add an and ope
 ```ocaml
 true := {
   && [val | 
-    this BoolVal.
+    self BoolVal.
       False? [false]
       True? [
-        val Boolval.
+        val BoolVal.
           True? [true]
           False? [false].
       ].
@@ -246,10 +246,10 @@ object LoopForever.
 ```
 Similarly, a non-terminating function would look like
 ```ocaml
-{self!.}
+{self!.}!.
 ```
 ##### Functional Programming
-Not all iteration has to be infinite. Common functional patterns, like `map`, `reduce`, and `filter` can all be implemented either as separate functions or as methods within the list prototype. 
+Not all iteration has to be infinite. Common functional patterns, like `map`, `reduce`, and `filter` can all be implemented either as separate functions or as methods within the list prototype using recursion.
 
 ##### Generic Functions
 All methods assigned to variables are generic. For example, consider the following identity function
@@ -263,7 +263,7 @@ Each time a variable is used, its methods can take on new types. This is why `id
 Here is another example of a generic function that takes in 2 parameters that contain a `<` method and returns the greater of the two
 
 ```ocaml
-max := {a b| (a < b)
+max := {a b| (a <: b.)
   True? [b]
   False? [a].
 }
@@ -272,7 +272,7 @@ max := {a b| (a < b)
 Sometimes, many different prototypes will share some common methods. We can separate the logic of the methods into functions and then reuse them. For example, it is common to want to derive the `>=` operators for an object with the `>` operator and the `==` operator(assume that we have implemented an Or method in booleans).
 ```ocaml
 gte := {me other | 
-  (me >: other.) Or: (me ==: other).
+  (me >: other.) Or: (me ==: other.).
 }
 my_object := {
   >[...]
@@ -319,10 +319,8 @@ fail := (one /: zero) <<=: {val | val +: one.}. <<=: {val | val +: one.}.
 // but this return three
 succeed := (one /: one) <<=: {val | val +: one.}. <<=: {val | val +: one.}.
 ```
-##### Modules
-qdbp doesn't need modules - its combination of prototypes and generics is sufficient. See [this paper](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/scopedlabels.pdf) for an example.
 ##### And more...
-Iterators, list comprehension, for loops, while loops, tuples, and so, so much more can all be implemented in qdbp. qdbp is the ultimate customizable language. Despite coming with very relatively few constructs, the abstractions that can be implemented in the language are limitless. Users can shape and mold the language to their needs
+Modules, iterators, list comprehension, for loops, while loops, tuples, and so, so much more can all be implemented in qdbp. qdbp is the ultimate customizable language. Despite coming with very relatively few constructs, the abstractions that can be implemented in the language are limitless. Users can shape and mold the language to their needs
 
 # The
 qdbp is not "A little language that could" - it is "*The* little language that could." It solves a problem that no other language does - it is small and simple enough for the whole language to easily fit completely in a developer's brain while being expressive enough to implement a myriad of abstractions per its usecase. qdbp's expressive power rivals that of python, Haskell, Ocaml, and most other mainstream languages while being far, far smaller than any of its counterparts.
