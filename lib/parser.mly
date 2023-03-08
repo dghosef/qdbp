@@ -16,10 +16,7 @@
 (*===============================================================*)
 (* HIGHEST PRECEDNCE *)
 
-
-
 %start <Ast.expr> program
-
 %%
 (* TODO: More specific parse messages *)
 (* TODO: Module system *)
@@ -34,7 +31,7 @@ expr:
 | e = variant               {e}
 | e = record_message        {e}
 | e = variant_message       {e}
-| e = declaration            {e}
+| e = declaration           {e}
 | e = variable              {e}
 | e = ocaml_call            {e}
 

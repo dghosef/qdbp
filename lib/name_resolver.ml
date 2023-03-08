@@ -10,6 +10,9 @@ let rec name_resolve expr names =
   let add_name name origin name_map =
     VarIdMap.add name origin name_map in
   let resolve_method (meth: Ast.meth) names =
+    (* FIXME: do this cleaner *)
+    if List.length meth.args <> List.length (List.sort_uniq String.compare meth.args) then
+      Infer.error "Duplicate parameter names in method";
     let add_param names name id =
       add_name name id names
     in
