@@ -15,7 +15,6 @@
 %right UPPER_ID
 (*===============================================================*)
 (* HIGHEST PRECEDNCE *)
-
 %start <Ast.expr> program
 %%
 (* TODO: More specific parse messages *)
@@ -27,22 +26,22 @@ program:
 
 expr:
 | LPAREN; e = expr; RPAREN; {e}
-| e = record                {e}
+| e = record                {e} (* URGENT: Make it a top to bottom order *)
 | e = variant               {e}
 | e = record_message        {e}
 | e = variant_message       {e}
-| e = declaration           {e}
+| e = declaration            {e}
 | e = variable              {e}
 | e = ocaml_call            {e}
 
 
 
 ocaml_call:
-| MONEY; id = LOWER_ID LPAREN; arg = expr; RPAREN
+| MONEY; id = LOWER_ID LPAREN; args = expr*; RPAREN
   {let call: Ast.ocaml_call = {
     call_id = None;
     fn_name = id;
-    fn_args = [arg];
+    fn_args = args;
   } in Ast.OcamlCall call}
 
 (*FIXME: Make sure we don't have duplicate arguments*)
@@ -66,7 +65,6 @@ meth:
 (* FIXME: Better syntax *)
 arg_list:
 | params = nonempty_list(LOWER_ID); PIPE {params}
-
 
 (* FIXME: Make sure method fields have self stuff *)
 (* FIXME: Don't allow {...asdf} by itself? *)
@@ -96,20 +94,20 @@ record_body:
         extension = acc;
         extension_id = None;
         variant_expr = None;
-      })  extension fields
+      }) extension fields
   }
 | fields = record_field+; 
   {
-    List.fold_right (fun (field: Ast.record_field) (acc: Ast.expr) -> 
+    List.fold_left (fun (acc: Ast.expr) (field: Ast.record_field) -> 
       Ast.RecordExtension {
         field = field;
         extension = acc;
         extension_id = None;
         variant_expr = None;
-      }) fields Ast.EmptyRecord
+      }) Ast.EmptyRecord fields
   }
-(* FIXME: Make first arg not necessarily require a colon *)
 
+(* FIXME: Make first arg not necessarily require a colon *)
 record_message:
 | r = expr; id = UPPER_ID; a = record_message_arg*; PERIOD;
   { 
@@ -190,7 +188,6 @@ tag_message:
     field_name = "#" ^ n;
     field_value = e
   }}
-
 
 decl_in: e = expr {e} %prec decl_in_prec
 declaration:

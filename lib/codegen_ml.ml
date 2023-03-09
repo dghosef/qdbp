@@ -79,7 +79,11 @@ let select field_name record =
         select field_name extension
   in
   select field_name record
-  let print_hi _ = print_endline \"hi\"
+  let print = function
+  | Empty _ -> print_string \"\\n\"
+  | Extension e -> 
+    if String.length e.field_name > 1 then
+      print_char (String.get e.field_name 1)
 "
 let emptymap = Name_resolver.VarIdMap.empty
 let ocaml_of_qdbp_program in_file =

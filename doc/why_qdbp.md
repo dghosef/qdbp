@@ -330,12 +330,14 @@ Lisps are frequently designed with the same goal in mind as qdbp. Most of them h
 
 # The future of qdbp
 Compiler and language ecosystem implementation is a project that takes tens of man years. Here is a shortlist, in no particular order, of next steps for qdbp:
-- Better compiler error messages
-- Imports
-- Standard Library
-- Syntax for Integer, List, and String literals and native Int and String prototypes
-- An abort function whose return type is always automatically correct
 - A cleaner compiler implementation
+- Better ui for compiler
+- Better compiler error messages
+- Syntax for Integer, List, and String literals and native Int and String prototypes
+- Imports
+- Syntax Highlighting
+- Standard Library
+- An abort function
 - Compilation to a lower level language
 - Perceus reference counting(perfect because cycles are not possible in qdbp)
 - O(1) record and variant selection

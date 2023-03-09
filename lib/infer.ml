@@ -65,9 +65,7 @@ let namecheck param1 param2 =
   if name1 <> name2 then error "parameter names must match"
   else ()
 let already_unified = TVarPairHashtbl.create 10
-(* FIXME: Get rid of labels_found *)
 let rec unify ty1 ty2 labels_found =
-  if (string_of_ty 0 ty1 = string_of_ty 0 ty2) then () else
   if (match ty1, ty2 with 
       | TVar tvar1, TVar tvar2 -> TVarPairHashtbl.mem already_unified (tvar1, tvar2)
       | _ -> false) then () else
@@ -76,12 +74,9 @@ let rec unify ty1 ty2 labels_found =
         match ty1, ty2 with
         | TVar tvar1, TVar tvar2 -> 
           TVarPairHashtbl.add already_unified (tvar1, tvar2) ();
-          TVarPairHashtbl.add already_unified (tvar2, tvar1) ()
         | _ -> ()
       end;
       if ty1 == ty2 then () else
-        let tystr2 = string_of_ty 0 ty2 in
-        let tystr1 = string_of_ty 0 ty1 in
         begin 
           match (ty1, ty2) with
           | TArrow(param_ty_list1, return_ty1), TArrow(param_ty_list2, return_ty2) ->
@@ -110,7 +105,8 @@ let rec unify ty1 ty2 labels_found =
               let labels_found = StringSet.add label1 labels_found in
               unify rest_row1 rest_row2 labels_found
             end
-          | _, _ -> error ("cannot unify types." ^ tystr1 ^ " and " ^ tystr2)
+          (* URGENT: Make this print the original types *)
+          | _, _ -> error ("cannot unify types." ^ (string_of_ty 0 ty1) ^ " and " ^ (string_of_ty 0 ty2))
         end
     end;
 
@@ -294,7 +290,6 @@ and infer env level = function
           let return_ty = new_var level in
           let expr_ty, _ = infer env level expr in
           let cases_row = infer_cases env level return_ty TRowEmpty cases in
-          prerr_endline (Ast_utils.string_of_ast expr 0);
           unify expr_ty (TVariant cases_row) StringSet.empty;
           return_ty, env
         end

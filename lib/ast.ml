@@ -1,7 +1,6 @@
 (* FIXME: Rename files/rearrange stuff? *)
 (* FIXME:Rename everything with "field"? *)
 (* FIXME: Rename everythign? *)
-(* FIXME: loc should be an option and have a start and end *)
 (* FIXME: Make separate cases and variant ast nodes *)
 (* FIXME: Add wildcard variatn? *)
 type id = int option
@@ -27,7 +26,6 @@ and record_extension = {
   extension: expr;
   extension_id: id;
 }
-(* TODO: Refactor so that location is independent of the rest*)
 and record_message_expr = {
   rm_id: id;
   rm_message: string; 
@@ -80,23 +78,7 @@ let emit_closure args body =
   (RecordExtension {field= fld; extension = ((EmptyRecord)); extension_id = None;
   variant_expr = None})
 (* Need to make sure arg names make sense *)
-(*
-  x = #Tag expr
-  ^x
-    A? [self| A body]
-    B? [self| B body]
-    C? [self| C body]
 
-  becomes:
-  x = 
-    Expr = expr 
-    ^{Receiver| Receiver #Tag self: Expr}
-  ^x! Receiver: {
-    #A [self| #A body]
-    #B [self| #B body]
-    #C [self| #C body]
-  }
-*)
 let emit_variant_message receiver messages =
   (*FIXME: Rename*)
   let selector = 
