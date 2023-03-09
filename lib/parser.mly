@@ -109,8 +109,11 @@ record_body:
 
 (* FIXME: Make first arg not necessarily require a colon *)
 record_message:
-| r = expr; id = UPPER_ID; a = record_message_arg*; PERIOD;
+| r = expr; id = UPPER_ID; arg1 = expr?; a = record_message_arg*; PERIOD;
   { 
+    let a: Ast.argument list = match arg1 with
+      | None -> a
+      | Some x -> ({name = "val"; value = x}) :: a in
     let var = Ast.Declaration {
       decl_id = None;
       (* FIXME: Change this *)

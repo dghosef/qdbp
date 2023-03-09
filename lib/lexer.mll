@@ -64,8 +64,6 @@ rule token = parse
     { UPPER_ID (s) }
 | lower_id as s ':'
     { ARG (s) }
-| ':'
- {ARG ("val")}
 | lower_id as s
     { LOWER_ID (s) }
 | eof

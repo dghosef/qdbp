@@ -1,4 +1,9 @@
 # qdbp: The little language that could
+
+Think of your favorite programming language. 
+\/--\/
+/\--/\
+
 # Next steps
 - Unit type
 - Ints/Strings
@@ -34,14 +39,6 @@ stack := {
 }
 stack Push: {}.
 ```
-# That could
-## Generics
-## Dynamic Dispatch
-## Inheritance
-## Operators
-## Functional Style Programming
-## Error Handling
-
 # TODO
 Syntax sugar for closures
 Floats
