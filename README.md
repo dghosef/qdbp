@@ -1,6 +1,34 @@
 # qdbp: The little language that could
 
 Think of your favorite programming language. 
+
+```ocml
+empty_list := {
+  List[ #Empty{} ]
+  Prepend[val |
+    {
+      self
+      List[ 
+        #NonEmpty {
+          Val[val]
+          Next[curr_list]
+        }
+      ]
+    }
+  ]
+}
+```
+
+Variable declaration
+Variable reference
+The Empty Object
+Object Extension
+Object Method Invocation
+Tagged Object Creation
+Tagged Object Creation
+Tagged Object Pattern Matching
+
+
 \/--\/
 /\--/\
 
