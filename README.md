@@ -1,6 +1,6 @@
-## The little language that could
+## The Little Language That Could
 
-qdbp is small. Really, really small. The language itself has 7 core constructs, along with a little bit of syntax sugar to sweeten the deal. In fact, here is a small program, implementing a basic boolean object that demonstrates *every single feature* of the language:
+qdbp is small. Really, really small. The language has just 7 core constructs(along with type inference and a little bit of syntax sugar to sweeten the deal). In fact here is a small program, implementing a basic boolean object, that demonstrates *every single feature* of the language:
 ```ocaml
 true := {
   BoolVal [#True{}]
@@ -18,9 +18,9 @@ true := {
 false := true Negate.
 false Negate. Negate. Negate. Negate.
 ```
-As a comparison, Go has 25 keywords, Python 3.10 has 38, C++14 has 84, and Lua has 22. Lisps, though they start small, can become arbitrarily large and complex languages via their macros. Even Smalltalk and Self, though small in size, have many subtle nuances like metaclasses, multiple inheritance name resolution, and different syntaxes for immutable and mutable slots. Of course, neither keyword nor feature count are sufficient to judge language simplicity, but they are a good heuristic, and the magnitude of the difference between qdbp and its next closest competitor is striking. In fact, qdbp's feature count of 7 is most comparable to (https://en.wikipedia.org/wiki/Brainfuck)[Brainfuck], the joke programming language with 8 constructs. Though the code snippet above may seem unfamiliar, understanding those 15 lines of code, along with learning a little bit of syntax sugar, is all that is required to understand the *entire* language.
+As a comparison, Go has 25 keywords, Python 3.10 has 38, C++14 has 84, and Lua has 22. Lisps, though they start small, can become arbitrarily large and complex languages via their macros. Even Smalltalk and Self, though small in size, have many subtle nuances like metaclasses, multiple inheritance name resolution, and different syntaxes for immutable and mutable slots. Neither keyword nor feature count are sufficient to judge language simplicity, but they are a good heuristic, and the magnitude of the difference between qdbp and its closest competitor is striking. In fact, qdbp's feature count of 7 is most comparable to (https://en.wikipedia.org/wiki/Brainfuck)[Brainfuck], the joke programming language with 8 constructs. Though the code snippet above may seem unfamiliar, understanding those 15 lines of code, along with learning a little bit of syntax sugar, is all that is required to understand the *entire* language.
 
-Of course, just being small and simple is not sufficient. If it were, the world would run on Brainfuck. qdbp's beauty comes from its ability to combine its small set of primitivves to express complex abstractions. [Here](TODO:) is a list of features other languages have that qdbp can naturally emulate. The list includes
+Of course, just being small and simple is not sufficient. If it were, the world would run on Brainfuck. qdbp's beauty comes from its ability to compose its small set of primitives to express complex abstractions. [Here](TODO:) is a list and demonstration of features other languages have that qdbp can naturally emulate. The list includes
 
 - Function Programming Patterns
 - Loops
@@ -29,9 +29,7 @@ Of course, just being small and simple is not sufficient. If it were, the world 
 - Operators
 - So much more
 
-That qdbp's core feature set can be so naturally wielded to express complex abstractions is a testament to the elegance of the language. 
-
-The goal of qdbp is to be the distillation of programming into only its necessary components. I believe I succeeded, but I'm biased. You should judge it for yourself by trying out The Little Language That Could.
+That qdbp's core feature set can be so naturally wielded to express complex abstractions is a testament to the elegance of the language. The goal of qdbp is to be the distillation of programming into only its necessary components. I believe I succeeded, but I'm biased. You should judge it for yourself by trying out The Little Language That Could.
 
 ## Quick Start
 
