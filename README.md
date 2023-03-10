@@ -1,22 +1,22 @@
-# qdbp: The little language that could
+## The little language that could
 
-Think of your favorite programming language. 
 
-```ocml
-empty_list := {
-  List[ #Empty{} ]
-  Prepend[val |
-    {
-      self
-      List[ 
-        #NonEmpty {
-          Val[val]
-          Next[curr_list]
-        }
-      ]
-    }
+
+```ocaml
+true := {
+  BoolVal [#True{}]
+  EagerIf [then else|
+    self BoolVal.
+      True? [then]
+      False? [else].
+  ]
+  Negate [
+    self EagerIf
+      then: { self BoolVal[#False{}] }
+      else: { self BoolVal[#True{}] }.
   ]
 }
+false := true Negate.
 ```
 
 Variable declaration
@@ -24,7 +24,6 @@ Variable reference
 The Empty Object
 Object Extension
 Object Method Invocation
-Tagged Object Creation
 Tagged Object Creation
 Tagged Object Pattern Matching
 

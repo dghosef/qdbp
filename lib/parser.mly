@@ -110,6 +110,7 @@ record_body:
 (* FIXME: Make first arg not necessarily require a colon *)
 record_message:
 | r = expr; id = UPPER_ID; arg1 = expr?; a = record_message_arg*; PERIOD;
+| LPAREN; r = expr; id = UPPER_ID; arg1 = expr?; a = record_message_arg*; RPAREN;
   { 
     let a: Ast.argument list = match arg1 with
       | None -> a
@@ -184,6 +185,7 @@ variant_meth:
   } in meth}
 variant_message:
 | r = expr; m = tag_message+; PERIOD;
+| LPAREN; r = expr; m = tag_message+; RPAREN
   {Ast.emit_variant_message r m}
 tag_message:
 | n = UPPER_ID; QUESTION; e = variant_meth;
