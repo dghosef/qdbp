@@ -21,9 +21,9 @@ However, these limitations are all fixable and will come with time. To that end,
   - [ ] A reference manual
   - [ ] A language specification
 Longer term goals include the addition of
-- [ ] Support for concurrency
+- [ ] Support for concurrency(Adding this while keeping within the philosophy of the language will be tricky)
 - [ ] An LSP
 - [ ] A REPL
 - [ ] A debugger
 - [ ] A package manager
-However, all of these features in and of themselves are significant projects, potentially similar in scope to the creation of the language itself. As such, they will not be rushed and take a little more time to design and implement.
+
