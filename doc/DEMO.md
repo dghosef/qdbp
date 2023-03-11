@@ -1,7 +1,7 @@
 # THE WRITING AND CONTENTS HERE ARE VERY MUCH A WIP
 ## That Could
 
-qdbp isn't just "The Little Language." It is "The Little Language That Could." Despite its size, qdbp is very expressive. This document demonstrates a subset of popular abstractions that qdbp either natively supports or can emulate.
+qdbp isn't just "The Little Language." It is "The Little Language That Could." Despite its size, qdbp is very expressive. This document demonstrates a subset of the popular abstractions that qdbp either natively supports or can emulate.
 
 ##### Functions
 qdbp doesn't include functions. However, functions can be emulated by prototypes with a single label. By convention, we use `!` For example, here is the identity function
@@ -165,3 +165,4 @@ fail := (one /: zero) <<=: {val | val +: one.}. <<=: {val | val +: one.}.
 // but this return three
 succeed := (one /: one) <<=: {val | val +: one.}. <<=: {val | val +: one.}.
 ```
+dynamic dispatch
