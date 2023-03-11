@@ -6,7 +6,9 @@ qdbp is in its infancy. The current implementation of qdbp
 - Needs support for string, character, number, and list literals
 - Doesn't have an import mechanism
 - Has barely any documentation
+
 However, these limitations are all fixable and will come with time. To that end, here is a shortlist of qdbp's agenda for the future
+
 - Performance:
   - [ ] Change the compilation target from OCaml to a lower level language
   - [ ] Implement [Perceus Reference Counting](https://www.microsoft.com/en-us/research/uploads/prod/2020/11/perceus-tr-v1.pdf)
