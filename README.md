@@ -20,7 +20,7 @@ false Negate. Negate. Negate. Negate.
 ```
 As a comparison, Go has 25 keywords, Python 3.10 has 38, C++14 has 84, and Lua has 22. Lisps, though they start small, can become arbitrarily large and complex via macros. Even Smalltalk has conceptual complexities like metaclasses. Neither keyword nor feature count are sufficient to judge language simplicity, but they are a good heuristic, and the magnitude of the difference between qdbp and its closest competitor is striking. In fact, qdbp's feature count of 7 is most comparable to (https://en.wikipedia.org/wiki/Brainfuck)[Brainfuck], the joke programming language with 8 constructs. Though the code snippet above may seem unfamiliar, understanding those 15 lines of code, along with learning a little bit of syntax sugar, is all that is required to understand the *entire* language.
 
-Of course, just being small and simple is not sufficient. If it were, the world would run on Brainfuck. qdbp's beauty comes from its ability to compose its small set of primitives to express complex abstractions. [Here](todo.md) is a list and demonstration of features other languages have that qdbp can naturally emulate. The list includes
+Of course, just being small and simple is not sufficient. If it were, the world would run on Brainfuck. qdbp's beauty comes from its ability to compose its small set of primitives to express complex abstractions. [Here](doc/FEATURES.md) is a list and demonstration of features other languages have that qdbp can naturally emulate. The list includes
 
 - Infinite Lists
 - All sorts of Loops

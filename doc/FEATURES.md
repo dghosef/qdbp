@@ -1,3 +1,4 @@
+# THE WRITING AND CONTENTS HERE ARE VERY MUCH A WIP
 ## That Could
 
 qdbp isn't just "The Little Language." It is "The Little Language That Could." Despite its size, qdbp is very expressive. This document demonstrates a subset of popular abstractions that qdbp either natively supports or can emulate.
