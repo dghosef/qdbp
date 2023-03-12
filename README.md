@@ -1,6 +1,6 @@
 ## The Little Language That Could
 
-qdbp is small. Really, really small. The language has just 7 core constructs(along with full type inference and a little bit of syntax sugar to sweeten the deal). In fact here is a small program, implementing a basic boolean object, that demonstrates *every single construct* of the language:
+qdbp is small. Really, really small. The language has just 1 keyword and 7 core constructs(along with full type inference and a little bit of syntax sugar to sweeten the deal). In fact here is a small program, implementing a basic boolean object, that demonstrates *every single construct* of the language:
 ```ocaml
 true := {
   BoolVal [#True{}]
@@ -18,7 +18,7 @@ true := {
 false := (true Negate)
 false Negate. Negate. Negate. Negate.
 ```
-As a comparison, Go 1.20 has 25 keywords, Python 3.10 has 38, C++14 has 84, and Lua has 22. Neither keyword nor feature count are sufficient to judge language simplicity, but they are good heuristics, and the magnitude of the difference between qdbp and its closest competitor is striking. Though the code snippet above may seem unfamiliar, understanding those 15 lines of code, along with learning a little bit of syntax sugar, is all that is required to understand the *entire* language.
+As a comparison, Go 1.20 has 25 keywords, Python 3.10 has 38, C++14 has 84, and Lua 5.4 has 22. Neither keyword nor feature count are sufficient to judge language simplicity, but they are good heuristics, and the magnitude of the difference between qdbp and its closest competitor is striking. Though the code snippet above may seem unfamiliar, understanding those 15 lines of code, along with learning a little bit of syntax sugar, is all that is required to understand the *entire* language.
 
 Of course, just being small and simple is not sufficient. If it were, the world would run on [Brainfuck](https://en.wikipedia.org/wiki/Brainfuck). qdbp's beauty comes from its ability to compose its small set of primitives to express complex abstractions. [Here](doc/DEMO.md) is a list and demonstration of features other languages have that qdbp can naturally emulate. The list includes
 
