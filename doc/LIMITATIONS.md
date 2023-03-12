@@ -28,7 +28,7 @@ However, these limitations are all fixable and removing them will come with time
     - [ ] A comprehensive tutorial
     - [ ] A reference manual
     - [ ] A language specification
-  - [ ] Clean up the compiler implementation
+  - [ ] Clean up the compiler implementation - move to bin dir
 
 Longer term goals include the addition of
 

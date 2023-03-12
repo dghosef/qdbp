@@ -16,9 +16,9 @@ true := {
   ]
 }
 false := (true Negate)
-false Negate. Negate. Negate. Negate. ;; returns false
+false Negate. Negate. Negate. Negate.
 ```
-As a comparison, Go has 25 keywords, Python 3.10 has 38, C++14 has 84, and Lua has 22. Lisps, though they start small, can become arbitrarily large and complex via macros. Even Smalltalk has conceptual complexities like metaclasses. Neither keyword nor feature count are sufficient to judge language simplicity, but they are a good heuristic, and the magnitude of the difference between qdbp and its closest competitor is striking. In fact, qdbp's feature count of 7 is most comparable to [Brainfuck](https://en.wikipedia.org/wiki/Brainfuck), the joke programming language with 8 constructs. Though the code snippet above may seem unfamiliar, understanding those 15 lines of code, along with learning a little bit of syntax sugar, is all that is required to understand the *entire* language.
+As a comparison, Go has 25 keywords, Python 3.10 has 38, C++14 has 84, and Lua has 22. Neither keyword nor feature count are sufficient to judge language simplicity, but they are good heuristics, and the magnitude of the difference between qdbp and its closest competitor is striking. In fact, qdbp's feature count of 7 is most comparable to [Brainfuck](https://en.wikipedia.org/wiki/Brainfuck), a joke programming language with 8 constructs. Though the code snippet above may seem unfamiliar, understanding those 15 lines of code, along with learning a little bit of syntax sugar, is all that is required to understand the *entire* language.
 
 Of course, just being small and simple is not sufficient. If it were, the world would run on Brainfuck. qdbp's beauty comes from its ability to compose its small set of primitives to express complex abstractions. [Here](doc/DEMO.md) is a list and demonstration of features other languages have that qdbp can naturally emulate. The list includes
 
@@ -37,4 +37,4 @@ That qdbp's core feature set can be so naturally wielded to express complex abst
 
 ## Quick Start
 
-qdbp requires
+qdbp requires Ocaml, Dune, Ocamllex, and Menhir. Once you have those, clone this repo and run `dune exec ./bin/qdbp.exe <filename>` to run a file or `dune exec ./bin/qdbp.exe --help` for more options. While qdbp doesn't have support for syntax highlighting yet, I have found that using syntax highlighting for Ocaml works well enough. Happy qdbping!
