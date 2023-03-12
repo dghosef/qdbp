@@ -29,7 +29,6 @@ Of course, just being small and simple is not sufficient. If it were, the world 
 - Operators
 - Functional Programming Patterns(list, map, filter, monads, etc)
 - Automatic memoization
-- Iterators
 - Interfaces
 - Modules
 
