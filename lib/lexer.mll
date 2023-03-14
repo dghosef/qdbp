@@ -24,7 +24,7 @@ let lower = ['a' - 'z']
 let upper = ['A' - 'Z']
 let symbol = ['!' '%' '&' '*' '~' '-' '+' '=' '\\' '/' '>' '<']
 let underscore = '_'
-let upper_id = (symbol | upper) (symbol | upper | lower | digit | underscore)*
+let upper_id = (symbol | upper | underscore) (symbol | upper | lower | digit | underscore)*
 let lower_id = (lower) (upper | lower | digit | underscore)*
 let white = [' ' '\t']+
 let newline = '\r' | '\n' | "\r\n"

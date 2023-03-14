@@ -36,4 +36,4 @@ That qdbp's core feature set can be so naturally wielded to express complex abst
 
 ## Quick Start
 
-qdbp requires Ocaml, Dune, Ocamllex, and Menhir. Once you have those, clone this repo and run `dune exec ./bin/qdbp.exe <filename>` to run a file or `dune exec ./bin/qdbp.exe --help` for more options. While qdbp doesn't have support for syntax highlighting yet, I have found that using syntax highlighting for Ocaml works well enough. Happy qdbping!
+qdbp requires Ocaml, Dune, Ocamllex, and Menhir. The compiler isn't quite usable but soon it will be. Get those and check back in a few weeks, clone this repo and run `dune exec ./bin/qdbp.exe <filename>` to run a file or `dune exec ./bin/qdbp.exe --help` for more options. While qdbp doesn't have support for syntax highlighting yet, I have found that using syntax highlighting for Ocaml works well enough. Happy qdbping!
