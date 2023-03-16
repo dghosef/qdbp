@@ -1,6 +1,6 @@
 ## The Little Language That Could
 
-qdbp is small. Really, really small. The language has just 1 keyword and 7 core constructs(along with full type inference and a little bit of syntax sugar to sweeten the deal). In fact here is a small program, implementing a basic boolean object, that demonstrates *every single construct* of the language:
+qdbp is small. Really, really small. The language has just 2 keywords and 7 core constructs(along with full type inference and a little bit of syntax sugar). In fact here is a small program, implementing a basic boolean object, that demonstrates *every single construct* of the language:
 ```ocaml
 true := {
   BoolVal [#True{}]
@@ -36,4 +36,4 @@ That qdbp's core feature set can be so naturally wielded to express complex abst
 
 ## Quick Start
 
-qdbp requires Ocaml, Dune, Ocamllex, and Menhir. The compiler isn't quite usable but soon it will be. Get those and check back in a few weeks, clone this repo and run `dune exec ./bin/qdbp.exe <filename>` to run a file or `dune exec ./bin/qdbp.exe --help` for more options. While qdbp doesn't have support for syntax highlighting yet, I have found that using syntax highlighting for Ocaml works well enough. Happy qdbping!
+qdbp requires ocaml, dune, ocamllex, and menhir. Clone this repo and run `dune exec ./bin/main.exe -- <filename>` to run a file or `dune exec ./bin/main.exe -- --help` for more options. While qdbp doesn't have support for syntax highlighting yet, I have found that using syntax highlighting for Ocaml works well enough. Happy qdbping!

@@ -13,6 +13,12 @@ let next_id () =
 let new_var level = 
   let id = next_id () in
   TVar (ref (Unbound(id, level)))
+let bool_type level = TVariant 
+    (TRowExtend 
+       ("#True", (TRecord TRowEmpty),
+        (TRowExtend 
+           ("#False", (TRecord TRowEmpty),
+            (new_var level)))))
 
 exception Error of string
 let error msg = raise (Error msg)
@@ -56,6 +62,7 @@ let occurs_check_adjust_levels _ tvar_level ty =
     | TRowExtend(_, field_ty, row) -> f field_ty ;
       f row
     | TRowEmpty -> ()
+    | TConst _ -> ()
   in
   f ty
 
@@ -79,6 +86,8 @@ let rec unify ty1 ty2 labels_found =
       if ty1 == ty2 then () else
         begin 
           match (ty1, ty2) with
+          | TConst ty1, TConst ty2 when ty1 = ty2 ->
+            ()
           | TArrow(param_ty_list1, return_ty1), TArrow(param_ty_list2, return_ty2) ->
             List.iter2 (fun param1 param2 -> unify (snd param1) (snd param2) StringSet.empty) param_ty_list1 param_ty_list2 ;
             unify return_ty1 return_ty2 StringSet.empty;
@@ -106,7 +115,9 @@ let rec unify ty1 ty2 labels_found =
               unify rest_row1 rest_row2 labels_found
             end
           (* URGENT: Make this print the original types *)
-          | _, _ -> error ("cannot unify types." ^ (string_of_ty 0 ty1) ^ " and " ^ (string_of_ty 0 ty2))
+          | _, _ -> 
+            prerr_endline ("cannot unify types." ^ (string_of_ty 0 ty1) ^ "\nand\n" ^ (string_of_ty 0 ty2));
+            error ""
         end
     end;
 
@@ -151,7 +162,7 @@ let generalize level =
     | TVariant row -> TVariant (generalize level row)
     | TRowExtend(label, field_ty, row) ->
       TRowExtend(label, generalize level field_ty , generalize level row)
-    | TVar {contents = Generic _} | TVar {contents = Unbound _} | TRowEmpty as ty -> ty
+    | TConst _ | TVar {contents = Generic _} | TVar {contents = Unbound _} | TRowEmpty as ty -> ty
   in generalize level
 
 let instantiate level ty =
@@ -185,8 +196,8 @@ let instantiate level ty =
       TArrow(List.map (fun param -> fst param, f (snd param)) param_ty_list, f return_ty)
     | TRecord row -> TRecord (f row)
     | TVariant row -> TVariant (f row)
-    | TRowEmpty ->
-      ty
+    | TRowEmpty -> ty
+    | TConst _ -> ty
     | TRowExtend(label, field_ty, row) ->
       TRowExtend(label, f field_ty, f row)
   in
@@ -225,6 +236,7 @@ let rec row_is_complete row =
   | TVar {contents = Link row} -> row_is_complete row
   | TRecord row -> row_is_complete row
   | TVariant row -> row_is_complete row
+  (* FIXME: Make more exhaustive *)
   | _ -> false
 
 let rec infer_method env level meth =
@@ -281,7 +293,27 @@ and infer env level = function
             end
         end
     end
-  | EmptyRecord | OcamlCall _ -> TRecord TRowEmpty, env
+  | EmptyRecord -> TRecord TRowEmpty, env
+  | Abort -> new_var level, env
+  | OcamlCall oc -> 
+    let args = oc.fn_args in
+    List.iter (fun arg -> ignore (infer env level arg)) args;
+    let ty_str = String.sub 
+        oc.fn_name 
+        (String.rindex oc.fn_name '_')
+        (String.length oc.fn_name - String.rindex oc.fn_name '_')
+    in
+    begin
+      match ty_str with
+      | "_int" -> TConst Int, env
+      | "_bool" -> bool_type level, env
+      | "_string" -> TConst String, env
+      (* Also have unit type *)
+      | _ -> error "unknown type"
+    end
+
+  | IntLiteral _ -> TConst Int, env
+  | StringLiteral _ -> TConst String, env
   | Record_Message rm ->
     begin
       match rm.cases with 
@@ -322,6 +354,10 @@ and infer env level = function
         a
       with Not_found -> error ("variable " ^ v.var_name ^ " not found")
     end
+  | Import im ->
+    (* Evaluate import in new environment *)
+    let ty, _ = infer Env.empty level im.import_expr in
+    ty, env
 and infer_cases env level return_ty rest_row_ty cases = match cases with
   | [] -> rest_row_ty
   | (label, var_name, expr) :: other_cases ->

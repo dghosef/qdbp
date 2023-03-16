@@ -27,6 +27,9 @@ let rec name_resolve expr names =
     let extension, _ = name_resolve r.extension names in
     Ast.RecordExtension {r with extension = extension; field = f}, names
   | Ast.EmptyRecord -> Ast.EmptyRecord, names
+  | Ast.Abort -> Ast.Abort, names
+  | Ast.IntLiteral i -> Ast.IntLiteral i, names
+  | Ast.StringLiteral s -> Ast.StringLiteral s, names
   | Ast.Declaration decl ->
     let rhs, names = name_resolve decl.decl_rhs names in 
     Ast.Declaration {decl with decl_rhs = rhs}, add_name decl.decl_lhs (decl.decl_id) names
@@ -36,3 +39,4 @@ let rec name_resolve expr names =
   | Ast.Record_Message _ -> Ast_utils.ast_local_fold_map name_resolve expr names
   | Ast.Sequence _ -> Ast_utils.ast_local_fold_map name_resolve expr names
   | Ast.OcamlCall _ -> Ast_utils.ast_local_fold_map name_resolve expr names
+  | Ast.Import _ -> Ast_utils.ast_local_fold_map name_resolve expr names

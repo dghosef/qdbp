@@ -3,6 +3,9 @@ let prerr_endline = print_endline
 let prerr_int = print_int
 type id = int
 type level = int
+type tconst = 
+  | Int
+  | String
 type ty =
   | TArrow of ((name * ty) list) * ty             (* function type: `(int, int) -> int` *)
   | TVar of tvar ref                  (* type variable *)
@@ -10,6 +13,7 @@ type ty =
   | TRowExtend of name * ty * row     (* row extension: `<a : _ | ...>` *)
   | TRecord of row                    (* record type: `{<...>}` *)
   | TVariant of row                    (* record type: `{<...>}` *)
+  | TConst of tconst
 and row = ty    (* the kind of rows - empty row, row variable, or row extension *)
 and tvar =
   | Unbound of id * level
@@ -42,6 +46,7 @@ let rec do_indent indent =
   if indent = 0 then "" else "  " ^ do_indent (indent - 1)
 let nl indent =
   "\n" ^ (do_indent indent)
+(* FIXME: Have better fixpoint numbers, make more efficient *)
 let string_of_ty indent ty: string =
   let curr_id = ref 0 in
   let next_id () =
@@ -78,6 +83,12 @@ let string_of_ty indent ty: string =
         "forall t" ^ string_of_int id
       | TRowEmpty -> 
         "<>"
+      | TConst tc ->
+        begin
+          match tc with
+          | Int -> "int"
+          | String -> "string"
+        end
       | TRowExtend (name, ty, row) ->
         "<" ^ name ^ " = " ^ string_of_ty indent ty ^ " | "  ^
         (nl (indent + 1)) ^

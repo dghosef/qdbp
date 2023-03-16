@@ -20,6 +20,7 @@ let ast_of_string s =
 let fst pair =
   let ret, _ = pair in ret
 (* TODO: Get rid of this? *)
+(* FIXME: This name is sorta disingenuous cuz we dont ignore empty records *)
 let ast_local_fold_map fn ast acc=
   match ast with 
   | Ast.RecordExtension re -> 
@@ -28,10 +29,32 @@ let ast_local_fold_map fn ast acc=
                       {f.field_value with method_body =
                                             fst (fn f.field_value.method_body acc)}} in
     let extension = fst (fn re.extension acc) in
-    (Ast.RecordExtension {re with field = f; extension = extension}), acc
+    let variant_expr, acc = (match re.variant_expr with 
+        | None -> None, acc
+        | Some (name, expr) -> 
+          let expr, acc = fn expr acc in
+          Some (name, (expr)), acc) in
+    (Ast.RecordExtension {variant_expr = variant_expr; 
+                          field = f; extension = extension}), acc
   | EmptyRecord -> (Ast.EmptyRecord), acc
+  | Abort -> (Ast.Abort), acc
+  | IntLiteral i -> (IntLiteral i), acc
+  | StringLiteral s -> (StringLiteral s), acc
   | Ast.Record_Message message ->
     (* No threading accumulator do all the args *)
+    let cases = 
+      (match message.cases with 
+       | None -> None
+       | Some cases -> 
+         let process_case (str1, str2, e) =
+           let expr, _ = fn e acc in 
+           (str1, str2, expr)
+         in
+         let variant, cases_list = cases in
+         let new_cases = List.map process_case cases_list in
+         let variant, _ = fn variant acc in
+         Some (variant, new_cases))
+    in
     let process_arg (arg: Ast.argument) =
       let expr, _ = fn arg.value acc in 
       {arg with value = expr}
@@ -39,13 +62,13 @@ let ast_local_fold_map fn ast acc=
     let args = List.map process_arg message.rm_arguments in
     (* Then do the receiver*)
     let receiver, acc' = fn message.rm_receiver acc in
-    Ast.Record_Message {message with rm_arguments = args; rm_receiver = receiver}, acc'
+    Ast.Record_Message {message with cases = cases; rm_arguments = args; rm_receiver = receiver}, acc'
 
   (* Map to expr and return new acc *)
   | Ast.Sequence sequence -> 
     let lhs, acc' = fn sequence.l acc in 
     let rhs, acc'' = fn sequence.r acc' in 
-    Ast.Sequence {sequence with l = lhs; r = rhs}, acc''
+    Ast.Sequence {l = lhs; r = rhs}, acc''
   | Ast.Declaration decl ->
     let rhs, acc' = fn decl.decl_rhs acc in 
     Ast.Declaration {decl with decl_rhs = rhs}, acc'
@@ -53,14 +76,9 @@ let ast_local_fold_map fn ast acc=
   | Ast.OcamlCall call ->
     let args = List.map (fun arg -> fst (fn arg acc)) call.fn_args in
     Ast.OcamlCall {call with fn_args = args}, acc
-
-let ast_map fn ast =
-  let fn' ast _ =
-    fn ast, ()
-  in
-  let ast, _ = ast_local_fold_map fn' ast () in 
-  ast
-
+  | Ast.Import import ->
+    let expr, acc' = fn import.import_expr acc in 
+    Ast.Import {import with import_expr = expr}, acc'
 
 let id_to_str = function 
   | None -> "-1"
@@ -77,6 +95,7 @@ let rec string_repeat i =
   if i == 0 then "" else "  " ^ string_repeat (i - 1)
 let do_indent i = 
   "\n" ^ string_repeat i
+(* FIXME: Make this an inner function so we can omit indent *)
 let rec string_of_ast ast indent =
   let meth_to_string (m: Ast.meth) =
     let body = string_of_ast m.method_body indent in
@@ -89,9 +108,13 @@ let rec string_of_ast ast indent =
     let name = f.field_name in 
     let value = meth_to_string f.field_value in 
     let extension = string_of_ast re.extension (indent + 1) in 
-    "{" ^ name ^ " " ^ (id_to_str re.extension_id) ^ " = " ^ value ^ "..." ^ do_indent (indent + 1) ^ extension ^ "}" ^ id_to_str re.extension_id
+    "{" ^ name ^ " " ^  " = " ^ value ^ "..." ^ do_indent (indent + 1) ^ extension ^ "}"
   | EmptyRecord ->
     "{EmptyRecord}"
+  | Abort  ->
+    "ABORT"
+  | IntLiteral i -> string_of_int i
+  | StringLiteral s -> "\"" ^ s ^ "\""
   | Record_Message rm ->
     let process_arg acc (arg: Ast.argument) =
       let name = arg.name in 
@@ -111,8 +134,16 @@ let rec string_of_ast ast indent =
     let rhs = string_of_ast d.decl_rhs indent in 
     lhs ^ id_to_str d.decl_id^ " = " ^ rhs
   | Variable v -> 
-    "(" ^ v.var_name ^ " origin=" ^ origin_to_str v.origin ^ ")" ^ (id_to_str v.var_id)
+    "(" ^ v.var_name ^ " origin=" ^ origin_to_str v.origin ^ ")"
   | OcamlCall c -> 
     let args = List.map (fun arg -> string_of_ast arg 0) c.fn_args in 
     let args = String.concat ", " args in
     "$" ^ c.fn_name ^ "(" ^ args ^ ")"
+  | Import i ->
+    "import " ^ (string_of_ast i.import_expr indent)
+let ast_map fn ast =
+  let fn' ast _ =
+    fn ast, ()
+  in
+  let ast, _ = ast_local_fold_map fn' ast () in 
+  ast

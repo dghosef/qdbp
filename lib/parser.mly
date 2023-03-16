@@ -2,8 +2,9 @@
 (* FIXME: I don't like self used for variants. Use some other convention *)
 (* FIXME: Allow unnamed first param by having a set name for it *)
 (* FIXME: empty method returns {} by default *)
-%token<string> UPPER_ID LOWER_ID ARG
-%token PIPE DECLARATION PERIOD TAG QUESTION MONEY
+%token<string> UPPER_ID LOWER_ID ARG IMPORT STRING
+%token <int> INT
+%token PIPE DECLARATION PERIOD TAG QUESTION MONEY ABORT
 %token LPAREN RPAREN
 %token LBRACE RBRACE
 %token LBRACKET RBRACKET
@@ -33,7 +34,11 @@ expr:
 | e = declaration            {e}
 | e = variable              {e}
 | e = ocaml_call            {e}
-
+| e = import_expr {e}
+| e = int_literal {e}
+| e = empty_list {e}
+| e = abort {e}
+| e = string{e}
 
 
 ocaml_call:
@@ -50,14 +55,12 @@ meth:
   {{
     args = List.append ["self"] a;
     method_body = e;
-    meth_id = None;
     case = None;
     arg_ids = None :: (List.map (fun _ -> None) a);
   }}
 | LBRACE; e = expr; RBRACE
   {{
     args = ["self"];
-    meth_id = None;
     method_body = e;
     case = None;
     arg_ids = [None]
@@ -92,7 +95,6 @@ record_body:
       Ast.RecordExtension {
         field = field;
         extension = acc;
-        extension_id = None;
         variant_expr = None;
       }) extension fields
   }
@@ -102,9 +104,8 @@ record_body:
       Ast.RecordExtension {
         field = field;
         extension = acc;
-        extension_id = None;
         variant_expr = None;
-      }) Ast.EmptyRecord fields
+      }) (Ast.EmptyRecord) fields
   }
 
 (* FIXME: Make first arg not necessarily require a colon *)
@@ -123,20 +124,17 @@ record_message:
     } in
     let to_concat = (String.concat ":" (List.map (fun (x: Ast.argument) -> x.name) a)) in
     let rm = Ast.Record_Message {
-      rm_id = None;
       cases = None;
-      rm_receiver = Ast.Variable {var_id = None; var_name = "Self"; origin = None};
+      rm_receiver = Ast.Variable {var_name = "Self"; origin = None};
       rm_message = id ^ ":self" ^ (if to_concat = "" then "" else ":") ^ to_concat;
       rm_arguments = {
         name = "self"; 
         value = Ast.Variable 
           {
-          var_id = None;
           var_name = "Self"; 
           origin = None}} :: a
     } in 
     Ast.Sequence {
-      seq_id = None;
       l = var;
       r = rm;
     }
@@ -158,12 +156,10 @@ variant_meth:
     args = ["Self"];
     method_body = 
     Ast.Sequence {
-      seq_id = None;
       l = Ast.Declaration {
         decl_id = None;
         decl_lhs = a;
         decl_rhs = Ast.Variable {
-          var_id = None;
           var_name = "Self";
           origin = None;
         }
@@ -171,14 +167,12 @@ variant_meth:
       r = e;
     }
     ;
-    meth_id = None;
     case = Some (a, e);
     arg_ids = [None]
   }}
 | LBRACE; e = expr; RBRACE
   {let (meth:Ast.meth) = {
     args = ["Self"];
-    meth_id = None;
     method_body = e;
     case = Some ("Self", e);
     arg_ids = [None]
@@ -205,14 +199,12 @@ declaration:
         decl_rhs = r;
       };
       r = e;
-      seq_id = None;
       }
   }
 
 variable:
 | name = LOWER_ID
   {Ast.Variable {
-    var_id = None;
     var_name = name;
     origin = None;
   }}
@@ -224,3 +216,68 @@ closure:
   {Ast.emit_closure [] e}
 
 // TODO: Strings(including fancy nested strings like r"asdf"r) and lists
+(* FIXME: Add cycle detection *)
+
+import_expr:
+| filename = IMPORT
+  {
+    Ast.Import { filename = filename ^ ".qdbp"; import_expr = EmptyRecord; }
+  }
+
+int_literal:
+| i = INT
+  {
+    let literal = Ast.IntLiteral i in
+    let int_fn = (* FIXME: change filename? *)
+      Ast.Import { filename = "int.qdbp"; import_expr = EmptyRecord; } in
+    let variable_decl = Ast.Declaration {
+      decl_id = None;
+      decl_lhs = "self";
+      decl_rhs = int_fn;
+    } in
+    let self = Ast.Variable {
+      var_name = "self";
+      origin = None;
+    } in
+    let message = Ast.Record_Message {
+      rm_message = "!:self:val";
+      rm_arguments = [{name = "self"; value = self}; {name = "val"; value = literal}];
+      rm_receiver = self;
+      cases = None
+    } in
+    Ast.Sequence {
+      l = variable_decl;
+      r = message;
+    }
+  }
+empty_list:
+| LBRACE; RBRACE
+  {Ast.Import { filename = "list.qdbp"; import_expr = EmptyRecord; }}
+abort:
+| ABORT; PERIOD {Ast.Abort}
+string:
+| s = STRING
+  {
+    let literal = Ast.StringLiteral s in
+    let str_fn = (* FIXME: change filename? *)
+      Ast.Import { filename = "string.qdbp"; import_expr = EmptyRecord; } in
+    let variable_decl = Ast.Declaration {
+      decl_id = None;
+      decl_lhs = "self";
+      decl_rhs = str_fn;
+    } in
+    let self = Ast.Variable {
+      var_name = "self";
+      origin = None;
+    } in
+    let message = Ast.Record_Message {
+      rm_message = "!:self:val";
+      rm_arguments = [{name = "self"; value = self}; {name = "val"; value = literal}];
+      rm_receiver = self;
+      cases = None
+    } in
+    Ast.Sequence {
+      l = variable_decl;
+      r = message;
+    }
+  }
