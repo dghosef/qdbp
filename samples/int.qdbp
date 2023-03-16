@@ -1,0 +1,48 @@
+{ val|
+  {
+    Val[val]
+    +[val|
+      ; FIXME: Rename these functions
+      new_val := $add_int(self Val. val Val.)
+      {self Val[new_val]}
+    ]
+    -[val|
+      new_val := $sub_int(self Val. val Val.)
+      {self Val[new_val]}
+    ]
+    *[val|
+      new_val := $mul_int(self Val. val Val.)
+      {self Val[new_val]}
+    ]
+    /[val|
+      new_val := $div_int(self Val. val Val.)
+      {self Val[new_val]}
+    ]
+    <[val|
+      $lt_bool(self Val. val Val.)
+    ]
+    >[val|
+      $gt_bool(self Val. val Val.)
+    ]
+    <=[val|
+      $le_bool(self Val. val Val.)
+    ]
+    >=[val|
+      $ge_bool(self Val. val Val.)
+    ]
+    =[val|
+      $eq_bool(self Val. val Val.)
+    ]
+    !=[val|
+      $ne_bool(self Val. val Val.)
+    ]
+    Print[
+      ignore := $print_int(self Val.)
+      self
+    ]
+    PrintAsChar[
+      ignore := $print_char_int(self Val.)
+      self
+    ]
+  }
+}

@@ -1,0 +1,61 @@
+{
+  Node[#None{}]
+  Prepend[val|
+    curr_list := self Node.
+    {
+      self
+      Node[#Prepend {Val[val] Rest[curr_list]}]
+    }
+  ]
+  Append[val|
+    curr_list := self Node.
+    {
+      self
+      Node[#Append {Val[val] Rest[curr_list]}]
+    }
+  ]
+  ++[val|
+    node1 := self Node.
+    node2 := val Node.
+    {
+      self
+      Node[#Concat {L[node1] R[node2]}]
+    }
+  ]
+  Map [val|
+    map := {fn lst|
+      map := self
+      lst
+        Concat?[node|
+          newl := map! fn: fn lst: (node L).
+          newr := map! fn: fn lst: (node R).
+          #Concat {
+            L[newl]
+            R[newr]  
+          }
+        ]
+        Prepend?[node|
+          newval := fn! (node Val).
+          newrest := map! fn: fn lst: (node Rest).
+          #Prepend {
+            Val[newval]
+            Rest[newrest]
+          }
+        ]
+        Append?[node|
+          newrest := map! fn: fn lst: (node Rest).
+          newval := fn! (node Val).
+          #Append {
+            Val[newval]
+            Rest[newrest]
+          }
+        ]
+        None?[#None{}].
+    }
+    newval := map! fn: val lst: (self Node).
+    {
+      self
+      Node[newval]
+    }
+  ]
+}

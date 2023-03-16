@@ -1,0 +1,16 @@
+{val |
+  {
+    Val[val]
+    Print[
+      ignore := $print_string_int(self Val.)
+      self
+    ]
+    ++[val|
+      new_val := $concat_string(self Val. val Val.)
+      {
+        self
+        Val[new_val]
+      }
+    ]
+  }
+}
