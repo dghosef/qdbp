@@ -1,3 +1,4 @@
+(* TODO: Figure out how to have shebang allowed ontop *)
 (* TODO: Unicode *)
 (* TODO: Import mechanism *)
 (* TODO: multiline comments including nesting *)
@@ -25,7 +26,7 @@ let upper = ['A' - 'Z']
 let symbol = ['!' '%' '&' '*' '~' '-' '+' '=' '\\' '/' '>' '<']
 let underscore = '_'
 let upper_id = (symbol | upper | underscore) (symbol | upper | lower | digit | underscore)*
-let lower_id = (lower) (upper | lower | digit | underscore)*
+let lower_id = (lower) (upper | lower | digit | underscore | '\'')*
 let white = [' ' '\t']+
 let newline = '\r' | '\n' | "\r\n"
 
@@ -34,8 +35,11 @@ rule token = parse
     { token lexbuf }
 | newline
     { next_line lexbuf; token lexbuf}
-| "//" [ ^ '\n']*
+| "ABORT"
+    { ABORT }
+| ';' [ ^ '\n']*
     { token lexbuf }
+| "(*" { comments 0 lexbuf }
 | '.'
     { PERIOD }
 | ":="
@@ -60,6 +64,15 @@ rule token = parse
     { QUESTION }
 | '$'
     { MONEY }
+| "@\"" ([ ^ '"']* as filename) '"'
+    { IMPORT(filename) }
+(* FIXME: Allow asdf"text"asdf *)
+| '"' ([ ^ '"']* as text) '"'
+    { STRING(text) }
+(* FIXME: Error checking for bigints *)
+(* FIXME: Ambiguities with messages? *)
+| '-'? digit+ as s
+    { INT (int_of_string (s)) }
 | upper_id as s
     { UPPER_ID (s) }
 | lower_id as s ':'
@@ -70,3 +83,15 @@ rule token = parse
     { EOF }
 | _
     { raise (Error (Printf.sprintf "At line %d: unexpected character.\n" (lexbuf.lex_curr_p.pos_lnum))) }
+and comments level = parse
+    | "*)" {
+        if level = 0 then token lexbuf
+        else comments (level - 1) lexbuf
+    }
+    | "(*" {
+        comments (level + 1) lexbuf
+    }
+    | _ { comments level lexbuf }
+    (* FIXME: Better message *)
+    | eof 
+        { raise (Error (Printf.sprintf "At line %d: eof in multiline comment.\n" (lexbuf.lex_curr_p.pos_lnum))) }
