@@ -1,0 +1,8 @@
+for := {iter body|
+  iter
+    HasNext? [value|
+      ignore := body! (value Val.).
+      self! iter: value Next. body: body.
+    ]
+    NoNext? [{}].
+} {}

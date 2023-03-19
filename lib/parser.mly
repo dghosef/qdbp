@@ -41,13 +41,6 @@ expr:
 | e = string{e}
 
 
-ocaml_call:
-| MONEY; id = LOWER_ID LPAREN; args = expr*; RPAREN
-  {let call: Ast.ocaml_call = {
-    call_id = None;
-    fn_name = id;
-    fn_args = args;
-  } in Ast.OcamlCall call}
 
 (*FIXME: Make sure we don't have duplicate arguments*)
 meth:
@@ -281,3 +274,10 @@ string:
       r = message;
     }
   }
+ocaml_call:
+| MONEY; id = LOWER_ID LPAREN; args = expr*; RPAREN
+  {let call: Ast.ocaml_call = {
+    call_id = None;
+    fn_name = id;
+    fn_args = args;
+  } in Ast.OcamlCall call}

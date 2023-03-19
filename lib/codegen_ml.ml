@@ -22,7 +22,7 @@ let rec ocaml_of_ast ast =
     "extension = (" ^ rest ^ ")})"
   | EmptyRecord -> "(emptyrecord)"
   | Abort -> "(abort ())"
-  | IntLiteral i -> "(int_object " ^ (string_of_int i) ^ ")"
+  | IntLiteral i -> "(int_object (" ^ (string_of_int i) ^ "))"
   | StringLiteral s -> "(string_object " ^ "\"" ^ s ^ "\"" ^ ")"
   | Record_Message rm -> 
     "((select (\"" ^ rm.rm_message ^ "\") (" ^ (ocaml_of_ast rm.rm_receiver) ^ ")) [" ^

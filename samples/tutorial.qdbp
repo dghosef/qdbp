@@ -1,0 +1,165 @@
+(*
+  This is a multiline comment
+  (* They can nest :) *)
+*)
+; And here is a single line comment
+
+(* Variables, ints, and strings *)
+three := 3
+hello_world := "Hello, world!"
+y := three
+(* variables are shadowed *)
+y := 3 ; y is now 3
+
+(* We can bundle data together using prototype objects
+   A prototype is a collection of labeled methods *)
+prototype := {
+  Method1 [3] (* A method that just returns 3 *)
+  (* This method takes an argument and just returns it *)
+  Method2[arg1 | arg1 ]
+  (* All methods take in implicit self argument that is always set to the value of
+     the prototype it is in. Method3's return is equivalent to `prototype`*)
+  Method3[ self ]
+}
+empty_prototype := {}
+(* We can invoke methods on prototypes. Note the period at the end *)
+three := prototype Method1.
+(* Methods with arguments must have the names specified *)
+four := prototype Method2 arg1: 4.
+(* qdbp has no concept of functions in the traditional sense. However,
+   we can use a prototype with a single label to simulate a function. By
+   convention, we use the label `!` *)
+identity_fn := { ![x| x] }
+(* From now on, we will refer to anything with the label `!` as a function *)
+(* We can invoke the function by calling the method `!` *)
+five := identity_fn! x: 5.
+(* Methods within a prototype can be overloaded by parameter names *)
+print_args := {
+  ![arg1 | arg1 Print.]
+  ![arg1 arg2 | 
+    ignore := arg1 Print.
+    arg2 Print.
+  ]
+}
+(* qdbp has no sequence expression. To evaluate multiple expressions, we just assign
+   them to successive variables *)
+ignore := print_args! arg1: "Hello World\n".
+ignore := print_args! arg1: "Hello " arg2: "World".
+(* qdbp has no type annotations. However, it still statically checks your program.
+   For example, if `arg1` to `print_args` doesn't have a `Print` method, the 
+   program will refuse to compile. Therefore, `print_args! arg1: {}.` will fail. *)
+ignore := print_args! arg1: 3. (* `print_args` is generic *)
+(* To be specific, variable names must start with a lowercase letter.
+   Method names within a prototype must start with an uppercase letter or a symbol.
+   We can use method names with symbols to emulate operators. For example, int
+   objects have a `+` method with a single argument, `val` *)
+five := 3 + val: 2.
+(* Here is some syntax sugar that makes common prototype patterns less verbose *)
+(* To make "functions" easier to define, this: *)
+my_fn := { ![x| x] }
+(* is equivalent to this: *)
+my_fn := {x | x} 
+(* In other words, to make an object with a single method `!`, we can omit the
+   `[`, `]`, and `!` *)
+(* Also, if we omit the name of the first argument, it is automatically assumed
+   to be `val` *)
+five := 3 + val: 2. (* is equivalent to *) five := 3 + 2.
+(* Periods are optional when invocation is surrounded by parenthesis *)
+three := identity_fn! x: 3. (* is the same as *) three := (identity_fn! x: 3)
+(* Variables are all immutable. However, you can copy a prototype and change
+   one or more of its methods *)
+small_circle := {
+  Radius[3]
+  Diameter[(self Radius) * 2.]
+}
+(* Same as `small_circle` but Radius is 6 *)
+big_circle := {
+  small_circle
+  Radius[6]
+}
+(* The compiler expects the type of the new method to have the same as the original *)
+twelve := big_circle Diameter.
+(* Unfortunately we don't have doubles yet, but stay tuned! *)
+pi := 3
+(* Prototypes can also be extended with new methods *)
+big_circle := {
+  big_circle
+  Area[(self Radius) * (self Radius). * pi.]
+}
+one_hundred_eight := big_circle Area.
+(* Most of the time, the compiler can disambiguate between whether to extend
+   or replace. The one exception is when the original's prototype's field list
+   is dependent on a parameter. For example, *)
+fn := {x | 
+  {
+    x
+    Method[val | val]
+  }
+}
+(* The compiler can't disambiguate whether or not to replace the Method field in `x`
+   or to extend `x`. In situations like this, the compiler will always expect that
+   the original prototype contains the field and so will replace it. This is
+   probably the hardest rule to learn. *)
+
+(* We also can tag an object *)
+object := {}
+tagged_object := #TagName object
+(* In qdbp, whenever everything is right associative *)
+tagged_object := #Tag #Tag #Tag {} (* parsed as (#Tag (#Tag (#Tag {}))) *)
+(* An example application of this is to represent booleans *)
+true := #True{}
+false := #False{}
+(* We can pattern match on tagged objects. For example, this is a function that
+   will negate a boolean. Like method invocation, notice the `.` at the end *)
+negate := {val |
+  val
+    True? [#False{}]
+    False? [#True{}].
+}
+(* The type system will ensure that the pattern matching is exhaustive. For example,
+   if we don't handle the `#False` case for a value that could be `#False`,  it will
+    fail*)
+
+(* Another application of tagged objects is error types. For example, here is a safe
+   division by 0 function *)
+safe_divide := {a b|
+  b = 0.
+    True? [#Error{}]
+    False? [#Ok a / b.].
+}
+result := safe_divide! a: 4 b: 2.
+(* Outputs 2 *)
+ignore := 
+  result
+    Ok? [val| 
+      ignore := val Print.
+      {}
+    ]
+    Error? [
+      ignore := "Error\n" Print.
+      {}
+    ].
+(* Like any language, we want to be able to split our programs across multiple
+   files. Each qdbp program is a single expression that returns a value. 
+   `@filename`'s result is the result of evaluating `filename.qdbp`. Filenames
+   can only have letters, `/`, `_`, and `.` *)
+empty_list := @list
+intlist := empty_list Append 3. Append 2.
+(* You cannot have cyclic imports. Like, this file cannot import itself
+   However, a check for that is a TODO:. Currently, the compiler will just
+   loop infinitely *)
+(* We can also call functions in the target language. See `./int.qdbp` for example *)
+(* The return type of the function must be encoded in the function name.
+   It can either end with `_int`, `_string`, or `_bool` *)
+
+(* To end a program abruptly, the special keyword ABORT will kill it like so *)
+(* The "return type" of the abort is whatever it needs to be, so we can have 
+    *)
+get_val := {val|
+  val
+    Ok? [val| val]
+    Error? [ABORT.].
+}
+
+(* If you were to import this file from another file, the result would be this string*)
+" This concludes the language reference and tutorial "

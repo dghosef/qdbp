@@ -1,3 +1,4 @@
+(* TODO: Add Shebang Support *)
 (* TODO: Figure out how to have shebang allowed ontop *)
 (* TODO: Unicode *)
 (* TODO: Import mechanism *)
@@ -8,6 +9,7 @@
 (* FIXME: Error handling *)
 (* FIXME: Figure out what to do about syntax of assigns in records and variables *)
 (* FIXME: Return error *)
+(* FIXME: Add hex/binary int literals *)
 {
   open Parser
   open Lexing
@@ -25,6 +27,7 @@ let lower = ['a' - 'z']
 let upper = ['A' - 'Z']
 let symbol = ['!' '%' '&' '*' '~' '-' '+' '=' '\\' '/' '>' '<']
 let underscore = '_'
+let filename = ['.' '/' 'a' - 'z' 'A' - 'Z' '_']+
 let upper_id = (symbol | upper | underscore) (symbol | upper | lower | digit | underscore)*
 let lower_id = (lower) (upper | lower | digit | underscore | '\'')*
 let white = [' ' '\t']+
@@ -64,8 +67,8 @@ rule token = parse
     { QUESTION }
 | '$'
     { MONEY }
-| "@\"" ([ ^ '"']* as filename) '"'
-    { IMPORT(filename) }
+| "@" (filename as name)
+    { IMPORT(name) }
 (* FIXME: Allow asdf"text"asdf *)
 | '"' ([ ^ '"']* as text) '"'
     { STRING(text) }
