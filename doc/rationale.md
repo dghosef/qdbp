@@ -53,7 +53,7 @@ if! condition: ...
     ...
   }.
 ```
-Similarly `while`, `for`, `switch`, monads, iterators, scope guards, etc can all be implemented as objects and used naturally.
+Similarly `while`, `for`, `switch`, monads, iterators, scope guards, etc can all be implemented as objects and used naturally. We some examples of this below.
 
 The variety of constructs that the syntax makes possible and natural to implement extends beyond normal general purpose language features. qdbp's syntax makes domain specific language(dsl) implementation easy. For example, there currently is a work in progress dsl for a build system using qdbp that looks like this:
 ```ocaml
@@ -61,20 +61,20 @@ my_project
   AddLibDirectory "./lib".
   AddTestDirectory "./test".
   AddExecutable "bin/main.qdbp".
-  SetOptimizationLevels
-    performance: 3
-    size: 2.
+  SetOptimizationLevels performance: 3 size: 2.
 ```
 Users of this build system don't need to learn a new syntax and developers don't need to implement a parser or macros - it can all be done naturally in qdbp. 
 
 ## `.`, `@`, `#` and `?`
-These symbols were all picked because their English meaning corresponds to their meaning in qdbp.
+These symbols were all picked because their linguistic meaning corresponds to their meaning in qdbp.
 
 - Much like periods end sentences in the English language, they end method invocation and pattern matching expressions
 - Similarly, pattern matching can be thought of asking questions about tagged objects. Hence the `?` symbol
 - When we import a file, we get the expression **at** the file. Hence the `@` symbol
 - `#` is used for making tagged objects because `#` is the commonly used as the symbol for making (hash)tags
 
+## Method Syntax
+TODO
 # Structural Type System
 qdbp uses a simple yet powerful type system that is often referred to as "static duck typing." The type system(descibed in detail [here](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/scopedlabels.pdf)) is based on the concept that types of objects are defined by what they have, not their name. This allows qdbp to be as easy to use as dynamically typed languages(which do the same thing, just dynamically), while eliminating the vast majority of runtime errors.
 # Language Constructs
@@ -97,3 +97,7 @@ Non-local control flow makes programs much harder to reason about and adds a lot
 However, non-local control cannot be emulated with any existing feature. So, while it doesn't have it right now, we don't rule out adding it in the future.
 ### Purely Functional I/O
 qdbp does not have any purely functional I/O. This is because qdbp is not a purely functional language. In fact, qdbp is arguably not even a functional language(it doesn't even have first class functions). Purely functional I/O, both in the form of algebraic effects and monads, is a powerful tool for reasoning about programs, but qdbp's core value of simplicity makes it a poor fit for the language.
+
+### Sequences
+
+# Lack of Standard Library

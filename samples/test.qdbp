@@ -1,8 +1,14 @@
-for := {iter body|
-  iter
-    HasNext? [value|
-      ignore := body! (value Val.).
-      self! iter: value Next. body: body.
-    ]
-    NoNext? [{}].
-} {}
+pows_of_2_list := {
+  Val[1]
+  Next[
+    cur_val := self Val.
+    { self Val[cur_val * 2.] }
+  ]
+}
+ignore := pows_of_2_list Val. Print.
+pows_of_2_list := pows_of_2_list Next.
+ignore := pows_of_2_list Val. Print.
+pows_of_2_list := pows_of_2_list Next.
+ignore := pows_of_2_list Val. Print.
+pows_of_2_list := pows_of_2_list Next.
+{}

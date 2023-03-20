@@ -38,7 +38,7 @@
     ]
     Print[
       ignore := $print_int(self Val.)
-      self
+      {}
     ]
     PrintAsChar[
       ignore := $print_char_int(self Val.)

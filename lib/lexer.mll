@@ -25,7 +25,7 @@
 let digit = ['0' - '9']
 let lower = ['a' - 'z']
 let upper = ['A' - 'Z']
-let symbol = ['!' '%' '&' '*' '~' '-' '+' '=' '\\' '/' '>' '<']
+let symbol = ['!' '%' '&' '*' '~' '-' '+' '=' '\\' '/' '>' '<' '^']
 let underscore = '_'
 let filename = ['.' '/' 'a' - 'z' 'A' - 'Z' '_']+
 let upper_id = (symbol | upper | underscore) (symbol | upper | lower | digit | underscore)*

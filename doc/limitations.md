@@ -12,13 +12,13 @@ However, these limitations are all fixable and removing them will come with time
   - [ ] Implement [Perceus Reference Counting](https://www.microsoft.com/en-us/research/uploads/prod/2020/11/perceus-tr-v1.pdf)
 - Error Messages:
   - [ ] Add error states to the parser for better error messages
-  - [ ] Make the type inference functional
+  - [ ] Make the type inference functional-style
   - [ ] Annotate each ast node with a type, potentially being an error type
   - [ ] Keep track of history during type inference to better pinpoint the origin of type errors
+  - [ ] Use a recursive descent parser
 - Documentation
   - Create a website with:
     - [ ] A language specification
-    - [ ] Rationale for design decisions
   - [ ] Code Samples Directory
   - [ ] Clean up the compiler implementation
 

@@ -161,5 +161,7 @@ get_val := {val|
     Error? [ABORT.].
 }
 
+(* TODO: A quick note on literals *)
+
 (* If you were to import this file from another file, the result would be this string*)
 " This concludes the language reference and tutorial "
