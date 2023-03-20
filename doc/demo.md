@@ -12,9 +12,9 @@ can be done in qdbp like so:
 add := {a b | a + b.}
 add! a: 1 b: 2.
 ```
-`add` is technically not a function. It is a prototype with a method that adds. For convenience, however, we refer to any prototype with `!` as a function.
-### Generic Functions
-Functions are generic by default. Here is a generic `print` function:
+`add` is technically not a function. It is a prototype with a single method `!`. For convenience, however, we refer to any prototype with `!` as a function.
+### Generics
+Methods are generic by default. Here is a generic `print` function:
 ```ocaml
 print := {val | val Print.}
 ignore := print! 3.
@@ -54,36 +54,37 @@ true If
 }.
 ```
 ### Switch
-There are a variety of ways to do this, depending on you needs. Here is one
+There are a variety of ways to implement `switch`, depending on your needs. Here is one
 ```ocaml
 switch := {val |
   {
     Val[val]
     Result[#None{}]
-    Case[val do|
+    Case[val then|
       self Val. = val.
         True? [
-          result := do!.
+          result := then!.
           {self Result[#Some result]}]
         False? [self].
     ]
-    Default[do|
+    Default[then|
       self Result.
         Some? [val| val]
-        None? [do!.].
+        None? [then!.].
     ]
   }
 }
-switch! 5.
-  Case 1 do: {"1" Print.}.
-  Case 2 do: {"2" Print.}.
-  Case 3 do: {"3" Print.}.
-  Case 4 do: {"4" Print.}.
-  Case 5 do: {"5" Print.}.
-  Default do: {"None of the above" Print.}.
+str := switch! 5.
+  Case 1 then: {"one"}.
+  Case 2 then: {"two"}.
+  Case 3 then: {"three"}.
+  Case 4 then: {"four"}.
+  Case 5 then: {"five"}.
+  Default then: {"None of the above"}.
+str Print.
 ```
 ### Data Structures
-All of the data structures [here](https://en.wikipedia.org/wiki/Purely_functional_data_structure#Examples) can be implemented in qdbp. In addition, qdbp will have Perceus Reference Counting in the near future, allowing data structures to reuse memory when possible, clawing back some of the performance lost to immutability.
+All of the data structures [here](https://en.wikipedia.org/wiki/Purely_functional_data_structure#Examples) can be implemented in qdbp. In addition, qdbp will have Perceus Reference Counting in the near future, allowing data structures to reuse memory when possible and clawing back some of the performance lost to immutability.
 
 As an example, here is an implementation of a stack:
 ```ocaml
@@ -140,7 +141,9 @@ while! {1 < 2.}
 For brevity, the implementation of the list objects are omitted.
 ```ocaml
 double_list := {list | list Map {val | val * 2.}. }
-sum_list := {list | list FoldLeft fn: {val acc | val + acc.} initial: 0. }
+sum_list := {list | 
+              list FoldLeft fn: {val acc | val + acc.} initial: 0. 
+            }
 {}
 ```
 ### Classes
@@ -257,7 +260,7 @@ for!
   body: {val | val Print.}.
 ```
 ### Phantom Fields
-Some values may have the same types but semantically mean different things. For example, an int could be a number of cookies or it could be a day of the month. When we perform operations, we can make sure we don't use the wrong values by using phantom fields.
+Some values may have the same types but semantically mean different things. For example, an int could be a number of cookies or it could be a day of the month. When we perform operations, we can make sure we don't use the wrong values at compile time by using phantom fields.
 ```ocaml
 day_12_of_month := {
   12
@@ -383,4 +386,15 @@ defer! {"finished " Print.}
     ignore := "doing fancy math\n" Print.
     1 + 1. + 3. * 15.
   }.
+```
+### DSL Creation
+We can create our own DSLs in qdbp, even though we don't have macros. Here is a sample DSL syntax for a build system we could implement
+```ocaml
+my_project
+  AddLibDirectory "./lib".
+  AddTestDirectory "./test".
+  AddExecutable "bin/main.qdbp".
+  SetOptimizationLevels
+    performance: 3
+    size: 2.
 ```

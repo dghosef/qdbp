@@ -4,7 +4,6 @@ qdbp is in its infancy. The current implementation of qdbp
 - Gives terrible error messages
 - Has barely any documentation
 
-
 However, these limitations are all fixable and removing them will come with time. To that end, here is a shortlist of qdbp's agenda for the future. It is currently going through a rewrite that, when finished, will have the following changes:
 
 - Performance:
@@ -29,4 +28,3 @@ Longer term goals include the addition of
 - [ ] A REPL
 - [ ] A debugger
 - [ ] A package manager
-

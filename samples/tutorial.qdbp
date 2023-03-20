@@ -146,7 +146,7 @@ ignore :=
 empty_list := @list
 intlist := empty_list Append 3. Append 2.
 (* You cannot have cyclic imports. Like, this file cannot import itself
-   However, a check for that is a TODO:. Currently, the compiler will just
+   However, a check for that is a todo. Currently, the compiler will just
    loop infinitely *)
 (* We can also call functions in the target language. See `./int.qdbp` for example *)
 (* The return type of the function must be encoded in the function name.

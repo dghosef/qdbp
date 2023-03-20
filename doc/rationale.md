@@ -73,8 +73,21 @@ These symbols were all picked because their linguistic meaning corresponds to th
 - When we import a file, we get the expression **at** the file. Hence the `@` symbol
 - `#` is used for making tagged objects because `#` is the commonly used as the symbol for making (hash)tags
 
-## Method Syntax
-TODO
+## `[]`
+The specific syntax decisions in
+```ocaml
+MethodName[arg1 arg2 ...| body]
+```
+were a little bit arbitrary. There isn't really a deeper reason compared to other method syntaxes like
+```c++
+MethodName(arg1, arg2, ...) {
+  body
+}
+```
+apart from the fact that the former is shorter and more concise.
+
+The decision to make variant pattern matching have similar syntax to methods was intentional. Variants are the dual of records because records are "this field *and* this field *and* this field," while variants are "this field *or* this field *or* this field." To emphasize this, we used similar syntax for both
+
 # Structural Type System
 qdbp uses a simple yet powerful type system that is often referred to as "static duck typing." The type system(descibed in detail [here](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/scopedlabels.pdf)) is based on the concept that types of objects are defined by what they have, not their name. This allows qdbp to be as easy to use as dynamically typed languages(which do the same thing, just dynamically), while eliminating the vast majority of runtime errors.
 # Language Constructs
