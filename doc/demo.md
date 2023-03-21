@@ -84,7 +84,7 @@ str := switch! 5.
 str Print.
 ```
 ### Data Structures
-All of the data structures [here](https://en.wikipedia.org/wiki/Purely_functional_data_structure#Examples) can be implemented in qdbp. In addition, qdbp will have Perceus Reference Counting in the near future, allowing data structures to reuse memory when possible and clawing back some of the performance lost to immutability.
+All of the data structures [here](https://en.wikipedia.org/wiki/Purely_functional_data_structure#Examples) can be implemented in qdbp. In addition, qdbp will have [Perceus Reference Counting](https://www.microsoft.com/en-us/research/uploads/prod/2020/11/perceus-tr-v1.pdf) in the near future, allowing data structures to reuse memory when possible and clawing back some of the performance lost to immutability.
 
 As an example, here is an implementation of a stack:
 ```ocaml
