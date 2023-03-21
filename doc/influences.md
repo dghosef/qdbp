@@ -7,4 +7,4 @@
 - [Outperforming Imperative with Pure Functional Languages](https://www.youtube.com/watch?v=vzfy4EKwG_Y)
 # Other Influences
 - Descriptions of the ς-calculus [here](https://pages.cpsc.ucalgary.ca/~robin/FMCS/FMCS2014/An%20introduction%20to%20OOC.pdf), [here](https://web.stanford.edu/class/cs242/materials/lectures/lecture07.pdf), and [here](https://web.stanford.edu/class/cs242/materials/lectures/lecture08.pdf)
--[this](https://github.com/tomprimozic/type-systems/blob/master/extensible_rows/infer.ml) sample implementation of the type system
+- [this](https://github.com/tomprimozic/type-systems/blob/master/extensible_rows/infer.ml) sample implementation of the type system
