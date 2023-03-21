@@ -138,7 +138,7 @@ while! {1 < 2.}
   }.
 ```
 ### Functional List Manipulation
-For brevity, the implementation of the list objects are omitted.
+For brevity, the implementation of the list objects is omitted.
 ```ocaml
 double_list := {list | list Map {val | val * 2.}. }
 sum_list := {list | 
@@ -278,10 +278,10 @@ fn_involving_days := {val |
 ignore := fn_involving_days! day_12_of_month. ; ok
 fn_involving_days! five_cookies. ; compilation error
 ```
-However, qdbp's type system is limited. We cannot make, for example, methods that will multiply units automatically like in c++. We can only handcheck for the existence of specific field names.
+However, qdbp's type system is limited. We cannot make, for example, methods that multiply units automatically like in c++. We can only handcheck for the existence of specific field names.
 
 ### Error handling
-##### Returning Errors
+#### Returning Errors
 ```ocaml
 safe_divide := {a b|
   b = 0.
@@ -293,7 +293,7 @@ result
   Error? ["error" Print.]
   Ok?[val| val Print.].
 ```
-##### Propagating Errors
+#### Propagating Errors
 ```ocaml
 error := {
   Transform[fn|
@@ -318,7 +318,7 @@ safe_divide_6! a: 3996 b: 3 c: 1 d: 2 e: 2 f: 1. Val.
   Error? ["Error" Print.]
   Ok? [val | val Print.].
 ```
-##### Abort
+#### Abort
 ```ocaml
 panic := {val |
   ignore := val Print.
@@ -350,9 +350,8 @@ pows_of_2_list := pows_of_2_list Next.
 {}
 ```
 ### Modules
-In `math.qdbp`, for example, we can have the code
+In `math.qdbp`, for example, we could have the code
 ```ocaml
-
 {
   Factorial[val|
     val = 0.
@@ -365,7 +364,6 @@ In `math.qdbp`, for example, we can have the code
       False? [val].
   ]
 }
-
 ```
 Then in another file, we can have
 ```ocaml
@@ -387,6 +385,7 @@ defer! {"finished " Print.}
     1 + 1. + 3. * 15.
   }.
 ```
+This can be used, for example, to handle file closing or for automatic benchmarking
 ### DSL Creation
 We can create our own DSLs in qdbp, even though we don't have macros. Here is a sample DSL syntax for a build system we could implement
 ```ocaml

@@ -1,16 +1,16 @@
 ## The Little Language That Could
 
-qdbp is small. Really, really small. The language has just 2 keywords and 7 core constructs(along with full type inference and a little bit of syntax sugar to sweeten the deal). In fact here is a small program, implementing a basic boolean object, that demonstrates *every single construct* of the language:
+qdbp is small. Really, really small. The language has just 2 keywords and 7 core constructs(along with full type inference and a little bit of syntax sugar to sweeten the deal). In fact here is a small program, implementing a basic boolean object, that demonstrates *every single primitive* of the language:
 ```ocaml
 true := {
   BoolVal [#True{}]
-  If [then else|
+  EagerIf [then else|
     self BoolVal.
       True? [then]
       False? [else].
   ]
   Negate [
-    self If
+    self EagerIf
       then: { self BoolVal[#False{}] }
       else: { self BoolVal[#True{}] }.
   ]
@@ -27,8 +27,7 @@ Of course, just being small and simple is not sufficient. If it were, the world 
 - Inheritance
 - Iterators
 - Operators
-- Functional programming Patterns(list, map, filter, monads, etc)
-- Automatic memoization
+- Functional programming Patterns(list, map, filter, etc)
 - Interfaces
 - Modules
 - Domain specific language creation, despite not having macros
@@ -37,4 +36,4 @@ That qdbp's core feature set can be so naturally wielded to express complex abst
 
 ## Quick Start
 
-qdbp requires ocaml, dune, ocamllex, and menhir. Clone this repo and run `dune exec ./bin/main.exe -- <filename>` to run a file or `dune exec ./bin/main.exe -- --help` for more options. While qdbp doesn't have support for syntax highlighting yet, I have found that using syntax highlighting for Ocaml works well enough.
+qdbp requires ocaml, dune, ocamllex, and menhir. Clone this repo and run `dune exec ../bin/main.exe -- <filename>` from the `samples` directory to run a file or `dune exec ../bin/main.exe -- --help` for more options. While qdbp doesn't have support for syntax highlighting yet, I have found that using syntax highlighting for Ocaml works well enough.
