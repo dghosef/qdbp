@@ -20,7 +20,11 @@ However, these limitations are all fixable and removing them will come with time
     - [ ] A language specification
   - [ ] Code Samples Directory
   - [ ] Clean up the compiler implementation
-
+- Features
+  - [ ] Strings with custom start and end delimiters
+  - [ ] Doubles
+  - [ ] Shebang support
+  - [ ] More robust import system
 Longer term goals include the addition of
 
 - [ ] Support for concurrency(Adding this while keeping within the philosophy of the language will be tricky)
