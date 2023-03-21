@@ -40,7 +40,6 @@ record_message_arg:
   | ARG; expr; 
 variant:
   | TAG; UPPER_ID; expr;
-
 variant_meth:
   | LBRACE; LOWER_ID; PIPE; expr; RBRACE
   | LBRACE; expr; RBRACE

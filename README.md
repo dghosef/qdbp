@@ -23,7 +23,7 @@ As a comparison, Go 1.20 has 25 keywords, Python 3.10 has 38, C++14 has 84, and 
 Of course, just being small and simple is not sufficient. If it were, the world would run on [Brainfuck](https://en.wikipedia.org/wiki/Brainfuck). qdbp's beauty comes from its ability to compose its small set of primitives to express complex abstractions. [Here](doc/demo.md) is a list and demonstration of features other languages have that qdbp can naturally emulate. The list includes
 
 - Infinite lists
-- if/then/else
+- If/then/else
 - All sorts of loops
 - Inheritance
 - Iterators

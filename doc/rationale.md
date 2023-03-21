@@ -85,7 +85,7 @@ MethodName(arg1, arg2, ...) {
 ```
 because the former is simpler and more concise.
 
-The decision to make tagged object pattern matching have similar syntax to methods was intentional. Tagged objects are similar to prototypes except for, rather than expressing a "this *and* this" relationship, they express a "this *or* this" one. Their similarity in syntax reflects their similarity in semantics.
+The decision to make tagged object pattern matching have similar syntax to methods was intentional. Tagged objects are the dual of prototypes; tagged objects express a "this *or* this" relationship while prototypes express a "this *and* this" one. Their syntax similarities reflect this duality.
 # Structural Type System
 qdbp uses a simple yet powerful type system that is often referred to as "static duck typing." The type system(described in detail [here](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/scopedlabels.pdf)) is based on the concept that types of objects are defined by what they can do, not their name. This allows qdbp to be as easy to use as dynamically typed languages while retaining the safety of static typing
 # Language Constructs

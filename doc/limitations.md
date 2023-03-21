@@ -19,14 +19,14 @@ However, these limitations are all fixable and removing them will come with time
   - Create a website with:
     - [ ] A language specification
   - [ ] Code Samples Directory
-  - [ ] Clean up the compiler implementation
+  - [ ] Cleaner compiler implementation
 - Features
   - [ ] Strings with custom start and end delimiters
   - [ ] Doubles
   - [ ] Shebang support
   - [ ] More robust import system
-Longer term goals include the addition of
 
+Longer term goals include the addition of
 - [ ] Support for concurrency(Adding this while keeping within the philosophy of the language will be tricky)
 - [ ] An LSP
 - [ ] A REPL
