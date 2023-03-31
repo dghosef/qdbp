@@ -32,15 +32,15 @@ rule token = parse
 | string_delimiter as delimiter '"' {
   match get_string delimiter lexbuf with
     | Ok s -> STRING s
-    | Error e -> Error e
+    | Error e -> LexError (`EofInString e)
 }
 | '-'? digit+ as s { 
   try (INT (int_of_string (s))) with 
-    | Failure _ -> Error (`BadInteger (s, lexbuf.lex_curr_p))
+    | Failure _ -> LexError (`BadInteger (s, lexbuf.lex_curr_p))
 }
 | '-'? digit+ '.' digit+ as s { 
   try (FLOAT (float_of_string (s))) with 
-    | Failure _ -> Error (`BadFloat (s, lexbuf.lex_curr_p))
+    | Failure _ -> LexError (`BadFloat (s, lexbuf.lex_curr_p))
 }
 | ';' [ ^'\n']* { token lexbuf }
 | upper_id as s { UPPER_ID (s) }
@@ -62,7 +62,7 @@ rule token = parse
 | '?' { QUESTION }
 | '$' { MONEY }
 | eof { EOF }
-| _ as c { Error (`BadCharacter (c, lexbuf.lex_curr_p)) }
+| _ as c { LexError (`BadCharacter (c, lexbuf.lex_curr_p)) }
 and comment level = parse
   | "*)" {
     if level = 0 then token lexbuf
@@ -70,7 +70,7 @@ and comment level = parse
   }
   | "(*" { comment (level + 1) lexbuf }
   | newline { next_line lexbuf; comment level lexbuf}
-  | eof { Error (`EofInComment lexbuf.lex_curr_p) }
+  | eof { LexError (`EofInComment lexbuf.lex_curr_p) }
   | _ { comment level lexbuf }
 
 and get_string delimiter = parse
@@ -79,5 +79,5 @@ and get_string delimiter = parse
     else prepend ("\"" ^ delimiter) (get_string delimiter lexbuf)
   }
   | newline { next_line lexbuf; prepend "\n" (get_string delimiter lexbuf)}
-  | eof { Error (`EofInString lexbuf.lex_curr_p) }
+  | eof { Error (lexbuf.lex_curr_p) }
   | _ as c { prepend (String.make 1 c) (get_string delimiter lexbuf) }

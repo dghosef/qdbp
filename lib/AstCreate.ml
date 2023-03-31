@@ -7,8 +7,12 @@ let make_variable_lookup name loc : ast =
   `VariableLookup (name, loc)
 
 (* Prototype stuff *)
+let full_field_name field_name arg_names =
+  (fst field_name) ^ ":" ^ (String.concat ":" arg_names), (snd field_name)
 let make_prototype_field name meth loc =
-  (name, meth, loc)
+  let args, _, _ = meth in
+  let arg_names = List.map (fun (name, _) -> name) args in
+  (full_field_name name arg_names, meth, loc)
 let make_empty_prototype loc : ast =
   `EmptyPrototype loc
 let make_prototype maybe_extension fields loc : ast =
@@ -22,16 +26,23 @@ let make_prototype maybe_extension fields loc : ast =
 let make_prototype_invoke_arg name value loc =
   (name, value, loc)
 let make_meth args body loc =
-  (args, body, loc)
+  (("self", loc) :: args, body, loc)
 let make_method_invocation receiver field_name arg1 args loc : ast =
   let args = match arg1 with
     | Some arg -> ("val", arg, loc) :: args
     | None -> args
   in
+  let arg_names = List.map (fun (name, _, _) -> name) args in
+  let field_name = full_field_name field_name arg_names
+     in
   make_declaration
     ("Self", loc)
     receiver
-    (`MethodInvocation ((make_variable_lookup "Self" loc), field_name, args, loc))
+    (`MethodInvocation (
+      (make_variable_lookup "Self" loc),
+      field_name,
+      ("self", make_variable_lookup "Self" loc, loc) :: args,
+      loc))
     loc
 let make_closure args body loc : ast = 
   let meth = make_meth args body loc in 
