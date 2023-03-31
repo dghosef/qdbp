@@ -1,4 +1,3 @@
-qdbp attempts to be simple, safe, and expressive. The philosophy, type system, syntax, and semantics are all guided by these goals. 
 # Syntax
 The syntax of qdbp is what immediately stands out first. Although initially unfamiliar, it is small enough that it can be picked up quickly.
 ## Method Invocation

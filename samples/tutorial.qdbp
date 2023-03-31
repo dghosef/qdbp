@@ -33,7 +33,7 @@ four := prototype Method2 arg1: 4.
    convention, we use the label `!` *)
 identity_fn := {![x| x]}
 (* From now on, we will refer to anything with the label `!` as a function *)
-(* We can invoke the function by calling the method `!` *)
+(* We can invoke the function by calling the `!` method *)
 five := identity_fn! x: 5.
 
 (* Methods within a prototype can be overloaded by parameter names *)
@@ -164,7 +164,7 @@ intlist := empty_list Append 3. Append 2.
 
 (* To end a program abruptly, the special keyword ABORT will kill it *)
 (* The "return type" of the `ABORT` changes according to the context *)
-get_val := {val|
+get_val := {val |
   val
     Ok? [val| val]
     Error? [ABORT.].

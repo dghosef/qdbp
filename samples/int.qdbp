@@ -44,5 +44,8 @@
       ignore := $print_char_int(self Val.)
       self
     ]
+    AsStr[
+        @string! $str_of_int_string(self Val.).
+    ]
   }
 }
