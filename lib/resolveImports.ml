@@ -9,6 +9,7 @@ let rec resolve_imports (ast: Types.ast) =
   (* Recursively descend down AST and
      Check for cycles
      Keep a map of already imported files. Update it at imports
+     This is really slow. Fix
   *)
   match ast with 
 
