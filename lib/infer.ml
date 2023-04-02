@@ -1,6 +1,4 @@
-(* FIXME: Make these all from `TVar ints *)
-(* FIXME: Check all `_`'s *)
-(* FIXME: Don't propogate env *)
+(* FIXME: start using make_new_unbound_var and make_new_generic_var *)
 module TyVarMap = Map.Make(struct type t = int let compare = compare end)
 module TyVarSet = Set.Make(struct type t = int let compare = compare end)
 module TyVarPairSet = Set.Make(struct type t = (int * int) let compare = compare end)
@@ -11,7 +9,7 @@ module Env = struct
   let lookup env name = StringMap.find_opt name env
 end
 
-let make_new_var tvars tvar =
+let make_new_var_id tvars tvar =
   let (var_id, varmap) = tvars in
   let new_id = var_id + 1 in
   let tvars' = (new_id, TyVarMap.add var_id tvar varmap) in
@@ -19,17 +17,19 @@ let make_new_var tvars tvar =
 let get_tyvar id tyvars =
   let (_, varmap) = tyvars in
   TyVarMap.find id varmap
-let make_new_unbound tvars level =
+let make_new_unbound_id tvars level =
   let (var_id, varmap) = tvars in
   let unbound_id = var_id + 1 in
   let new_id = unbound_id + 1 in 
   let tvars' = (new_id, (TyVarMap.add var_id (`Unbound (unbound_id, level)) varmap)) in
   tvars', var_id
+let make_new_unbound_var tvars level =
+  let tvars, var_id = make_new_unbound_id tvars level in
+  tvars, `TVar var_id
 let update_tvars tvars var_id new_var =
   (fst tvars, TyVarMap.add var_id new_var (snd tvars))
 let bool_type level tvars = 
-  let tvars, var_id = make_new_unbound tvars level in
-  let var = `TVar var_id in
+  let tvars, var = make_new_unbound_var tvars level in
   let ty = `TVariant 
       (`TRowExtend 
          ("#True", (`TRecord `TRowEmpty),
@@ -47,7 +47,7 @@ let generalize tvars level ty =
         match get_tyvar id tvars with
         | `Unbound (id', level') ->
           if level' > level then 
-            let tvars, new_varid = make_new_var tvars (`Generic id') in
+            let tvars, new_varid = make_new_var_id tvars (`Generic id') in
             (tvars, already_generalized), `TVar new_varid
           else
             (tvars, already_generalized), `TVar id
@@ -55,7 +55,7 @@ let generalize tvars level ty =
           begin
             match TyVarMap.find_opt id already_generalized with
             | None ->
-              let tvars, newvarid = make_new_unbound tvars level in 
+              let tvars, newvarid = make_new_unbound_id tvars level in 
               let already_generalized =
                 TyVarMap.add id (`TVar newvarid) already_generalized 
               in
@@ -221,10 +221,10 @@ let unify tvars already_unified ty1 ty2 =
       begin
         match get_tyvar id tvars with
         | `Unbound(_, level) ->
-          let tvars, newvarid = make_new_unbound tvars level in 
-          let rest_row2 = `TVar newvarid in
+          let tvars, rest_row2_id = make_new_unbound_id tvars level in 
+          let rest_row2 = `TVar rest_row2_id in
           let ty2 = `TRowExtend(label1, field_ty1, rest_row2) in
-          let tvars = update_tvars tvars newvarid (`Link ty2) in 
+          let tvars = update_tvars tvars rest_row2_id (`Link ty2) in 
           (tvars, already_unified, errors), rest_row2
         | `Link row2 ->
           rewrite_row (tvars, already_unified, errors) row2 label1 field_ty1
@@ -270,7 +270,7 @@ let instantiate tvars level ty =
           begin
             match TyVarMap.find_opt id already_instantiated with
             | None ->
-              let tvars, var_id = make_new_unbound tvars level in
+              let tvars, var_id = make_new_unbound_id tvars level in
               let already_instantiated =
                 TyVarMap.add id (`TVar var_id) already_instantiated in
               let (tvars, already_instantiated, id_var_map), var =
@@ -282,7 +282,7 @@ let instantiate tvars level ty =
         | `Generic id ->
           match TyVarMap.find_opt id id_var_map with
           | None ->
-            let tvars, var_id = make_new_unbound tvars level in
+            let tvars, var_id = make_new_unbound_id tvars level in
             let id_var_map = TyVarMap.add id (`TVar var_id) id_var_map in
             (tvars, already_instantiated, id_var_map), `TVar var_id
           | Some var -> (tvars, already_instantiated, id_var_map), var
@@ -303,11 +303,9 @@ let rec match_fn_ty num_params tvars = function
       match get_tyvar id tvars with
       | `Unbound (_, level) ->  
         let tvars, param_ty_list = List.fold_left_map
-            (fun tvars _ -> make_new_unbound tvars level)
+            (fun tvars _ -> make_new_unbound_var tvars level)
             tvars (List.init num_params (fun _ -> ())) in
-        let param_ty_list = List.map (fun id -> `TVar id) param_ty_list in
-        let tvars, ret_ty = make_new_unbound tvars level in
-        let ret_ty = `TVar ret_ty in
+        let tvars, ret_ty = make_new_unbound_var tvars level in
         let tvars = update_tvars tvars id (`Link (`TArrow (param_ty_list, ret_ty))) in
         tvars, param_ty_list, ret_ty
       | `Generic _ -> tvars, [`TError `NotAFun], `TError `NotAFun
@@ -347,9 +345,8 @@ let rec get_row tvars row label =
 let rec infer_method state env level meth =
   let (tvars, already_unififed) = state in
   let (args, body, _) = meth in
-  let tvars, param_ty_ids = List.fold_left_map
-      (fun tvars _ -> make_new_unbound tvars level) tvars args in
-  let param_ty_list = List.map (fun id ->`TVar id) param_ty_ids in
+  let tvars, param_ty_list = List.fold_left_map
+      (fun tvars _ -> make_new_unbound_var tvars level) tvars args in
   let fn_env = List.fold_left2
       (fun env param_name param_ty -> Env.extend env (fst param_name) param_ty)
       env args param_ty_list in
@@ -358,10 +355,8 @@ let rec infer_method state env level meth =
 and infer_record_select state env level expr =
   let (receiver, (name, _), _, _) = expr in
   let (tvars, already_unified) = state in
-  let (tvars, rest_row_id) = make_new_unbound tvars level in
-  let rest_row_ty = `TVar rest_row_id in
-  let (tvars, field_id) = make_new_unbound tvars level in
-  let field_ty = `TVar field_id in
+  let (tvars, rest_row_ty) = make_new_unbound_var tvars level in
+  let (tvars, field_ty) = make_new_unbound_var tvars level in
   let receiver_ty = `TRecord (`TRowExtend(name, field_ty, rest_row_ty)) in
   let (tvars, already_unified), receiver_ty' =
     infer (tvars, already_unified) env level receiver in
@@ -374,13 +369,12 @@ and infer_record_select state env level expr =
   in
   (tvars, already_unified), field_ty
 
-and infer state env level (expr: Types.ast) =
+and infer state env level expr =
   match expr with
   | `EmptyPrototype _ -> state, `TRecord `TRowEmpty
   | `Abort _ -> 
     let tvars, already_unified = state in 
-    let tvars, var_id = make_new_unbound tvars level in
-    let tvar = `TVar var_id in
+    let tvars, tvar = make_new_unbound_var tvars level in
     (tvars, already_unified), tvar
   | `IntLiteral _ -> state, (`TConst `Int)
   | `FloatLiteral _ -> state, (`TConst `Float)
@@ -422,10 +416,8 @@ and infer state env level (expr: Types.ast) =
     (tvars, already_unified), ty
   | `PrototypeExtension (extension, ((name, _), meth, _), _) ->
     let tvars, already_unified = state in
-    let tvars, rest_row_id = make_new_unbound tvars level in
-    let rest_row_ty = `TVar rest_row_id in
-    let tvars, field_id = make_new_unbound tvars level in
-    let field_ty = `TVar field_id in
+    let tvars, rest_row_ty = make_new_unbound_var tvars level in
+    let tvars, field_ty = make_new_unbound_var tvars level in
     let extension_ty = `TRecord rest_row_ty in
     let state, extension_ty' = infer (tvars, already_unified) env level extension in
     let state, meth_ty = infer_method state env level meth in
@@ -447,10 +439,8 @@ and infer state env level (expr: Types.ast) =
     if row_is_complete tvars rest_row_ty && get_row tvars rest_row_ty name = None then
       (tvars, already_unified), `TRecord (`TRowExtend(name, field_ty, rest_row_ty))
     else
-      let tvars, field_id' = make_new_unbound tvars level in 
-      let field_ty' = `TVar field_id' in
-      let tvars, rest_row_id' = make_new_unbound tvars level in
-      let rest_row_ty' = `TVar rest_row_id' in
+      let tvars, field_ty' = make_new_unbound_var tvars level in 
+      let tvars, rest_row_ty' = make_new_unbound_var tvars level in
       let (tvars, already_unified, errors) =
         unify tvars already_unified extension_ty'
           (`TRecord (`TRowExtend(name, field_ty', rest_row_ty'))) in
@@ -466,10 +456,8 @@ and infer state env level (expr: Types.ast) =
 
   | `TaggedObject ((tag, _), value, _) ->
     let tvars, already_unified = state in
-    let tvars, rest_row_id = make_new_unbound tvars level in
-    let rest_row_ty = `TVar rest_row_id in
-    let tvars, value_id = make_new_unbound tvars level in
-    let value_ty = `TVar value_id in
+    let tvars, rest_row_ty = make_new_unbound_var tvars level in
+    let tvars, value_ty = make_new_unbound_var tvars level in
     let (tvars, already_unified), value_ty' =
       infer (tvars, already_unified) env level value in
     let tvars, already_unified, errors =
@@ -505,8 +493,7 @@ and infer state env level (expr: Types.ast) =
     (tvars, already_unified), return_ty
   | `PatternMatch (expr, cases, _) ->
     let (tvars, already_unified) = state in
-    let tvars, return_id = make_new_unbound tvars level in
-    let return_ty = `TVar return_id in
+    let tvars, return_ty = make_new_unbound_var tvars level in
     let (tvars, already_unified), expr_ty = infer (tvars, already_unified) env level expr in
     let tvars, cases_row =
       infer_cases tvars already_unified env level return_ty `TRowEmpty cases in
@@ -525,8 +512,7 @@ and infer_cases tvars already_unified env level return_ty rest_row_ty cases =
   match cases with
   | [] -> tvars, rest_row_ty
   | ((label, _), ((var_name, _), expr, _), _) :: other_cases ->
-    let tvars, variant_id = make_new_unbound tvars level in
-    let variant_ty = `TVar variant_id in
+    let tvars, variant_ty = make_new_unbound_var tvars level in
     let (tvars, already_unified), expr_ty =
       infer (tvars, already_unified) (Env.extend env var_name variant_ty) level expr
     in
