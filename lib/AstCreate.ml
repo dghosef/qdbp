@@ -34,15 +34,15 @@ let make_method_invocation receiver field_name arg1 args loc : ast =
   in
   let arg_names = List.map (fun (name, _, _) -> name) args in
   let field_name = full_field_name field_name arg_names
-     in
+  in
   make_declaration
     ("Self", loc)
     receiver
     (`MethodInvocation (
-      (make_variable_lookup "Self" loc),
-      field_name,
-      ("self", make_variable_lookup "Self" loc, loc) :: args,
-      loc))
+        (make_variable_lookup "Self" loc),
+        field_name,
+        ("self", make_variable_lookup "Self" loc, loc) :: args,
+        loc))
     loc
 let make_closure args body loc : ast = 
   let meth = make_meth args body loc in 
@@ -60,9 +60,21 @@ let make_pattern_match_meth arg body loc =
   (arg, body, loc)
 let make_pattern_match_atom name meth loc = (name, meth, loc)
 
-(* Import and literals *)
-let make_import filename loc : ast =
-  `Import (filename, loc)
+(* Imports, literals, abort, external call *)
+let make_import filename (loc: Lexing.position * Lexing.position) : ast =
+  (* FIXME: Should raise a different type of exception or return err? *)
+  if not (Filename.is_relative filename) then
+    failwith "Absolute paths not allowed in imports"
+  else
+    try
+      let relative_path = filename in
+      let directory = Filename.dirname (Unix.realpath (fst loc).pos_fname) in
+      let absolute_path = Filename.concat directory relative_path in
+      let absolute_path = Unix.realpath absolute_path in
+      `Import (absolute_path, loc)
+    with
+      Unix.Unix_error (Unix.ENOENT, _, _) ->
+      failwith ("File not found: " ^ filename)
 let make_literal literal_template_filename literal_value loc =
   let import = make_import literal_template_filename loc in
   make_method_invocation import ("!", loc) (Some literal_value) [] loc

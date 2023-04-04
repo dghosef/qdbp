@@ -341,187 +341,192 @@ let rec get_row tvars row label =
   | `TRecord row -> get_row tvars row label
   | `TVariant row -> get_row tvars row label
   | _ -> None
-let rec infer_method state env level meth =
-  let (tvars, already_unififed) = state in
-  let (args, body, _) = meth in
-  let tvars, param_ty_list = List.fold_left_map
-      (fun tvars _ -> make_new_unbound_var tvars level) tvars args in
-  let fn_env = List.fold_left2
-      (fun env param_name param_ty -> Env.extend env (fst param_name) param_ty)
-      env args param_ty_list in
-  let state, return_ty = infer (tvars, already_unififed) fn_env level body in
-  state, `TArrow (param_ty_list, return_ty)
-and infer_record_select state env level expr =
-  let (receiver, (name, _), _, _) = expr in
-  let (tvars, already_unified) = state in
-  let (tvars, rest_row_ty) = make_new_unbound_var tvars level in
-  let (tvars, field_ty) = make_new_unbound_var tvars level in
-  let receiver_ty = `TRecord (`TRowExtend(name, field_ty, rest_row_ty)) in
-  let (tvars, already_unified), receiver_ty' =
-    infer (tvars, already_unified) env level receiver in
-  let (tvars, already_unified, errors) =
-    unify tvars already_unified receiver_ty receiver_ty' in
-  let field_ty = 
-    match errors with
-    | [] -> field_ty
-    | _ -> `TError (`UnifyError errors)
-  in
-  (tvars, already_unified), field_ty
-
-and infer state env level expr =
-  match expr with
-  | `EmptyPrototype _ -> state, `TRecord `TRowEmpty
-  | `Abort _ -> 
-    let tvars, already_unified = state in 
-    let tvars, tvar = make_new_unbound_var tvars level in
-    (tvars, already_unified), tvar
-  | `IntLiteral _ -> state, (`TConst `Int)
-  | `FloatLiteral _ -> state, (`TConst `Float)
-  | `StringLiteral _ -> state, (`TConst `String)
-  | `VariableLookup (name, loc) ->
-    let tvars, already_unified = state in
-    begin
-      match Env.lookup env name with
-      | Some ty ->
-        let tvars, ty = instantiate tvars level ty in
-        (tvars, already_unified), ty
-      | None -> state, `TError (`UnboundVariable (name, loc))
-    end
-  | `Declaration ((name, _), rhs, post_decl_expr, _) ->
-    let state, var_ty = infer state env (level + 1) rhs in
-    let tvars, already_unified = state in
-    let tvars, generalized_ty = generalize tvars level var_ty in
-    let env' = Env.extend env name generalized_ty in
-    let state', post_decl_ty = 
-      infer (tvars, already_unified) env' level post_decl_expr in
-    let tvars, already_unified = state' in
-    (tvars, already_unified), post_decl_ty
-  | `ExternalCall ((name, name_loc), args, _) ->
-    let state = List.fold_left
-        (fun state arg -> fst (infer state env level arg)) state args in
-    let ty_str = String.sub 
-        name
-        (String.rindex name '_')
-        (String.length name - String.rindex name '_')
-    in
-    let tvars, already_unified = state in
-    let tvars, ty = match ty_str with
-      | "_int" -> tvars, `TConst `Int
-      | "_float" -> tvars, `TConst `Float
-      | "_string" -> tvars, `TConst `String
-      | "_bool" -> bool_type level tvars
-      | _ -> tvars, `TError (`UnknownExternalCall name_loc)
-    in
-    (tvars, already_unified), ty
-  | `PrototypeExtension (extension, ((name, _), meth, _), _) ->
-    let tvars, already_unified = state in
-    let tvars, rest_row_ty = make_new_unbound_var tvars level in
-    let tvars, field_ty = make_new_unbound_var tvars level in
-    let extension_ty = `TRecord rest_row_ty in
-    let state, extension_ty' = infer (tvars, already_unified) env level extension in
-    let state, meth_ty = infer_method state env level meth in
-    let tvars, already_unified = state in
-    let tvars, already_unified, errors =
-      unify tvars already_unified field_ty meth_ty in
+let infer imports expr =
+  let rec infer_method state env level meth =
+    let (tvars, already_unififed) = state in
+    let (args, body, _) = meth in
+    let tvars, param_ty_list = List.fold_left_map
+        (fun tvars _ -> make_new_unbound_var tvars level) tvars args in
+    let fn_env = List.fold_left2
+        (fun env param_name param_ty -> Env.extend env (fst param_name) param_ty)
+        env args param_ty_list in
+    let state, return_ty = infer (tvars, already_unififed) fn_env level body in
+    state, `TArrow (param_ty_list, return_ty)
+  and infer_record_select state env level expr =
+    let (receiver, (name, _), _, _) = expr in
+    let (tvars, already_unified) = state in
+    let (tvars, rest_row_ty) = make_new_unbound_var tvars level in
+    let (tvars, field_ty) = make_new_unbound_var tvars level in
+    let receiver_ty = `TRecord (`TRowExtend(name, field_ty, rest_row_ty)) in
+    let (tvars, already_unified), receiver_ty' =
+      infer (tvars, already_unified) env level receiver in
+    let (tvars, already_unified, errors) =
+      unify tvars already_unified receiver_ty receiver_ty' in
     let field_ty = 
       match errors with
       | [] -> field_ty
       | _ -> `TError (`UnifyError errors)
     in
-    let tvars, already_unified, errors =
-      unify tvars already_unified extension_ty extension_ty' in
-    let rest_row_ty, extension_ty, extension_ty' =
-      match errors with 
-      | [] -> rest_row_ty, extension_ty, extension_ty'
-      | _ -> let error = `TError (`UnifyError errors) in error, error, error
-    in
-    if row_is_complete tvars rest_row_ty && get_row tvars rest_row_ty name = None then
-      (tvars, already_unified), `TRecord (`TRowExtend(name, field_ty, rest_row_ty))
-    else
-      let tvars, field_ty' = make_new_unbound_var tvars level in 
-      let tvars, rest_row_ty' = make_new_unbound_var tvars level in
-      let (tvars, already_unified, errors) =
-        unify tvars already_unified extension_ty'
-          (`TRecord (`TRowExtend(name, field_ty', rest_row_ty'))) in
-      let (tvars, already_unified, errors') =
-        unify tvars already_unified field_ty field_ty' in
-      let all_errors = List.concat [errors; errors'] in
-      let extension_ty =
-        match all_errors with
-        | [] -> extension_ty
-        | _ -> `TError (`UnifyError all_errors)
+    (tvars, already_unified), field_ty
+
+  and infer state env level expr =
+    match expr with
+    | `EmptyPrototype _ -> state, `TRecord `TRowEmpty
+    | `Abort _ -> 
+      let tvars, already_unified = state in 
+      let tvars, tvar = make_new_unbound_var tvars level in
+      (tvars, already_unified), tvar
+    | `IntLiteral _ -> state, (`TConst `Int)
+    | `FloatLiteral _ -> state, (`TConst `Float)
+    | `StringLiteral _ -> state, (`TConst `String)
+    | `VariableLookup (name, loc) ->
+      let tvars, already_unified = state in
+      begin
+        match Env.lookup env name with
+        | Some ty ->
+          let tvars, ty = instantiate tvars level ty in
+          (tvars, already_unified), ty
+        | None -> state, `TError (`UnboundVariable (name, loc))
+      end
+    | `Declaration ((name, _), rhs, post_decl_expr, _) ->
+      let state, var_ty = infer state env (level + 1) rhs in
+      let tvars, already_unified = state in
+      let tvars, generalized_ty = generalize tvars level var_ty in
+      let env' = Env.extend env name generalized_ty in
+      let state', post_decl_ty = 
+        infer (tvars, already_unified) env' level post_decl_expr in
+      let tvars, already_unified = state' in
+      (tvars, already_unified), post_decl_ty
+    | `ExternalCall ((name, name_loc), args, _) ->
+      let state = List.fold_left
+          (fun state arg -> fst (infer state env level arg)) state args in
+      let ty_str = String.sub 
+          name
+          (String.rindex name '_')
+          (String.length name - String.rindex name '_')
       in
-      (tvars, already_unified), extension_ty (* if field_ty is an error make sure to return error*)
+      let tvars, already_unified = state in
+      let tvars, ty = match ty_str with
+        | "_int" -> tvars, `TConst `Int
+        | "_float" -> tvars, `TConst `Float
+        | "_string" -> tvars, `TConst `String
+        | "_bool" -> bool_type level tvars
+        | _ -> tvars, `TError (`UnknownExternalCall name_loc)
+      in
+      (tvars, already_unified), ty
+    | `PrototypeExtension (extension, ((name, _), meth, _), _) ->
+      let tvars, already_unified = state in
+      let tvars, rest_row_ty = make_new_unbound_var tvars level in
+      let tvars, field_ty = make_new_unbound_var tvars level in
+      let extension_ty = `TRecord rest_row_ty in
+      let state, extension_ty' = infer (tvars, already_unified) env level extension in
+      let state, meth_ty = infer_method state env level meth in
+      let tvars, already_unified = state in
+      let tvars, already_unified, errors =
+        unify tvars already_unified field_ty meth_ty in
+      let field_ty = 
+        match errors with
+        | [] -> field_ty
+        | _ -> `TError (`UnifyError errors)
+      in
+      let tvars, already_unified, errors =
+        unify tvars already_unified extension_ty extension_ty' in
+      let rest_row_ty, extension_ty, extension_ty' =
+        match errors with 
+        | [] -> rest_row_ty, extension_ty, extension_ty'
+        | _ -> let error = `TError (`UnifyError errors) in error, error, error
+      in
+      if row_is_complete tvars rest_row_ty && get_row tvars rest_row_ty name = None then
+        (tvars, already_unified), `TRecord (`TRowExtend(name, field_ty, rest_row_ty))
+      else
+        let tvars, field_ty' = make_new_unbound_var tvars level in 
+        let tvars, rest_row_ty' = make_new_unbound_var tvars level in
+        let (tvars, already_unified, errors) =
+          unify tvars already_unified extension_ty'
+            (`TRecord (`TRowExtend(name, field_ty', rest_row_ty'))) in
+        let (tvars, already_unified, errors') =
+          unify tvars already_unified field_ty field_ty' in
+        let all_errors = List.concat [errors; errors'] in
+        let extension_ty =
+          match all_errors with
+          | [] -> extension_ty
+          | _ -> `TError (`UnifyError all_errors)
+        in
+        (tvars, already_unified), extension_ty (* if field_ty is an error make sure to return error*)
 
-  | `TaggedObject ((tag, _), value, _) ->
-    let tvars, already_unified = state in
-    let tvars, rest_row_ty = make_new_unbound_var tvars level in
-    let tvars, value_ty = make_new_unbound_var tvars level in
-    let (tvars, already_unified), value_ty' =
-      infer (tvars, already_unified) env level value in
-    let tvars, already_unified, errors =
-      unify tvars already_unified value_ty value_ty' in
-    let value_ty =
-      match errors with 
-      | [] -> value_ty
-      | _ -> `TError (`UnifyError errors)
-    in
-    (tvars, already_unified), `TVariant (`TRowExtend(tag, value_ty, rest_row_ty))
+    | `TaggedObject ((tag, _), value, _) ->
+      let tvars, already_unified = state in
+      let tvars, rest_row_ty = make_new_unbound_var tvars level in
+      let tvars, value_ty = make_new_unbound_var tvars level in
+      let (tvars, already_unified), value_ty' =
+        infer (tvars, already_unified) env level value in
+      let tvars, already_unified, errors =
+        unify tvars already_unified value_ty value_ty' in
+      let value_ty =
+        match errors with 
+        | [] -> value_ty
+        | _ -> `TError (`UnifyError errors)
+      in
+      (tvars, already_unified), `TVariant (`TRowExtend(tag, value_ty, rest_row_ty))
 
-  | `MethodInvocation invok ->
-    let state, fn_ty = infer_record_select state env level invok in
-    let (_, _, args, _) = invok in 
-    let (tvars, already_unified) = state in 
-    let tvars, param_tys, return_ty = 
-      match_fn_ty (List.length args) tvars fn_ty in 
-    let state = List.fold_left2
-        (fun state arg_ty arg -> 
-           let (tvars, already_unified, errors) = state in
-           let (_, arg, _) = arg in
-           let state, arg_ty' = infer (tvars, already_unified) env level arg in
-           let (tvars, already_unified) = state in
-           let (tvars, already_unified, errors') =
-             unify tvars already_unified arg_ty arg_ty' in
-           (tvars, already_unified, List.concat [errors'; errors]))
-        (tvars, already_unified, []) param_tys args in
-    let (tvars, already_unified, errors) = state in
-    let return_ty = match errors with
-      | [] -> return_ty
-      | _ -> `TError (`UnifyError errors)
-    in
-    (tvars, already_unified), return_ty
-  | `PatternMatch (expr, cases, _) ->
-    let (tvars, already_unified) = state in
-    let tvars, return_ty = make_new_unbound_var tvars level in
-    let (tvars, already_unified), expr_ty = infer (tvars, already_unified) env level expr in
-    let tvars, cases_row =
-      infer_cases tvars already_unified env level return_ty `TRowEmpty cases in
-    let tvars, already_unified, errors =
-      unify tvars already_unified expr_ty (`TVariant cases_row) in
-    let return_ty =
-      match errors with
-      | [] -> return_ty
-      | _ -> `TError (`UnifyError errors)
-    in
-    (tvars, already_unified), return_ty
+    | `MethodInvocation invok ->
+      let state, fn_ty = infer_record_select state env level invok in
+      let (_, _, args, _) = invok in 
+      let (tvars, already_unified) = state in 
+      let tvars, param_tys, return_ty = 
+        match_fn_ty (List.length args) tvars fn_ty in 
+      let state = List.fold_left2
+          (fun state arg_ty arg -> 
+             let (tvars, already_unified, errors) = state in
+             let (_, arg, _) = arg in
+             let state, arg_ty' = infer (tvars, already_unified) env level arg in
+             let (tvars, already_unified) = state in
+             let (tvars, already_unified, errors') =
+               unify tvars already_unified arg_ty arg_ty' in
+             (tvars, already_unified, List.concat [errors'; errors]))
+          (tvars, already_unified, []) param_tys args in
+      let (tvars, already_unified, errors) = state in
+      let return_ty = match errors with
+        | [] -> return_ty
+        | _ -> `TError (`UnifyError errors)
+      in
+      (tvars, already_unified), return_ty
+    | `PatternMatch (expr, cases, _) ->
+      let (tvars, already_unified) = state in
+      let tvars, return_ty = make_new_unbound_var tvars level in
+      let (tvars, already_unified), expr_ty = infer (tvars, already_unified) env level expr in
+      let tvars, cases_row =
+        infer_cases tvars already_unified env level return_ty `TRowEmpty cases in
+      let tvars, already_unified, errors =
+        unify tvars already_unified expr_ty (`TVariant cases_row) in
+      let return_ty =
+        match errors with
+        | [] -> return_ty
+        | _ -> `TError (`UnifyError errors)
+      in
+      (tvars, already_unified), return_ty
 
-  | `Import (_, pos) -> state, `TError (`ImportNotSupported pos)
+    | `Import (filename, _) ->
+      let expr = ResolveImports.ImportMap.find filename imports in
+      infer state Env.empty level expr
 
-and infer_cases tvars already_unified env level return_ty rest_row_ty cases =
-  match cases with
-  | [] -> tvars, rest_row_ty
-  | ((label, _), ((var_name, _), expr, _), _) :: other_cases ->
-    let tvars, variant_ty = make_new_unbound_var tvars level in
-    let (tvars, already_unified), expr_ty =
-      infer (tvars, already_unified) (Env.extend env var_name variant_ty) level expr
-    in
-    let tvars, already_unified, errors =
-      unify tvars already_unified return_ty expr_ty in
-    let tvars, other_cases_row =
-      infer_cases tvars already_unified env level return_ty rest_row_ty other_cases in
-    let row_ty =
-      match errors with 
-      | [] -> `TRowExtend(label, variant_ty, other_cases_row)
-      | _ -> `TError (`UnifyError errors)
-    in
-    tvars, row_ty
+  and infer_cases tvars already_unified env level return_ty rest_row_ty cases =
+    match cases with
+    | [] -> tvars, rest_row_ty
+    | ((label, _), ((var_name, _), expr, _), _) :: other_cases ->
+      let tvars, variant_ty = make_new_unbound_var tvars level in
+      let (tvars, already_unified), expr_ty =
+        infer (tvars, already_unified) (Env.extend env var_name variant_ty) level expr
+      in
+      let tvars, already_unified, errors =
+        unify tvars already_unified return_ty expr_ty in
+      let tvars, other_cases_row =
+        infer_cases tvars already_unified env level return_ty rest_row_ty other_cases in
+      let row_ty =
+        match errors with 
+        | [] -> `TRowExtend(label, variant_ty, other_cases_row)
+        | _ -> `TError (`UnifyError errors)
+      in
+      tvars, row_ty
+  in
+  infer ((0, TyVarMap.empty), TyVarPairSet.empty) Env.empty 0 expr

@@ -1,37 +1,55 @@
 module ImportMap = Map.Make(String)
-let merge_maps maps =
-  List.fold_left (fun acc m -> ImportMap.merge (fun _ a b -> match a, b with
-    | Some x, Some _ -> Some x
-    | Some x, None -> Some x
-    | None, Some y -> Some y
-    | None, None -> None) acc m) ImportMap.empty maps
-let rec resolve_imports (ast: Types.ast) =
-  (* Recursively descend down AST and
-     Check for cycles
-     Keep a map of already imported files. Update it at imports
-     This is really slow. Fix
-  *)
-  match ast with 
+module ImportSet = Set.Make(String)
+let resolve_imports (ast: Types.ast) =
+  let rec resolve_imports already_seen imports (ast: Types.ast) =
+    (* Recursively descend down AST and
+       Check for cycles
+       Keep a map of already imported files. Update it at imports
+    *)
+    match ast with 
 
-  | `ExternalCall (_, args, _) ->
-    let resolved = List.map resolve_imports args in
-    merge_maps resolved
-  | `EmptyPrototype _ -> ImportMap.empty
-  | `PrototypeExtension (extension, (_, (_, body, _), _), _) ->
-    merge_maps [resolve_imports extension; resolve_imports body]
-  | `TaggedObject (_, obj, _) -> resolve_imports obj
-  | `MethodInvocation (obj, _, args, _) ->
-    let args = List.map (fun (_, arg, _) -> resolve_imports arg) args in
-    merge_maps (resolve_imports obj :: args)
-  | `PatternMatch (obj, cases, _) ->
-    let cases = List.map (fun (_, (_, body, _), _) -> resolve_imports body) cases in
-    merge_maps (resolve_imports obj :: cases)
-  | `Declaration (_, rhs, body, _) -> 
-    merge_maps [resolve_imports rhs; resolve_imports body]
-  | `VariableLookup _ -> ImportMap.empty
-  | `IntLiteral _ -> ImportMap.empty
-  | `FloatLiteral _ -> ImportMap.empty
-  | `StringLiteral _ -> ImportMap.empty
-  | `Abort _ -> ImportMap.empty
-  | `Import (_, _) -> 
-    raise (Failure "Come back and figure this out later")
+    | `ExternalCall (_, args, _) ->
+      List.fold_left (resolve_imports already_seen) imports args
+    | `EmptyPrototype _ -> 
+      imports
+    | `PrototypeExtension (extension, (_, (_, body, _), _), _) ->
+      let imports = resolve_imports already_seen imports body in
+      resolve_imports already_seen imports extension
+    | `TaggedObject (_, obj, _) ->
+      resolve_imports already_seen imports obj
+    | `MethodInvocation (obj, _, args, _) ->
+      let arg_exprs = List.map (fun (_, expr, _) -> expr) args in
+      let imports =
+        List.fold_left (resolve_imports already_seen) imports arg_exprs in
+      resolve_imports already_seen imports obj
+    | `PatternMatch (obj, cases, _) ->
+      let case_body_exprs = List.map (fun (_, (_, body, _), _) -> body) cases in
+      let imports =
+        List.fold_left (resolve_imports already_seen) imports case_body_exprs in
+      resolve_imports already_seen imports obj
+    | `Declaration (_, rhs, body, _) -> 
+      let imports = resolve_imports already_seen imports rhs in
+      resolve_imports already_seen imports body
+    | `VariableLookup _ ->
+      imports
+    | `IntLiteral _ ->
+      imports
+    | `FloatLiteral _ ->
+      imports
+    | `StringLiteral _ ->
+      imports
+    | `Abort _ ->
+      imports
+    | `Import (filename, _) -> 
+      if ImportSet.mem filename already_seen then
+        failwith "cycle detected in imports"
+      else
+        if not (ImportMap.mem filename imports) then
+          let import = ParserDriver.parse_file filename in
+          let already_seen = ImportSet.add filename already_seen  in
+          let imports = ImportMap.add filename import imports in
+          resolve_imports already_seen imports import
+        else
+          imports
+  in
+  resolve_imports ImportSet.empty ImportMap.empty ast
