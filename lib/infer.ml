@@ -1,3 +1,6 @@
+(*
+  Unify - don't keep error list but instead return Ok or Error
+*)
 module TyVarMap = Map.Make(struct type t = int let compare = compare end)
 module TyVarSet = Set.Make(struct type t = int let compare = compare end)
 module TyVarPairSet = Set.Make(struct type t = (int * int) let compare = compare end)
