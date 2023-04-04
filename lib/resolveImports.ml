@@ -39,7 +39,7 @@ let resolve_imports ast =
     | `Import (filename, loc) -> 
       let (imports, files) = state in
       if ImportSet.mem filename already_seen then
-        ParserDriver.parse_error
+        Error.compile_error
           "cycle detected in imports"  loc files
       else
         if not (ImportMap.mem filename imports) then

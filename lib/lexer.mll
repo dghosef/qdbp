@@ -1,25 +1,14 @@
 {
   open Parser
   open Lexing
+  open Error
 
-  let abort msg =
-    prerr_endline msg;
-    exit (-1)
   let next_line lexbuf =
     let pos = lexbuf.lex_curr_p in
     lexbuf.lex_curr_p <-
       { pos with pos_bol = lexbuf.lex_curr_pos;
           pos_lnum = pos.pos_lnum + 1
       }
-  let str_of_loc (loc: Lexing.position) =
-    let file = loc.pos_fname in 
-    let line = loc.pos_lnum in
-    let col = loc.pos_cnum - loc.pos_bol in
-    file ^ ":" ^ string_of_int line ^ ":" ^ string_of_int col
-  let lex_error msg loc =
-    abort 
-      (msg ^ "\n" ^
-      "--> " ^ (str_of_loc loc))
 }
 let digit = ['0' - '9']
 let lower = ['a' - 'z']

@@ -64,7 +64,7 @@ let make_pattern_match_atom name meth loc = (name, meth, loc)
 let make_import filename (loc: Lexing.position * Lexing.position) : ast =
   (* FIXME: Should raise a different type of exception or return err? *)
   if not (Filename.is_relative filename) then
-    failwith "Absolute paths not allowed in imports"
+    Error.internal_error "Absolute paths not allowed in imports"
   else
     try
       let relative_path = filename in
@@ -74,13 +74,13 @@ let make_import filename (loc: Lexing.position * Lexing.position) : ast =
       `Import (absolute_path, loc)
     with
       Unix.Unix_error (Unix.ENOENT, _, _) ->
-      failwith ("File not found: " ^ filename)
+      Error.internal_error ("File not found: " ^ filename)
 let make_literal literal_template_filename literal_value loc =
   let import = make_import literal_template_filename loc in
   make_method_invocation import ("!", loc) (Some literal_value) [] loc
-let make_int_literal i loc : ast = make_literal "int" (`IntLiteral i) loc
-let make_float_literal f loc : ast = make_literal "float" (`FloatLiteral f) loc
-let make_string_literal s loc : ast = make_literal "string" (`StringLiteral s) loc
+let make_int_literal i loc : ast = make_literal "int" (`IntLiteral (i, loc)) loc
+let make_float_literal f loc : ast = make_literal "float" (`FloatLiteral (f, loc)) loc
+let make_string_literal s loc : ast = make_literal "string" (`StringLiteral (s, loc)) loc
 let make_external_call fn_name args loc : ast = 
   `ExternalCall (fn_name, args, loc)
 let make_abort loc : ast = `Abort loc

@@ -16,9 +16,9 @@ type ast =
   | `VariableLookup of (string * parser_pos)
   | `Import of (string * parser_pos)
   | `ExternalCall of (id * (ast list) * parser_pos)
-  | `IntLiteral of int
-  | `FloatLiteral of float
-  | `StringLiteral of string
+  | `IntLiteral of int * parser_pos
+  | `FloatLiteral of float * parser_pos
+  | `StringLiteral of string * parser_pos
   | `Abort of parser_pos
   ]
 and field = id * meth * parser_pos
