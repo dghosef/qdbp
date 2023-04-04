@@ -43,7 +43,7 @@ let resolve_imports ast =
           "cycle detected in imports"  loc files
       else
         if not (ImportMap.mem filename imports) then
-          let import, files = ParserDriver.parse_file files filename in
+          let files, import = ParserDriver.parse_file files filename in
           let already_seen = ImportSet.add filename already_seen  in
           let imports = ImportMap.add filename import imports in
           resolve_imports already_seen (imports, files) import

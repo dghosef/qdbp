@@ -592,4 +592,6 @@ let infer imports files expr =
       let row_ty =`TRowExtend(label, variant_ty, other_cases_row) in
       tvars, row_ty
   in
-  infer ((0, TyVarMap.empty), TyVarPairSet.empty) Env.empty 0 expr
+  let (tvars, _), return_ty =
+    infer ((0, TyVarMap.empty), TyVarPairSet.empty) Env.empty 0 expr
+  in tvars, return_ty
