@@ -1,6 +1,7 @@
 module TyVarMap = Map.Make(struct type t = int let compare = compare end)
 module TyVarSet = Set.Make(struct type t = int let compare = compare end)
 module TyVarPairSet = Set.Make(struct type t = (int * int) let compare = compare end)
+exception UnifyError of string
 module Env = struct
   module StringMap = Map.Make (String)
   let empty = StringMap.empty
