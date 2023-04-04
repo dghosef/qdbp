@@ -4,14 +4,6 @@
   
 type lexer_pos = Lexing.position
 type parser_pos = Lexing.position * Lexing.position
-type lexer_error =
-  [ 
-    `BadInteger of (string * lexer_pos)
-  | `BadFloat of (string * lexer_pos)
-  | `BadCharacter of (char * lexer_pos)
-  | `EofInComment of lexer_pos
-  | `EofInString of lexer_pos
-  ]
 type id = (string * parser_pos)
 type ast =
   [

@@ -132,8 +132,8 @@ let adjust_levels tvars level ty =
               (tvars, already_adjusted)
           end
 
-        | `Generic _ -> raise
-                          (Failure "Compiler error: should not be adjusting generic")
+        | `Generic _ ->
+                          (failwith "Compiler error: should not be adjusting generic")
       end
   in
   let (tvars, _) = adjust_levels (tvars, TyVarSet.empty) level ty

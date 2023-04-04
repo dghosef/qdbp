@@ -1,4 +1,3 @@
-%token<Types.lexer_error> LexError
 (* FIXME: Make TAG a string *)
 %token<int> INT
 %token<float> FLOAT
@@ -62,8 +61,6 @@ expr:
 | MONEY; id = lower_id; LPAREN; args = expr*; RPAREN {AstCreate.make_external_call id args $loc}
 (* abort *)
 | ABORT; PERIOD {AstCreate.make_abort $loc}
-(* lexer error *)
-| LexError {raise (Failure "We shouldn't be parsing a lexer error")}
 
 meth:
 | LBRACE; a = arg_list; e = expr; RBRACE {AstCreate.make_meth a e $loc}
