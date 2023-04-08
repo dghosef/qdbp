@@ -14,11 +14,11 @@ let digit = ['0' - '9']
 let lower = ['a' - 'z']
 let upper = ['A' - 'Z']
 (* ASCII symbols and all non-ascii characters *)
-let symbol = ['!' '%' '&' '*' '~' '-' '+' '=' '\\' '/' '>' '<' '^' '|' '_'] | [^'\x00'-'\x7F']
-let filename = (symbol | upper | lower | digit | '.')+
-let string_delimiter = (symbol | upper | lower | digit | '.')*
+let symbol = ['!' '%' '&' '*' '~' '-' '+' '=' '\\' '/' '>' '<' '^' '_'] | [^'\x00'-'\x7F']
+let filename = ('_' | upper | lower | digit | '.')+
+let string_delimiter = (upper | lower | digit)*
 let upper_id = (symbol | upper) (symbol | upper | lower | digit)*
-let lower_id = (lower) (symbol | upper | lower | digit)*
+let lower_id = (lower) (upper | lower | digit | '_' | '\'')*
 (* Other forms of whitespace are disallowed *)
 let spaces = [' ' '\t']+
 let newline = '\r' | '\n' | "\r\n"
@@ -36,11 +36,11 @@ rule token = parse
     | Failure _ -> lex_error ("Float too big: " ^ s) lexbuf.lex_curr_p
 }
 | ';' [ ^'\n']* { token lexbuf }
+| "ABORT" { ABORT }
 | upper_id as s { UPPER_ID (s) }
 | lower_id as s ':' { ARG (s) }
 | lower_id as s { LOWER_ID (s) }
 | newline { next_line lexbuf; token lexbuf}
-| "ABORT" { ABORT }
 | "(*" { comment 0 lexbuf }
 | '.' { PERIOD }
 | ":=" { DECLARATION }

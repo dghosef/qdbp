@@ -11,10 +11,10 @@ let () =
   (* Go back to functional style *)
   let in_file = !in_file in
   assert (in_file != "");
-  (* FIXME: Reduce the number of intermediate string buffers throughout? *)
-  let _, ast = Qdbp.ParserDriver.parse_file
+  let in_file = Filename.concat (Filename.current_dir_name) (in_file) in
+  let files, ast = Qdbp.ParserDriver.parse_file
     Qdbp.ParserDriver.FileMap.empty
     (Unix.realpath in_file) in 
-  let (imports, files) = Qdbp.ResolveImports.resolve_imports ast in
+  let (imports, files) = Qdbp.ResolveImports.resolve_imports files ast in
   let _, _ = Qdbp.Infer.infer imports files ast in
   prerr_endline "Success"

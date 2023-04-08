@@ -60,7 +60,7 @@ expr:
 (* external call *)
 | MONEY; id = lower_id; LPAREN; args = expr*; RPAREN {AstCreate.make_external_call id args $loc}
 (* abort *)
-| ABORT; PERIOD {AstCreate.make_abort $loc}
+| ABORT; PERIOD; {AstCreate.make_abort $loc}
 
 meth:
 | LBRACE; a = arg_list; e = expr; RBRACE {AstCreate.make_meth a e $loc}

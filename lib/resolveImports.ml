@@ -1,6 +1,6 @@
 module ImportMap = Map.Make(String)
 module ImportSet = Set.Make(String)
-let resolve_imports ast =
+let resolve_imports files ast =
   let rec resolve_imports already_seen state (ast: Types.ast) =
     match ast with 
 
@@ -50,4 +50,4 @@ let resolve_imports ast =
         else
           state
   in
-  resolve_imports ImportSet.empty (ImportMap.empty, ParserDriver.FileMap.empty) ast
+  resolve_imports ImportSet.empty (ImportMap.empty, files) ast

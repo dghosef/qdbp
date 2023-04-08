@@ -8,7 +8,9 @@ let make_variable_lookup name loc : ast =
 
 (* Prototype stuff *)
 let full_field_name field_name arg_names =
-  (fst field_name) ^ ":" ^ (String.concat ":" arg_names), (snd field_name)
+  let result = (fst field_name) ^ ":" ^ (String.concat ":" arg_names), (snd field_name) in
+  result
+
 let make_prototype_field name meth loc =
   let args, _, _ = meth in
   let arg_names = List.map (fun (name, _) -> name) args in
@@ -32,6 +34,7 @@ let make_method_invocation receiver field_name arg1 args loc : ast =
     | Some arg -> ("val", arg, loc) :: args
     | None -> args
   in
+  let args = ("self", make_variable_lookup "Self" loc, loc) :: args in
   let arg_names = List.map (fun (name, _, _) -> name) args in
   let field_name = full_field_name field_name arg_names
   in
@@ -41,7 +44,7 @@ let make_method_invocation receiver field_name arg1 args loc : ast =
     (`MethodInvocation (
         (make_variable_lookup "Self" loc),
         field_name,
-        ("self", make_variable_lookup "Self" loc, loc) :: args,
+        args,
         loc))
     loc
 let make_closure args body loc : ast = 
@@ -67,6 +70,7 @@ let make_import filename (loc: Lexing.position * Lexing.position) : ast =
     Error.internal_error "Absolute paths not allowed in imports"
   else
     try
+      let filename = filename ^ ".qdbp" in
       let relative_path = filename in
       let directory = Filename.dirname (Unix.realpath (fst loc).pos_fname) in
       let absolute_path = Filename.concat directory relative_path in

@@ -1,5 +1,6 @@
 (library
- (name qdbp))
+ (name qdbp)
+ (libraries unix))
 (ocamllex lexer)
 (menhir
  (modules parser)

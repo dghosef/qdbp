@@ -1,7 +1,56 @@
-module TyVarMap = Map.Make(struct type t = int let compare = compare end)
-module TyVarSet = Set.Make(struct type t = int let compare = compare end)
-module TyVarPairSet = Set.Make(struct type t = (int * int) let compare = compare end)
+(* Largely ripped off from 
+   https://github.com/tomprimozic/type-systems/blob/master/extensible_rows/infer.ml
+   But fully functional style, better error reporting
+*)
+open Type
 exception UnifyError of string
+let make_new_unbound_id tvars level =
+  let (var_id, varmap) = tvars in
+  let unbound_id = var_id + 1 in
+  let new_id = unbound_id + 1 in 
+  let tvars' = (new_id, (TyVarMap.add var_id (`Unbound (unbound_id, level)) varmap)) in
+  tvars', var_id
+let make_new_generic_id tvars id =
+  let (var_id, varmap) = tvars in
+  let new_id = var_id + 1 in 
+  let tvars' = (new_id, (TyVarMap.add var_id (`Generic id) varmap)) in
+  tvars', var_id
+let make_new_unbound_var tvars level =
+  let tvars, var_id = make_new_unbound_id tvars level in
+  tvars, `TVar var_id
+let update_tvars tvars var_id new_var =
+  (fst tvars, TyVarMap.add var_id new_var (snd tvars))
+let str_of_const_ty ty =
+  match ty with
+  | `Int -> "Integer Literal"
+  | `Float -> "Float Literal"
+  | `String -> "String Literal"
+let rec kind_of tvars ty =
+  match ty with
+  | `TArrow _ -> "Method"
+  | `TRecord _ -> "Nonempty Prototype"
+  | `TVariant _ -> "Tagged Object"
+  | `TRowEmpty -> "Empty Row"
+  | `TConst c -> str_of_const_ty c
+  | `TRowExtend _ -> "Row Extend"
+  | `TVar id ->
+    begin
+      match get_tyvar id tvars with
+      | `Unbound (_, _) ->
+        "Unbound " ^ (string_of_int id)
+      | `Link ty -> "Link " ^ kind_of tvars ty
+      | `Generic _ -> "Generic " ^ (string_of_int id)
+    end
+let kind_of_non_tvar ty =
+  match ty with
+  | `TArrow _ -> "Method"
+  | `TRecord _ -> "Nonempty Prototype"
+  | `TVariant _ -> "Tagged Object"
+  | `TRowEmpty -> "Empty Row"
+  | `TConst c -> str_of_const_ty c
+  | `TRowExtend _ -> "Row Extend"
+  | `TVar _ -> Error.internal_error "INTERNAL ERROR: Should not get a TVar in `kind_of_non_tvar`"
+
 module Env = struct
   module StringMap = Map.Make (String)
   let empty = StringMap.empty
@@ -9,32 +58,13 @@ module Env = struct
   let lookup env name = StringMap.find_opt name env
 end
 
-let make_new_var_id tvars tvar =
-  let (var_id, varmap) = tvars in
-  let new_id = var_id + 1 in
-  let tvars' = (new_id, TyVarMap.add var_id tvar varmap) in
-  tvars', var_id
-let get_tyvar id tyvars =
-  let (_, varmap) = tyvars in
-  TyVarMap.find id varmap
-let make_new_unbound_id tvars level =
-  let (var_id, varmap) = tvars in
-  let unbound_id = var_id + 1 in
-  let new_id = unbound_id + 1 in 
-  let tvars' = (new_id, (TyVarMap.add var_id (`Unbound (unbound_id, level)) varmap)) in
-  tvars', var_id
-let make_new_unbound_var tvars level =
-  let tvars, var_id = make_new_unbound_id tvars level in
-  tvars, `TVar var_id
-let update_tvars tvars var_id new_var =
-  (fst tvars, TyVarMap.add var_id new_var (snd tvars))
 let bool_type level tvars = 
   let tvars, var = make_new_unbound_var tvars level in
   let ty = `TVariant 
       (`TRowExtend 
-         ("#True", (`TRecord `TRowEmpty),
+         ("True", (`TRecord `TRowEmpty),
           (`TRowExtend 
-             ("#False", (`TRecord `TRowEmpty),
+             ("False", (`TRecord `TRowEmpty),
               (var)))))
   in
   tvars, ty
@@ -47,7 +77,7 @@ let generalize tvars level ty =
         match get_tyvar id tvars with
         | `Unbound (id', level') ->
           if level' > level then 
-            let tvars, new_varid = make_new_var_id tvars (`Generic id') in
+            let tvars, new_varid = make_new_generic_id tvars id' in
             (tvars, already_generalized), `TVar new_varid
           else
             (tvars, already_generalized), `TVar id
@@ -73,7 +103,7 @@ let generalize tvars level ty =
           (fun state param_ty -> generalize state level param_ty)
           state param_tys in
       let state, ret_ty = generalize state level ret_ty in
-      state, `TArrow (List.rev param_tys, ret_ty)
+      state, `TArrow (param_tys, ret_ty)
     | `TRecord row ->
       let state, row = generalize state level row in
       state, `TRecord row
@@ -137,82 +167,97 @@ let adjust_levels tvars level ty =
   let (tvars, _) = adjust_levels (tvars, TyVarSet.empty) level ty
   in tvars
 
+let splat tvars ty =
+  match ty with
+  | `TArrow t -> `TArrow t
+  | `TRecord t -> `TRecord t
+  | `TVariant t -> `TVariant t
+  | `TConst t -> `TConst t
+  | `TRowEmpty -> `TRowEmpty
+  | `TRowExtend (l, t, r) -> `TRowExtend (l, t, r)
+  | `TVar id ->
+    begin
+      match get_tyvar id tvars with
+      | `Link ty -> `Link (id, ty)
+      | `Unbound v -> `Unbound (id, v)
+      | `Generic v -> `Generic (id, v)
+    end
+let unsplat ty =
+  match ty with
+  | `TArrow t -> `TArrow t
+  | `TRecord t -> `TRecord t
+  | `TVariant t -> `TVariant t
+  | `TConst t -> `TConst t
+  | `TRowEmpty -> `TRowEmpty
+  | `TRowExtend (l, t, r) -> `TRowExtend (l, t, r)
+  | `Link (id, _) -> `TVar id
+  | `Unbound (id, _) -> `TVar id
+  | `Generic (id, _) -> `TVar id
+
 let unify tvars already_unified ty1 ty2 =
   let rec unify state ty1 ty2 =
     match state with
     | `Error e -> `Error e
     | `Ok s ->
-      if ty1 == ty2 then state
-      else
+      begin
         match ty1, ty2 with
-        | `TConst ty1 , `TConst ty2 ->
-          if ty1 = ty2 then state
-          else `Error (`ConstTypeMismatch (ty1, ty2), s)
-        | `TArrow (param_tys1, ret_ty1), `TArrow (param_tys2, ret_ty2) ->
-          let state = List.fold_left2
-              (fun state param_ty1 param_ty2 -> unify state param_ty1 param_ty2)
-              state param_tys1 param_tys2 in
-          unify state ret_ty1 ret_ty2
-        | `TRecord row1, `TRecord row2 ->
-          unify state row1 row2
-        | `TVariant row1, `TVariant row2 ->
-          unify state row1 row2
-        | `TRowEmpty, `TRowEmpty -> state
-        | `TRowExtend(label1, field_ty1, rest_row1), (`TRowExtend _ as row2) ->
-          begin
-            match rewrite_row state row2 label1 field_ty1 with
-            |`Error e -> `Error e
-            | `Ok (state, rest_row2) -> unify state rest_row1 rest_row2
-          end
-        | `TVar id, ty | ty, `TVar id ->
-          unify_var state id ty
-        | _ -> `Error (`CannotUnify (ty1, ty2), s)
-
-  and unify_var state id ty =
-    match state with 
-    | `Error e -> `Error e
-    | `Ok s ->
-      let (tvars, already_unified) = s in
-      match ty with
-      | `TVar id' when TyVarPairSet.mem (id, id') already_unified ->
-        `Ok (tvars, already_unified)
-      | _ ->
-        begin
-          let already_unified = 
-            begin
-              match ty with
-              | `TVar id' -> TyVarPairSet.add (id, id') already_unified
-              | _ -> already_unified
-            end
-          in
-          match get_tyvar id tvars with
-          | `Unbound (id, level) ->
-            let err = 
-              begin
-                match ty with
-                | `TVar id' ->
-                  begin
-                    match get_tyvar id' tvars with
-                    | `Unbound (id', _) -> 
-                      if id = id' then Some (`Error (`UnifyingSameVariable, s))
-                      else None
-                    | _ -> None
-                  end
-                | _ -> None
-              end
-            in
-            begin
-              match err with
-              | Some e -> e
-              | None ->
-                let tvars = adjust_levels tvars level ty in
-                let tvars = update_tvars tvars id (`Link ty) in
-                `Ok (tvars, already_unified)
-            end
-          | `Link ty' ->
-            unify (`Ok (tvars, already_unified)) ty' ty
-          | `Generic _ -> `Error (`CantUnifyGeneric (ty, `TVar id), s)
-        end
+        | `TVar id1, `TVar id2
+          when TyVarPairSet.mem (id1, id2) (snd s) ||
+               TyVarPairSet.mem (id2, id1) (snd s) ->
+          `Ok s
+        | _ ->
+          let s = (
+            fst s,
+            match ty1, ty2 with
+            | `TVar id1, `TVar id2 ->
+              TyVarPairSet.add (id1, id2) (snd s)
+            | _ -> snd s
+          ) in
+          if ty1 = ty2 then (`Ok s)
+          else
+            match splat (fst s) ty1, splat (fst s) ty2 with
+            | `TConst ty1 , `TConst ty2 ->
+              if ty1 = ty2 then (`Ok s)
+              else `Error (`ConstTypeMismatch (ty1, ty2), s)
+            | `TArrow (param_tys1, ret_ty1), `TArrow (param_tys2, ret_ty2) ->
+              if List.length param_tys1 != List.length param_tys2 then
+                `Error (`MethodArity (param_tys1, param_tys2), s)
+              else
+                begin
+                  let state = List.fold_left2
+                      (fun state param_ty1 param_ty2 -> unify state param_ty1 param_ty2)
+                      (`Ok s) param_tys1 param_tys2 in
+                  let state = unify state ret_ty1 ret_ty2 in 
+                  state
+                end
+            | `Link (_, ty1), ty2
+            | ty2, `Link (_, ty1) ->
+              unify (`Ok s) ty1 (unsplat ty2)
+            | `Unbound (_, (ub_id, _)), `Unbound(_, (ub_id', _)) when ub_id = ub_id' ->
+              Error.internal_error("unifying identical unbounds")
+            | `Unbound (id, (_, ub_level)), ty
+            | ty, `Unbound (id, (_, ub_level)) ->
+              let tvars = adjust_levels (fst s) ub_level (unsplat ty) in 
+              let tvars = update_tvars tvars id (`Link (unsplat ty)) in
+              let res = 
+              `Ok (tvars, snd s) in 
+              res
+            | `TRecord row1, `TRecord row2 ->
+              unify (`Ok s) row1 row2
+            | `TVariant row1, `TVariant row2 ->
+              unify (`Ok s) row1 row2
+            | `TRowEmpty, `TRowEmpty ->
+              (`Ok s)
+            | `TRowExtend(label1, field_ty1, rest_row1), (`TRowExtend _ as row2) ->
+              let result = begin
+                match rewrite_row (`Ok s) row2 label1 field_ty1 with
+                |`Error e -> `Error e
+                | `Ok (state, rest_row2) ->
+                  unify state rest_row1 rest_row2
+              end in
+              result
+            | _ -> `Error (`CannotUnify (ty1, ty2), s)
+      end
 
   and rewrite_row state row2 label1 field_ty1 = 
     match state with 
@@ -222,11 +267,11 @@ let unify tvars already_unified ty1 ty2 =
       | `TRowEmpty -> 
         `Error ((`MissingLabel label1), s)
       | `TRowExtend (label2, field_ty2, rest_row2) when label2 = label1 ->
-        let state = unify state field_ty1 field_ty2 in
+        let state = unify (`Ok s) field_ty1 field_ty2 in
         `Ok (state, rest_row2)
       | `TRowExtend(label2, field_ty2, rest_row2) ->
         begin
-          match rewrite_row state rest_row2 label1 field_ty1 with
+          match rewrite_row (`Ok s) rest_row2 label1 field_ty1 with
           | `Error e -> `Error e
           | `Ok(state, rest_row2) ->
             `Ok (state, `TRowExtend(label2, field_ty2, rest_row2))
@@ -239,7 +284,8 @@ let unify tvars already_unified ty1 ty2 =
             let tvars, rest_row2_id = make_new_unbound_id tvars level in 
             let rest_row2 = `TVar rest_row2_id in
             let ty2 = `TRowExtend(label1, field_ty1, rest_row2) in
-            let tvars = update_tvars tvars rest_row2_id (`Link ty2) in 
+            let tvars = update_tvars tvars id (`Link ty2) in 
+            ignore (TyVarMap.find rest_row2_id (snd tvars));
             `Ok ((`Ok (tvars, already_unified)), rest_row2)
           | `Link row2 ->
             rewrite_row (`Ok (tvars, already_unified)) row2 label1 field_ty1
@@ -250,7 +296,6 @@ let unify tvars already_unified ty1 ty2 =
         `Error ((`RewriteRowOnNonRow row2), s)
   in
   unify (`Ok (tvars, already_unified)) ty1 ty2
-
 
 let instantiate tvars level ty =
   let rec instantiate state ty =
@@ -314,7 +359,8 @@ let rec row_is_complete tvars row =
       match get_tyvar id tvars with
       | `Link ty ->
         row_is_complete tvars ty
-      | _ -> false
+      | `Unbound _ -> false
+      | `Generic _ -> false
     end
   | `TRecord row -> row_is_complete tvars row
   | `TVariant row -> row_is_complete tvars row
@@ -334,36 +380,6 @@ let rec get_row tvars row label =
   | `TRecord row -> get_row tvars row label
   | `TVariant row -> get_row tvars row label
   | _ -> None
-let str_of_const_ty ty =
-  match ty with
-  | `Int -> "Integer Literal"
-  | `Float -> "Float Literal"
-  | `String -> "String Literal"
-let rec kind_of tvars ty =
-  match ty with
-  | `TArrow _ -> "Method"
-  | `TRecord _ -> "Nonempty Prototype"
-  | `TVariant _ -> "Tagged Object"
-  | `TRowEmpty -> "Empty Row"
-  | `TConst c -> str_of_const_ty c
-  | `TRowExtend _ -> "Row Extend"
-  | `TVar id ->
-    begin
-      match get_tyvar id tvars with
-      | `Unbound _ ->
-        "Unbound "
-      | `Link ty -> kind_of tvars ty
-      | `Generic id -> "Generic " ^ (string_of_int id)
-    end
-let kind_of_non_tvar ty =
-  match ty with
-  | `TArrow _ -> "Method"
-  | `TRecord _ -> "Nonempty Prototype"
-  | `TVariant _ -> "Tagged Object"
-  | `TRowEmpty -> "Empty Row"
-  | `TConst c -> str_of_const_ty c
-  | `TRowExtend _ -> "Row Extend"
-  | `TVar _ -> Error.internal_error "INTERNAL ERROR: Should not get a TVar in `kind_of_non_tvar`"
 let unify_error_msg (err, (tvars, _)) = 
   match err with
   | `CannotUnify (ty1, ty2) ->
@@ -376,8 +392,12 @@ let unify_error_msg (err, (tvars, _)) =
     ^ str_of_const_ty ty1
     ^ "with a"
     ^ str_of_const_ty ty2
+  | `MethodArity (param_list1, param_list2) ->
+    "expected " ^ (string_of_int (List.length param_list1))
+    ^ "params but got " 
+    ^ (string_of_int (List.length param_list2))
   | `MissingLabel label ->
-    "expected expression to have " ^ label ^ " field"
+    "expected expression to have '" ^ label ^ "' field"
   | `RewriteRowWithGeneric ->
     "INTERNAL ERROR: Tried calling rewrite_row on generic"
   | `RewriteRowOnNonRow row ->
@@ -489,8 +509,7 @@ let infer imports files expr =
       let env' = Env.extend env name generalized_ty in
       let state', post_decl_ty = 
         infer (tvars, already_unified) env' level post_decl_expr in
-      let tvars, already_unified = state' in
-      (tvars, already_unified), post_decl_ty
+      state', post_decl_ty
     | `ExternalCall ((name, name_loc), args, _) ->
       let state = List.fold_left
           (fun state arg -> fst (infer state env level arg)) state args in
