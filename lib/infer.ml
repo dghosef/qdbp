@@ -4,52 +4,26 @@
 *)
 open Type
 exception UnifyError of string
+
 let make_new_unbound_id tvars level =
   let (var_id, varmap) = tvars in
   let unbound_id = var_id + 1 in
   let new_id = unbound_id + 1 in 
   let tvars' = (new_id, (TyVarMap.add var_id (`Unbound (unbound_id, level)) varmap)) in
   tvars', var_id
+
 let make_new_generic_id tvars id =
   let (var_id, varmap) = tvars in
   let new_id = var_id + 1 in 
   let tvars' = (new_id, (TyVarMap.add var_id (`Generic id) varmap)) in
   tvars', var_id
+
 let make_new_unbound_var tvars level =
   let tvars, var_id = make_new_unbound_id tvars level in
   tvars, `TVar var_id
+
 let update_tvars tvars var_id new_var =
   (fst tvars, TyVarMap.add var_id new_var (snd tvars))
-let str_of_const_ty ty =
-  match ty with
-  | `Int -> "Integer Literal"
-  | `Float -> "Float Literal"
-  | `String -> "String Literal"
-let rec kind_of tvars ty =
-  match ty with
-  | `TArrow _ -> "Method"
-  | `TRecord _ -> "Nonempty Prototype"
-  | `TVariant _ -> "Tagged Object"
-  | `TRowEmpty -> "Empty Row"
-  | `TConst c -> str_of_const_ty c
-  | `TRowExtend _ -> "Row Extend"
-  | `TVar id ->
-    begin
-      match get_tyvar id tvars with
-      | `Unbound (_, _) ->
-        "Unbound " ^ (string_of_int id)
-      | `Link ty -> "Link " ^ kind_of tvars ty
-      | `Generic _ -> "Generic " ^ (string_of_int id)
-    end
-let kind_of_non_tvar ty =
-  match ty with
-  | `TArrow _ -> "Method"
-  | `TRecord _ -> "Nonempty Prototype"
-  | `TVariant _ -> "Tagged Object"
-  | `TRowEmpty -> "Empty Row"
-  | `TConst c -> str_of_const_ty c
-  | `TRowExtend _ -> "Row Extend"
-  | `TVar _ -> Error.internal_error "INTERNAL ERROR: Should not get a TVar in `kind_of_non_tvar`"
 
 module Env = struct
   module StringMap = Map.Make (String)
@@ -68,6 +42,7 @@ let bool_type level tvars =
               (var)))))
   in
   tvars, ty
+
 let generalize tvars level ty =
   let rec generalize state level ty =
     match ty with
@@ -119,6 +94,7 @@ let generalize tvars level ty =
   in
   let ((tvars, _), ty) = generalize (tvars, TyVarMap.empty) level ty in
   tvars, ty
+
 let adjust_levels tvars level ty =
   let rec adjust_levels state level ty =
     match ty with
@@ -182,6 +158,7 @@ let splat tvars ty =
       | `Unbound v -> `Unbound (id, v)
       | `Generic v -> `Generic (id, v)
     end
+
 let unsplat ty =
   match ty with
   | `TArrow t -> `TArrow t
@@ -240,7 +217,7 @@ let unify tvars already_unified ty1 ty2 =
               let tvars = adjust_levels (fst s) ub_level (unsplat ty) in 
               let tvars = update_tvars tvars id (`Link (unsplat ty)) in
               let res = 
-              `Ok (tvars, snd s) in 
+                `Ok (tvars, snd s) in 
               res
             | `TRecord row1, `TRecord row2 ->
               unify (`Ok s) row1 row2
@@ -380,6 +357,7 @@ let rec get_row tvars row label =
   | `TRecord row -> get_row tvars row label
   | `TVariant row -> get_row tvars row label
   | _ -> None
+
 let unify_error_msg (err, (tvars, _)) = 
   match err with
   | `CannotUnify (ty1, ty2) ->
@@ -406,6 +384,7 @@ let unify_error_msg (err, (tvars, _)) =
     "INTERNAL ERROR: All generics should be instantiated in unify"
   | `UnifyingSameVariable -> 
     "INTERNAL ERROR: Should not be unifying the same variable"
+
 let loc expr =
   match expr with
   | `EmptyPrototype loc -> loc
@@ -422,9 +401,12 @@ let loc expr =
   | `StringLiteral (_, loc) -> loc
   | `Abort loc -> loc
   | `Method (_, _, loc) -> loc
+
 let infer imports files expr =
+
   let infer_error msg loc =
     Error.compile_error msg loc files in
+
   let rec match_fn_ty tvars loc num_params ty =
     match ty with 
     | `TArrow (param_tys, ret_ty) ->
@@ -468,6 +450,7 @@ let infer imports files expr =
         env args param_ty_list in
     let state, return_ty = infer (tvars, already_unififed) fn_env level body in
     state, `TArrow (param_ty_list, return_ty)
+
   and infer_record_select state env level expr =
     let (receiver, (name, _), _, _) = expr in
     let (tvars, already_unified) = state in
