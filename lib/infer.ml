@@ -1,29 +1,10 @@
 (* Largely ripped off from 
    https://github.com/tomprimozic/type-systems/blob/master/extensible_rows/infer.ml
-   But fully functional style, better error reporting
+   But fully functional style, better error reporting, extension semantics modified to qbdp,
+   and recursive types
 *)
 open Type
 exception UnifyError of string
-
-let make_new_unbound_id tvars level =
-  let (var_id, varmap) = tvars in
-  let unbound_id = var_id + 1 in
-  let new_id = unbound_id + 1 in 
-  let tvars' = (new_id, (TyVarMap.add var_id (`Unbound (unbound_id, level)) varmap)) in
-  tvars', var_id
-
-let make_new_generic_id tvars id =
-  let (var_id, varmap) = tvars in
-  let new_id = var_id + 1 in 
-  let tvars' = (new_id, (TyVarMap.add var_id (`Generic id) varmap)) in
-  tvars', var_id
-
-let make_new_unbound_var tvars level =
-  let tvars, var_id = make_new_unbound_id tvars level in
-  tvars, `TVar var_id
-
-let update_tvars tvars var_id new_var =
-  (fst tvars, TyVarMap.add var_id new_var (snd tvars))
 
 module Env = struct
   module StringMap = Map.Make (String)
@@ -433,7 +414,7 @@ let infer imports files expr =
         | `Link ty -> match_fn_ty tvars loc num_params ty
       end
     | ty -> 
-      infer_error ("expected a method but instead got a " ^ (kind_of_non_tvar ty)) loc
+      infer_error ("expected a method but instead got a " ^ (kind_of tvars ty)) loc
   in
   let try_unify tvars already_unified locs ty1 ty2 =
     match (unify tvars already_unified ty1 ty2) with

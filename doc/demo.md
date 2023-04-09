@@ -369,7 +369,7 @@ Then in another file, we can have
 ```ocaml
 math := @math
 ignore := math Factorial 5. Print.
-math Abs -3 Print.
+math Abs -3. Print.
 ```
 ### Defer
 ```ocaml
