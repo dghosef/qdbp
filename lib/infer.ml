@@ -475,6 +475,7 @@ let infer imports files expr =
         infer (tvars, already_unified) env' level post_decl_expr in
       state', post_decl_ty
     | `ExternalCall ((name, name_loc), args, _) ->
+      (* FIXME: Add error for name that has no _ or starts with `qdbp` *)
       let state = List.fold_left
           (fun state arg -> fst (infer state env level arg)) state args in
       let ty_str = String.sub 

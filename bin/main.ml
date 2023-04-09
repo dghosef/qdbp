@@ -17,5 +17,5 @@ let () =
     (Unix.realpath in_file) in 
   let (imports, files) = Qdbp.ResolveImports.resolve_imports files ast in
   let tvars, ty = Qdbp.Infer.infer imports files ast in
-  let _, ty_str = (Qdbp.Type.str_of_ty tvars ty) in
-  prerr_endline (ty_str)
+  let _, _ = (Qdbp.Type.str_of_ty tvars ty) in
+  prerr_endline (Qdbp.CodegenML.codegen_ml imports ast);
