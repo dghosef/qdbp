@@ -548,14 +548,14 @@ let infer imports files expr =
           (tvars, already_unified) param_tys args in
       let (tvars, already_unified) = state in
       (tvars, already_unified), return_ty
-    | `PatternMatch (expr, cases, loc) ->
+    | `PatternMatch (expr, cases, _) ->
       let (tvars, already_unified) = state in
       let tvars, return_ty = make_new_unbound_var tvars level in
       let (tvars, already_unified), expr_ty = infer (tvars, already_unified) env level expr in
       let tvars, cases_row =
         infer_cases tvars already_unified env level return_ty `TRowEmpty cases in
       let tvars, already_unified =
-        try_unify tvars already_unified loc expr_ty (`TVariant cases_row) in
+        try_unify tvars already_unified (loc expr) expr_ty (`TVariant cases_row) in
       (tvars, already_unified), return_ty
     | `Import (filename, _) ->
       let expr = ResolveImports.ImportMap.find filename imports in
@@ -564,13 +564,13 @@ let infer imports files expr =
   and infer_cases tvars already_unified env level return_ty rest_row_ty cases =
     match cases with
     | [] -> tvars, rest_row_ty
-    | ((label, _), ((var_name, _), expr, _), loc) :: other_cases ->
+    | ((label, _), ((var_name, _), expr, _), _) :: other_cases ->
       let tvars, variant_ty = make_new_unbound_var tvars level in
       let (tvars, already_unified), expr_ty =
         infer (tvars, already_unified) (Env.extend env var_name variant_ty) level expr
       in
       let tvars, already_unified =
-        try_unify tvars already_unified loc return_ty expr_ty in
+        try_unify tvars already_unified (loc expr) return_ty expr_ty in
       let tvars, other_cases_row =
         infer_cases tvars already_unified env level return_ty rest_row_ty other_cases in
       let row_ty =`TRowExtend(label, variant_ty, other_cases_row) in
