@@ -7,10 +7,8 @@ let quoted s =
 
 
 let codegen_ml imports ast =
-  let varid = ref 0 in
   let add_variable varnames name =
-    let id = !varid in
-    varid := id + 1;
+    let id = Oo.id (object end) in
     StringMap.add name (id) varnames in
   let varname varnames name = 
     "__qdbp_var_" ^ (string_of_int (StringMap.find name varnames))
