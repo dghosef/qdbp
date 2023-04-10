@@ -5,15 +5,16 @@ let brace s = "[" ^ s ^ "]"
 let quoted s = 
   "\"" ^ (String.escaped s) ^ "\""
 
-let varid = ref 0
-let add_variable varnames name =
-  let id = !varid in
-  varid := id + 1;
-  StringMap.add name (id) varnames
 
-let varname varnames name =
-  "__qdbp_var_" ^ (string_of_int (StringMap.find name varnames))
 let codegen_ml imports ast =
+  let varid = ref 0 in
+  let add_variable varnames name =
+    let id = !varid in
+    varid := id + 1;
+    StringMap.add name (id) varnames in
+  let varname varnames name = 
+    "__qdbp_var_" ^ (string_of_int (StringMap.find name varnames))
+  in
   let rec codegen_method varnames (args, body, _) =
     let arg_names = List.map (fun (name, _) -> name) args in
     let varnames = List.fold_left add_variable varnames arg_names in
