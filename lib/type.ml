@@ -151,7 +151,7 @@ let str_of_ty tvars ty =
   in
   let rec_types, ty = annotate_rec_tvars tvars ty in
   if (TyVarSet.is_empty rec_types) then
-    str_of_ty 0 TyVarMap.empty TyVarMap.empty ty
+    snd (str_of_ty 0 TyVarMap.empty TyVarMap.empty ty)
   else
     Error.internal_error "Didn't resolve all the recursive types in `str_of_ty`"
 

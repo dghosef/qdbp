@@ -1,12 +1,20 @@
+unify := {val with| 
+  (#True{})
+    True? [val]
+    False? [with!.].
+}
+is_string := {val|
+  unify! val with: {$qdbp_empty_string()}.
+}
 {val |
   {
     Val[val]
     Print[
-      ignore := $print_string_int(self Val.)
+      ignore := $qdbp_print_string_int(self Val.)
       {}
     ]
     ++[val|
-      new_val := $concat_string(self Val. val Val.)
+      new_val := $concat_string(self Val. is_string! (val Val).)
       {
         self
         Val[new_val]

@@ -174,8 +174,9 @@ get_val := {val |
    and then invoking `!` method of the result, passing in an object of type `int64`
    in the target language* to the `val` parameter. In other words,  *)
   three := 3
-  (* expands to *)
+  (* expands to
   three := @int! val: 3.(* Where this `3` has type `int64` in the target language *)
+  *)
 (* This allows users to have complete control over every aspect of their code,
    down to the methods of literals.
    A similar strategy is used for strings, doubles, etc *)
