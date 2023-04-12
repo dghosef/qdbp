@@ -40,20 +40,20 @@ five := identity_fn! x: 5.
 print_args := {
   ![arg1 | arg1 Print.]
   ![arg1 arg2 | 
-    ignore := arg1 Print.
+    _ := arg1 Print.
     arg2 Print.
   ]
 }
 (* qdbp has no sequence expression. To evaluate multiple expressions, we just assign
    them to successive variables *)
-ignore := print_args! arg1: "Hello World\n".
-ignore := print_args! arg1: "Hello " arg2: "World".
+_ := print_args! arg1: "Hello World\n".
+_ := print_args! arg1: "Hello " arg2: "World".
 
 (* qdbp has no type annotations. Instead, it infers types.
    For example, if `arg1` to `print_args` doesn't have a `Print` method, the 
    program will refuse to compile. Therefore, `print_args! arg1: {}.` will fail. *)
 
-ignore := print_args! arg1: 3. (* `print_args` is generic *)
+_ := print_args! arg1: 3. (* `print_args` is generic *)
 
 (* To be specific, variable names must start with a lowercase letter.
    Method names within a prototype must start with an uppercase letter or a symbol.
@@ -71,7 +71,7 @@ my_fn := {x | x}
 (* Also, if we omit the name of the first argument, it is automatically assumed
    to be `val` *)
 five := 3 + val: 2. (* is equivalent to *) five := 3 + 2.
-(* Periods are optional when invocation is surrounded by parenthesis *)
+(* Periods are optional when invocation is surrounded by parentheses *)
 three := identity_fn! x: 3. (* is the same as *) three := (identity_fn! x: 3)
 
 (* Variables are all immutable. However, you can copy a prototype and change
@@ -81,8 +81,7 @@ small_circle := {
   Diameter[(self Radius) * 2.]
 }
 (* Same as `small_circle` but `Radius` now returns 6 *)
-big_circle := {
-  small_circle
+big_circle := { small_circle
   (* `Radius` still needs to have the same type as the original `Radius`*)
   Radius[6]
 }
@@ -92,8 +91,7 @@ twelve := big_circle Diameter.
 pi := 3
 
 (* Prototypes can also be extended with new methods *)
-big_circle := {
-  big_circle
+big_circle := { big_circle
   Area[(self Radius) * (self Radius). * pi.]
 }
 one_hundred_eight := big_circle Area.
@@ -102,12 +100,11 @@ one_hundred_eight := big_circle Area.
    or replace. The one exception is when the original's prototype's field list
    is dependent on a parameter. For example, *)
 fn := {x | 
-  {
-    x
+  { x
     Method[val | val]
   }
 }
-(* The compiler can't disambiguate whether or not to replace the `Method` field in `x`
+(* The compiler can't disambiguate whether or not to replace the `Method` field in  `x`
    or to extend `x`. In situations like this, the compiler will always expect that
    the original prototype contains the field and so will replace it. *)
 
@@ -116,7 +113,7 @@ object := {}
 tagged_object := #TagName object
 (* In qdbp, everything is right associative *)
 tagged_object := #Tag #Tag #Tag {} (* parsed as (#Tag (#Tag (#Tag {}))) *)
-(* An example application of this is to represent booleans *)
+(* An example application of tagged objects is to represent booleans *)
 true := #True{}
 false := #False{}
 
@@ -139,7 +136,7 @@ safe_divide := {a b|
     False? [#Ok a / b.].
 }
 two := safe_divide! a: 4 b: 2.
-ignore := 
+_ := 
   two
     Ok? [val| 
       val Print.
@@ -174,12 +171,10 @@ get_val := {val |
    and then invoking `!` method of the result, passing in an object of type `int64`
    in the target language* to the `val` parameter. In other words,  *)
   three := 3
-  (* expands to
-  three := @int! val: 3.(* Where this `3` has type `int64` in the target language *)
-  *)
+  (* expands to 
+  three := @int! val: 3.  Where this `3` has type `int64` in the target language *)
 (* This allows users to have complete control over every aspect of their code,
    down to the methods of literals.
    A similar strategy is used for strings, doubles, etc *)
-
 (* If you were to import this file from another file, the result would be this string*)
 " This concludes the language reference and tutorial "

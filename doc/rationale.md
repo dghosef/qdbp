@@ -113,8 +113,8 @@ qdbp does not have any purely functional I/O. This is because qdbp is not a pure
 ### Sequence Expressions
 qdbp does not have explicit syntactic support for sequence expressions. Instead, they have to be done in the following manner
 ```
-ignore := expr1
-ignore := expr2
+_ := expr1
+_ := expr2
 expr3
 ```
 Admittedly, this is unsatisfying. The reason qdbp doesn't have sequence expressions yet is because we haven't found a good syntax for them. In particular, we want to avoid the `;` for expression separators because people find it annoying and it adds too much punctuation to the language(for example, `1+1+2..;` just looks ugly). If you have any ideas for this, please let us know.

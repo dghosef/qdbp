@@ -34,8 +34,12 @@ Of course, just being small and simple is not sufficient. If it were, the world 
 - Modules
 - Domain specific language creation, despite not having macros
 
-That qdbp's core feature set can be so naturally wielded to express complex abstractions is testament to the elegance of the language. The goal of qdbp is to be the distillation of programming into only its necessary components, and in doing so, become greater than the sum of its parts. If this sounds like something you want from a language, clone this repo, read the quick start below, [this tutorial](samples/tutorial.qdbp), [a more detailed rationale](doc/rationale.md) for various decisions, and this [list of limitations](doc/limitations.md). Happy qdbping!
+That qdbp's core feature set can be so naturally wielded to express complex abstractions is testament to the elegance of the language. The goal of qdbp is to be the distillation of programming into only its necessary components, and in doing so, become greater than the sum of its parts. If this sounds like something you want from a language, clone this repo, checkout [qdbp's website](https://qdbplang.org), and follow the quickstart below. Happy qdbping!
 
 ## Quick Start
 
-qdbp requires ocaml, dune, ocamllex, and menhir. Clone this repo and run `dune exec ../bin/main.exe -- <filename> --execute` from the `samples` directory to run a file or `dune exec ../bin/main.exe -- --help` for more options. The file to be compiled must be in the same directory as `int.qdbp`, `string.qdbp`, and `float.qdbp`. While qdbp doesn't have support for syntax highlighting yet, I have found that using syntax highlighting for Ocaml works well enough.
+qdbp requires ocaml, dune, ocamllex, and menhir. To use the compiler, write your program in your text editor or IDE of your choice, clone this repo and run
+```bash
+dune exec ../bin/main.exe -- <filename> --execute
+```
+from the `samples` directory. Note that your program *must* be located in the `samples` directory.

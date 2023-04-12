@@ -16,7 +16,7 @@ end
 let bool_type level tvars = 
   let tvars, var = make_new_unbound_var tvars level in
   let ty = `TVariant 
-      (`TRowExtend 
+      (`TRowExtend
          ("True", (`TRecord `TRowEmpty),
           (`TRowExtend 
              ("False", (`TRecord `TRowEmpty),
@@ -118,7 +118,7 @@ let adjust_levels tvars level ty =
           end
 
         | `Generic _ ->
-          (Error.internal_error "INTERNAL ERROR: should not be adjusting generic")
+          (Error.internal_error "should not be adjusting generic")
       end
   in
   let (tvars, _) = adjust_levels (tvars, TyVarSet.empty) level ty
@@ -243,7 +243,6 @@ let unify tvars already_unified ty1 ty2 =
             let rest_row2 = `TVar rest_row2_id in
             let ty2 = `TRowExtend(label1, field_ty1, rest_row2) in
             let tvars = update_tvars tvars id (`Link ty2) in 
-            ignore (TyVarMap.find rest_row2_id (snd tvars));
             `Ok ((`Ok (tvars, already_unified)), rest_row2)
           | `Link row2 ->
             rewrite_row (`Ok (tvars, already_unified)) row2 label1 field_ty1

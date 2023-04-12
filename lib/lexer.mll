@@ -2,7 +2,6 @@
 {
   open Parser
   open Lexing
-  open Error
 
   let next_line lexbuf =
     let pos = lexbuf.lex_curr_p in
@@ -10,16 +9,17 @@
       { pos with pos_bol = lexbuf.lex_curr_pos;
           pos_lnum = pos.pos_lnum + 1
       }
+  exception LexerError of (string * position)
 }
 let digit = ['0' - '9']
 let lower = ['a' - 'z']
 let upper = ['A' - 'Z']
 (* ASCII symbols and all non-ascii characters *)
-let symbol = ['!' '%' '&' '*' '~' '-' '+' '=' '\\' '/' '>' '<' '^' '_'] | [^'\x00'-'\x7F']
+let symbol = ['!' '%' '&' '*' '~' '-' '+' '=' '\\' '/' '>' '<' '^'] | [^'\x00'-'\x7F']
 let filename = ('_' | upper | lower | digit | '.')+
 let string_delimiter = (upper | lower | digit)*
-let upper_id = (symbol | upper) (symbol | upper | lower | digit)*
-let lower_id = (lower) (upper | lower | digit | '_' | '\'')*
+let upper_id = (symbol | upper) (symbol | upper | lower | digit | '_')*
+let lower_id = (lower | '_') (upper | lower | digit | '_' | '\'')*
 (* Other forms of whitespace are disallowed *)
 let spaces = [' ' '\t']+
 let newline = '\r' | '\n' | "\r\n"
@@ -30,11 +30,11 @@ rule token = parse
 | string_delimiter as delimiter '"' { STRING(get_string delimiter lexbuf) }
 | '-'? digit+ as s { 
   try (INT (int_of_string (s))) with 
-    | Failure _ -> lex_error ("Integer too big: " ^ s) lexbuf.lex_curr_p
+    | Failure _ -> raise (LexerError (("Integer too big: " ^ s), lexbuf.lex_curr_p))
 }
 | '-'? digit+ '.' digit+ as s { 
   try (FLOAT (float_of_string (s))) with 
-    | Failure _ -> lex_error ("Float too big: " ^ s) lexbuf.lex_curr_p
+    | Failure _ -> raise (LexerError ("Float too big: " ^ s, lexbuf.lex_curr_p))
 }
 | ';' [ ^'\n']* { token lexbuf }
 | "ABORT" { ABORT }
@@ -56,7 +56,9 @@ rule token = parse
 | '?' { QUESTION }
 | '$' { MONEY }
 | eof { EOF }
-| _ as c { lex_error ("Unexpected character: " ^ (String.make 1 c)) lexbuf.lex_curr_p }
+| _ as c { raise
+  (LexerError ("Unexpected character: " ^ (String.make 1 c),
+    lexbuf.lex_curr_p ))}
 and comment level = parse
   | "*)" {
     if level = 0 then token lexbuf
@@ -64,7 +66,7 @@ and comment level = parse
   }
   | "(*" { comment (level + 1) lexbuf }
   | newline { next_line lexbuf; comment level lexbuf}
-  | eof { lex_error "Never finished comment" lexbuf.lex_curr_p }
+  | eof { raise (LexerError ("Never finished comment", lexbuf.lex_curr_p)) }
   | _ { comment level lexbuf }
 
 and get_string delimiter = parse
@@ -73,5 +75,5 @@ and get_string delimiter = parse
     else ("\"" ^ delimiter) ^ (get_string delimiter lexbuf)
   }
   | newline { next_line lexbuf; "\n" ^ (get_string delimiter lexbuf)}
-  | eof { lex_error "Never finished string literal" lexbuf.lex_curr_p }
+  | eof { raise (LexerError ("Never finished string literal", lexbuf.lex_curr_p))}
   | _ as c { (String.make 1 c) ^ (get_string delimiter lexbuf) }

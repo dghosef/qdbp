@@ -1,4 +1,3 @@
-(* FIXME: Make TAG a string *)
 %token<int> INT
 %token<float> FLOAT
 %token<string> UPPER_ID LOWER_ID ARG IMPORT STRING

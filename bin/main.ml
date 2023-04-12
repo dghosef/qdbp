@@ -1,2 +1,3 @@
 let () =
-  Qdbp.Driver.compile (Qdbp.Driver.args ())
+  Qdbp.Driver.compile (Qdbp.Driver.args ());
+  prerr_newline ();

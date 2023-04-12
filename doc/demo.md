@@ -17,7 +17,7 @@ add! a: 1 b: 2.
 Methods are generic by default. Here is a generic `print` function:
 ```ocaml
 print := {val | val Print.}
-ignore := print! 3.
+_ := print! 3.
 print! "hello".
 ```
 ### If/Then/Else
@@ -126,7 +126,7 @@ true && false.
 while := {val body|
   val!.
     True? [
-      ignore := body!.
+      _ := body!.
       self! val: val body: body.
     ]
     False? [{}].
@@ -179,11 +179,11 @@ colored_circle := {
   basic_circle
   Color["red"]
   Print[
-    ignore := self Color. Print.
+    _ := self Color. Print.
     self Radius. Print.
   ]
 }
-ignore := basic_circle Print.
+_ := basic_circle Print.
 colored_circle Print.
 ```
 ### Partial Objects
@@ -232,7 +232,7 @@ for := {iter body|
   iter Data.
     None? [{}]
     Some?[data|
-      ignore := body! (data Val).
+      _ := body! (data Val).
       self! iter: data Next. body: body.
     ].
 }
@@ -275,7 +275,7 @@ fn_involving_days := {val |
   ; Do something with val
   {}
 }
-ignore := fn_involving_days! day_12_of_month. ; ok
+_ := fn_involving_days! day_12_of_month. ; ok
 fn_involving_days! five_cookies. ; compilation error
 ```
 However, qdbp's type system is limited. We cannot make, for example, methods that multiply units automatically like in c++. We can only handcheck for the existence of specific field names.
@@ -321,7 +321,7 @@ safe_divide_6! a: 3996 b: 3 c: 1 d: 2 e: 2 f: 1. Val.
 #### Abort
 ```ocaml
 panic := {val |
-  ignore := val Print.
+  _ := val Print.
   ABORT.
 }
 safe_divide := {a b|
@@ -329,7 +329,7 @@ safe_divide := {a b|
     True? [panic! "divide by 0\n".]
     False? [a / b.].
 }
-ignore := safe_divide! a: 1 b: 0.
+_ := safe_divide! a: 1 b: 0.
 "Shouldn't get here!!!" Print.
 ```
 ### Infinite Lists
@@ -341,11 +341,11 @@ pows_of_2_list := {
     { self Val[cur_val * 2.] }
   ]
 }
-ignore := pows_of_2_list Val. Print.
+_ := pows_of_2_list Val. Print.
 pows_of_2_list := pows_of_2_list Next.
-ignore := pows_of_2_list Val. Print.
+_ := pows_of_2_list Val. Print.
 pows_of_2_list := pows_of_2_list Next.
-ignore := pows_of_2_list Val. Print.
+_ := pows_of_2_list Val. Print.
 pows_of_2_list := pows_of_2_list Next.
 {}
 ```
@@ -368,20 +368,20 @@ In `math.qdbp`, for example, we could have the code
 Then in another file, we can have
 ```ocaml
 math := @math
-ignore := math Factorial 5. Print.
+_ := math Factorial 5. Print.
 math Abs -3. Print.
 ```
 ### Defer
 ```ocaml
 defer := {val after|
   result := after!.
-  ignore := val!.
+  _ := val!.
   result
 }
 
 defer! {"finished " Print.}
   after: {
-    ignore := "doing fancy math\n" Print.
+    _ := "doing fancy math\n" Print.
     1 + 1. + 3. * 15.
   }.
 ```

@@ -1,5 +1,5 @@
 module StringMap = Map.Make(String)
-(* FIXME: Change to angle bracket, square bracket, etc, combine w/ other file*)
+(* FIXME: Change to angle bracket, square bracket, etc, combine w/ other file. Ditto with lexer/parser naming *)
 let paren s = "(" ^ s ^ ")"
 let brace s = "[" ^ s ^ "]"
 let quoted s = 
@@ -70,7 +70,7 @@ let codegen_ml imports ast =
       let args = String.concat " " args in
       paren (name ^ " " ^ args)
     | `IntLiteral (i, _) -> paren (
-        "__qdbp_int_literal " ^ (string_of_int i)
+        "__qdbp_int_literal " ^ (paren (string_of_int i))
       )
     | `FloatLiteral (f, _) -> 
       paren ("__qdbp_float_literal " ^ (string_of_float f))

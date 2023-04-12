@@ -10,7 +10,7 @@ is_string := {val|
   {
     Val[val]
     Print[
-      ignore := $qdbp_print_string_int(self Val.)
+      _ := $qdbp_print_string_int(self Val.)
       {}
     ]
     ++[val|
