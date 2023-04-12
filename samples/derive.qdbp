@@ -1,0 +1,39 @@
+expr := {
+  +[val|
+    me := self
+    {self
+      L[(me L) + (val L).]
+      R[(me R) + (val R).]
+      AsString[(me AsString) ++ " + ". ++ (val AsString).]
+    }
+  ]
+  *[val|
+    me := self
+    {self
+      L[(me L) * (val L).]
+      R[(me R. * val L.) + (val R. * me L.).]
+      AsString[(me AsString) ++ " * ". ++ (val AsString).]
+    }
+  ]
+  Exp[
+    me := self
+    {self
+      AsString["exp(" ++ (me AsString). ++ ")".]
+      L[self]
+      R[self * (me R).]
+    }
+  ]
+  Derive[self R.]
+  Print[self AsString. Print.]
+}
+zero := {expr L[self] R[self] AsString["0"] }
+const := {val|
+  val = 0.
+    True? [zero]
+    False? [{expr L[self] R[zero] AsString[val AsString.] }].
+}
+one := const! 1.
+x := {expr L[self] R[one] AsString["x"] }
+expr := x * (const! 1). + (x * x). Exp.
+expr' := expr Derive.
+expr' Print.

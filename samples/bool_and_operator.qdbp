@@ -1,0 +1,11 @@
+true := {
+  BoolVal[#True{}]
+  &&[val|
+    self BoolVal.
+      True? [val]
+      False? [self].
+  ]
+}
+
+false := {true BoolVal[#False{}]}
+true && false.

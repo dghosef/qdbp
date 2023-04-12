@@ -1,0 +1,3 @@
+print := {val | val Print.}
+_ := print! 3.
+print! "hello".

@@ -1,0 +1,13 @@
+if := {val then else|
+  val
+    True? [then!.]
+    False? [else!.].
+}
+
+if! 1 > 2.
+  then: { 
+    "true" Print. 
+ }
+  else: {
+    "false" Print.
+}.

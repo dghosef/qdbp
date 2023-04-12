@@ -1,0 +1,12 @@
+{
+  Factorial[val|
+    val = 0.
+      True? [1]
+      False? [val * (self Factorial (val - 1)).].
+  ]
+  Abs[val|
+    val < 0.
+      True? [-1 * val.]
+      False? [val].
+  ]
+}

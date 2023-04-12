@@ -1,0 +1,16 @@
+true := {
+  BoolVal[#True{}]
+  If[then else|
+    self BoolVal.
+      True? [then!.]
+      False? [else!.].
+  ]
+}
+
+true If
+  then: { 
+    "true" Print. 
+ }
+  else: {
+    "false" Print.
+}.

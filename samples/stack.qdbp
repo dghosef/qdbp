@@ -1,0 +1,19 @@
+stack := {
+  Data[#Empty{}]
+  Push[val|
+    curr_data := self Data.
+    { self
+      Data[#NonEmpty {
+        Val[val]
+        Next[curr_data]
+      }]
+    }
+  ]
+  Peek[
+    self Data.
+      Empty?[ABORT.]
+      NonEmpty?[data| data Val.].
+  ]
+}
+
+stack Push 3. Push 2. Peek. Print.

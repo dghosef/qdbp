@@ -1,0 +1,12 @@
+(* FIXME: Change the parameter names? *)
+defer := {val after|
+  result := after!.
+  _ := val!.
+  result
+}
+
+defer! {"finished doing fancy math" Print.}
+  after: {
+    _ := "doing fancy math\n" Print.
+    1 + 1. + 3. * 15.
+  }.

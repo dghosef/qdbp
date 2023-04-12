@@ -1,0 +1,3 @@
+math := @math
+_ := math Factorial 5. Print.
+math Abs -3. Print.

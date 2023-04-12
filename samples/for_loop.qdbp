@@ -1,0 +1,31 @@
+for := {iter body|
+  iter Data.
+    None? [{}]
+    Some?[data|
+      _ := body! (data Val).
+      self! iter: data Next. body: body.
+    ].
+}
+
+from := {val to|
+  {
+    Start[val]
+    End[to]
+    Val[self Start.]
+    Next[
+      start := (self Start) + 1.
+      { self
+        Start[start]
+      }
+    ]
+    Data[
+      (self Start) <= (self End).
+        True? [ #Some self ]
+        False? [#None{}].
+    ]
+  }
+}
+
+for!
+  iter: (from! 1 to: 10)
+  body: {val | val Print.}.

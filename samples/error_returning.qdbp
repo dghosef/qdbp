@@ -1,0 +1,11 @@
+safe_divide := {a b|
+  b = 0.
+    True? [#Error{}]
+    False? [#Ok a / b.].
+}
+
+result := safe_divide! a: 1 b: 0.
+
+result
+  Error? ["error" Print.]
+  Ok?[val| val Print.].

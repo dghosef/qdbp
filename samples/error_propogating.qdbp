@@ -1,0 +1,25 @@
+error := {
+  Transform[fn|
+    self Val.
+      Error? [err| self]
+      Ok? [val| {self Val[#Ok fn! val.]}].
+  ]
+}
+
+safe_divide := {a b|
+  b = 0.
+    True? [{error Val[#Error{}]}]
+    False? [{error Val[#Ok a / b.]}].
+}
+
+safe_divide_6 := {a b c d e f|
+  (safe_divide! a: a b: b) 
+    Transform fn: {val | val / c.}.
+    Transform fn: {val | val / d.}.
+    Transform fn: {val | val / e.}.
+    Transform fn: {val | val / f.}.
+}
+
+safe_divide_6! a: 3996 b: 3 c: 1 d: 2 e: 2 f: 1. Val.
+  Error? ["Error" Print.]
+  Ok? [val | val Print.].

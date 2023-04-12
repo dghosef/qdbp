@@ -1,0 +1,13 @@
+panic := {val |
+  _ := val Print.
+  ABORT.
+}
+
+safe_divide := {a b|
+  b = 0.
+    True? [panic! "divide by 0\n".]
+    False? [a / b.].
+}
+
+_ := safe_divide! a: 1 b: 0.
+"Shouldn't get here!!!" Print.

@@ -1,0 +1,15 @@
+basic_circle := {
+  Radius[3]
+  Print[self Radius. Print.]
+}
+
+colored_circle := { basic_circle
+  Color["red"]
+  Print[
+    _ := self Color. Print.
+    self Radius. Print.
+  ]
+}
+
+_ := basic_circle Print.
+colored_circle Print.

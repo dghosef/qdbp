@@ -1,0 +1,14 @@
+while := {val body|
+  val!.
+    True? [
+      _ := body!.
+      self! val: val body: body.
+    ]
+    False? [{}].
+}
+
+; Will loop infinitely
+while! {1 < 2.}
+  body: {
+    "hello world\n" Print.
+  }.
