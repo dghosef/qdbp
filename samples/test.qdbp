@@ -1,2 +1,1 @@
-_ := 5
-{}
+@math Factorial 50000.

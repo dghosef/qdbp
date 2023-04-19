@@ -191,8 +191,6 @@ let unify tvars already_unified ty1 ty2 =
             | `Link (_, ty1), ty2
             | ty2, `Link (_, ty1) ->
               unify (`Ok s) ty1 (unsplat ty2)
-            | `Unbound (_, (ub_id, _)), `Unbound(_, (ub_id', _)) when ub_id = ub_id' ->
-              Error.internal_error("unifying identical unbounds")
             | `Unbound (id, (_, ub_level)), ty
             | ty, `Unbound (id, (_, ub_level)) ->
               let tvars = adjust_levels (fst s) ub_level (unsplat ty) in 

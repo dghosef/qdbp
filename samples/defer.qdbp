@@ -7,6 +7,6 @@ defer := {val after|
 
 defer! {"finished doing fancy math" Print.}
   after: {
-    _ := "doing fancy math\n" Print.
+    _ := "doing fancy math" Print.
     1 + 1. + 3. * 15.
   }.

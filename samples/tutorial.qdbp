@@ -46,7 +46,7 @@ print_args := {
 }
 (* qdbp has no sequence expression. To evaluate multiple expressions, we just assign
    them to successive variables *)
-_ := print_args! arg1: "Hello World\n".
+_ := print_args! arg1: "Hello World".
 _ := print_args! arg1: "Hello " arg2: "World".
 
 (* qdbp has no type annotations. Instead, it infers types.
@@ -87,7 +87,7 @@ big_circle := { small_circle
 }
 twelve := big_circle Diameter.
 
-(* Unfortunately we don't have doubles yet, but stay tuned! *)
+(* Unfortunately we don't have floats fully supported yet, but stay tuned! *)
 pi := 3
 
 (* Prototypes can also be extended with new methods *)
@@ -142,7 +142,7 @@ _ :=
       val Print.
     ]
     Error? [
-      "Error\n" Print.
+      "Error" ++ @newline . Print.
     ].
 (* Like any language, we want to be able to split our programs across multiple
    files. Each qdbp program is a single expression that returns a value. 

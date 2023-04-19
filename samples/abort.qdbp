@@ -5,7 +5,7 @@ panic := {val |
 
 safe_divide := {a b|
   b = 0.
-    True? [panic! "divide by 0\n".]
+    True? [panic! ("divide by 0" ++ @newline).]
     False? [a / b.].
 }
 
