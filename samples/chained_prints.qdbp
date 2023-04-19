@@ -1,0 +1,5 @@
+print := {val|
+  _ := val Print.
+  self
+}
+print!"string1".! "string2".! "string3".! 4.
