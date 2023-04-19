@@ -37,7 +37,7 @@ That qdbp's core feature set can be so naturally wielded to express complex abst
 
 ## Quick Start
 
-qdbp requires ocaml, dune, ocamllex, and menhir. To use the compiler, write your program in your text editor or IDE of your choice, clone this repo and run
+qdbp requires ocaml, dune, ocamllex, and menhir. To use the compiler, write your program in your text editor or IDE of your choice, clone this repo and, run
 ```bash
 dune exec ../bin/main.exe -- <filename> --execute
 ```
