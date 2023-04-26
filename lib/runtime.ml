@@ -126,4 +126,7 @@ let concat_string x y =
   match x, y with
   | String x, String y -> String (x ^ y)
   | _ -> failwith "INTERNAL ERROR: concat_string called on non-string"
+
+(* Sorta useless *)
+let foreign_fn_bool _ _ = __qdbp_true
 |}
