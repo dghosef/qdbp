@@ -64,9 +64,11 @@ let compile args =
   let files, ast = ParserDriver.parse_file
       ParserDriver.FileMap.empty
       full_input_file in
-  let (imports, files) = ResolveImports.resolve_imports files ast in
-  let tvars, ty = Infer.infer imports files ast in
-  let ml = CodegenML.codegen_ml imports ast in
+  let (imports, files) = ResolveImports.build_import_map files ast in
+  let ast = ResolveImports.resolve_imports imports ast in
+  let tvars, ty, ast = Infer.infer files ast in
+  let ast = VarNamesToInts.var_names_to_ints ast in
+  let ml = CodegenML.codegen_ml ast in
   let ml_output_file = match args.ml_output_file with
     | Some f -> f
     | None -> args.input_file ^ ".ml"

@@ -22,7 +22,7 @@ let make_prototype maybe_extension fields loc : ast =
     | Some extension -> extension
     | None -> make_empty_prototype loc
   in 
-  List.fold_left (fun acc field -> `PrototypeExtension (acc, field, loc))
+  List.fold_left (fun acc field -> `PrototypeCopy (acc, field, loc))
     extension
     fields
 let make_prototype_invoke_arg name value loc =
