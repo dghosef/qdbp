@@ -1,3 +1,9 @@
+(*
+  Compile qdbp ast to OCaml
+  This is experimental and super inefficient. Will eventually be
+  compiled to C.
+  The C backend is a work in progress
+*)
 module StringMap = Map.Make(String)
 (* FIXME: Change to angle bracket, square bracket, etc, combine w/ other file. Ditto with lexer/parser naming *)
 let paren s = "(" ^ s ^ ")"
