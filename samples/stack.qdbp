@@ -1,16 +1,16 @@
 stack := {
   Data[#Empty{}]
-  Push[val|
-    curr_data := self Data.
-    { self
+  Push[that|
+    curr_data := this Data.
+    { this
       Data[#NonEmpty {
-        Val[val]
+        Val[that]
         Next[curr_data]
       }]
     }
   ]
   Peek[
-    self Data.
+    this Data.
       Empty?[ABORT.]
       NonEmpty?[data| data Val.].
   ]

@@ -8,10 +8,10 @@ five_cookies := {
   CookieUnit[{}]
 }
 
-fn_involving_days := {val |
-  typecheck := {val DayOfMonthUnit.} ; compiletime check for unit
-  ; Do something with val
-  val Print.
+fn_involving_days := {that |
+  typecheck := {that DayOfMonthUnit.} ; compiletime check for unit
+  ; Do something with that
+  that Print.
 }
 
 _ := fn_involving_days! day_12_of_month. ; ok

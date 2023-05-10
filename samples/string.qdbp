@@ -1,22 +1,22 @@
-unify := {val with| 
+unify := {that with| 
   (#True{})
-    True? [val]
+    True? [that]
     False? [with!.].
 }
-is_string := {val|
-  unify! val with: {$qdbp_empty_string()}.
+is_string := {that|
+  unify! that with: {$qdbp_empty_string()}.
 }
-{val |
+{that |
   {
-    Val[val]
+    Val[that]
     Print[
-      _ := $qdbp_print_string_int(self Val.)
+      _ := $qdbp_print_string_int(this Val.)
       {}
     ]
-    ++[val|
-      new_val := $concat_string(self Val. is_string! (val Val).)
+    ++[that|
+      new_val := $concat_string(this Val. is_string! (that Val).)
       {
-        self
+        this
         Val[new_val]
       }
     ]

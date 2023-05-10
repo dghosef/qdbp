@@ -1,5 +1,5 @@
-panic := {val |
-  _ := val Print.
+panic := {that |
+  _ := that Print.
   ABORT.
 }
 

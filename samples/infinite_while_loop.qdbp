@@ -1,8 +1,8 @@
-while := {val body|
-  val!.
+while := {that body|
+  that!.
     True? [
       _ := body!.
-      self! val: val body: body.
+      this! that: that body: body.
     ]
     False? [{}].
 }

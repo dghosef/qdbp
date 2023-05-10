@@ -1,62 +1,62 @@
 (* Compile time typecheck to see that a and b!. have the same type. 
   returns a
 *)
-unify := {val with| 
+unify := {that with| 
   (#True{})
-    True? [val]
+    True? [that]
     False? [with!.].
 }
-is_int := {val|
-  unify! val with: {$qdbp_zero_int()}.
+is_int := {that|
+  unify! that with: {$qdbp_zero_int()}.
 }
-{ val|
+{ that|
   {
     Val[
-      unify! val with: {$qdbp_zero_int()}.
+      unify! that with: {$qdbp_zero_int()}.
     ]
     AsString[
-      @string! $qdbp_int_to_string(self Val.).
+      @string! $qdbp_int_to_string(this Val.).
     ]
     Print[
-      self AsString. Print.
+      this AsString. Print.
     ]
-    +[val|
-      new_val := $qdbp_int_add_int(self Val. is_int! (val Val).)
-      {self Val[new_val]}
+    +[that|
+      new_val := $qdbp_int_add_int(this Val. is_int! (that Val).)
+      {this Val[new_val]}
     ]
-    -[val|
-      new_val := $qdbp_int_sub_int(self Val. is_int! (val Val).)
-      {self Val[new_val]}
+    -[that|
+      new_val := $qdbp_int_sub_int(this Val. is_int! (that Val).)
+      {this Val[new_val]}
     ]
-    *[val|
-      new_val := $qdbp_int_mul_int(self Val. is_int! (val Val).)
-      {self Val[new_val]}
+    *[that|
+      new_val := $qdbp_int_mul_int(this Val. is_int! (that Val).)
+      {this Val[new_val]}
     ]
-    /[val|
-      new_val := $qdbp_int_div_int(self Val. is_int! (val Val).)
-      {self Val[new_val]}
+    /[that|
+      new_val := $qdbp_int_div_int(this Val. is_int! (that Val).)
+      {this Val[new_val]}
     ]
-    %[val|
-      new_val := $qdbp_int_mod_int(self Val. is_int! (val Val).)
-      {self Val[new_val]}
+    %[that|
+      new_val := $qdbp_int_mod_int(this Val. is_int! (that Val).)
+      {this Val[new_val]}
     ]
-    =[val|
-      $qdbp_int_eq_bool(self Val. is_int! (val Val).)
+    =[that|
+      $qdbp_int_eq_bool(this Val. is_int! (that Val).)
     ]
-    !=[val|
-      $qdbp_int_ne_bool(self Val. is_int! (val Val).)
+    !=[that|
+      $qdbp_int_ne_bool(this Val. is_int! (that Val).)
     ]
-    <[val|
-      $qdbp_int_lt_bool(self Val. is_int! (val Val).)
+    <[that|
+      $qdbp_int_lt_bool(this Val. is_int! (that Val).)
     ]
-    >[val|
-      $qdbp_int_gt_bool(self Val. is_int! (val Val).)
+    >[that|
+      $qdbp_int_gt_bool(this Val. is_int! (that Val).)
     ]
-    <=[val|
-      $qdbp_int_le_bool(self Val. is_int! (val Val).)
+    <=[that|
+      $qdbp_int_le_bool(this Val. is_int! (that Val).)
     ]
-    >=[val|
-      $qdbp_int_ge_bool(self Val. is_int! (val Val).)
+    >=[that|
+      $qdbp_int_ge_bool(this Val. is_int! (that Val).)
     ]
     
   }

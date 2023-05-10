@@ -1,12 +1,12 @@
 {
-  Factorial[val|
-    val = 0.
+  Factorial[that|
+    that = 0.
       True? [1]
-      False? [val * (self Factorial (val - 1)).].
+      False? [that * (this Factorial (that - 1)).].
   ]
-  Abs[val|
-    val < 0.
-      True? [-1 * val.]
-      False? [val].
+  Abs[that|
+    that < 0.
+      True? [-1 * that.]
+      False? [that].
   ]
 }

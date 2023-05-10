@@ -1,13 +1,13 @@
 basic_circle := {
   Radius[3]
-  Print[self Radius. Print.]
+  Print[this Radius. Print.]
 }
 
 colored_circle := { basic_circle
   Color["red"]
   Print[
-    _ := self Color. Print.
-    self Radius. Print.
+    _ := this Color. Print.
+    this Radius. Print.
   ]
 }
 

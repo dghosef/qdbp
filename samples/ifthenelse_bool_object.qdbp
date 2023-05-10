@@ -1,7 +1,7 @@
 true := {
   BoolVal[#True{}]
   If[then else|
-    self BoolVal.
+    this BoolVal.
       True? [then!.]
       False? [else!.].
   ]

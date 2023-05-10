@@ -1,7 +1,7 @@
 make_circle := {radius |
   {
     Radius[radius]
-    Print[self Radius. Print.]
+    Print[this Radius. Print.]
   }
 }
 

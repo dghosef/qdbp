@@ -1,5 +1,5 @@
-if := {val then else|
-  val
+if := {that then else|
+  that
     True? [then!.]
     False? [else!.].
 }

@@ -28,21 +28,21 @@ let make_prototype maybe_extension fields loc : ast =
 let make_prototype_invoke_arg name value loc =
   (name, value, loc)
 let make_meth args body loc =
-  (("self", loc) :: args, body, loc)
+  (("this", loc) :: args, body, loc)
 let make_method_invocation receiver field_name arg1 args loc : ast =
   let args = match arg1 with
-    | Some arg -> ("val", arg, loc) :: args
+    | Some arg -> ("that", arg, loc) :: args
     | None -> args
   in
-  let args = ("self", make_variable_lookup "Self" loc, loc) :: args in
+  let args = ("this", make_variable_lookup "This" loc, loc) :: args in
   let arg_names = List.map (fun (name, _, _) -> name) args in
   let field_name = full_field_name field_name arg_names
   in
   make_declaration
-    ("Self", loc)
+    ("This", loc)
     receiver
     (`MethodInvocation (
-        (make_variable_lookup "Self" loc),
+        (make_variable_lookup "This" loc),
         field_name,
         args,
         loc))

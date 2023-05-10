@@ -1,3 +1,3 @@
-print := {val | val Print.}
+print := {that | that Print.}
 _ := print! 3.
 print! "hello".

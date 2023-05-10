@@ -1,30 +1,30 @@
 {
   Node[#None{}]
-  Prepend[val|
-    curr_list := self Node.
+  Prepend[that|
+    curr_list := this Node.
     {
-      self
-      Node[#Prepend {Val[val] Rest[curr_list]}]
+      this
+      Node[#Prepend {Val[that] Rest[curr_list]}]
     }
   ]
-  Append[val|
-    curr_list := self Node.
+  Append[that|
+    curr_list := this Node.
     {
-      self
-      Node[#Append {Val[val] Rest[curr_list]}]
+      this
+      Node[#Append {Val[that] Rest[curr_list]}]
     }
   ]
-  ++[val|
-    node1 := self Node.
-    node2 := val Node.
+  ++[that|
+    node1 := this Node.
+    node2 := that Node.
     {
-      self
+      this
       Node[#Concat {L[node1] R[node2]}]
     }
   ]
-  Map [val|
+  Map [that|
     map := {fn lst|
-      map := self
+      map := this
       lst
         Concat?[node|
           newl := map! fn: fn lst: (node L).
@@ -52,9 +52,9 @@
         ]
         None?[#None{}].
     }
-    newval := map! fn: val lst: (self Node).
+    newval := map! fn: that lst: (this Node).
     {
-      self
+      this
       Node[newval]
     }
   ]

@@ -1,7 +1,7 @@
 (* FIXME: Change the parameter names? *)
-defer := {val after|
+defer := {that after|
   result := after!.
-  _ := val!.
+  _ := that!.
   result
 }
 

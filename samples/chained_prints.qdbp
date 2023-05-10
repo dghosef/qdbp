@@ -1,5 +1,5 @@
-print := {val|
-  _ := val Print.
-  self
+print := {that|
+  _ := that Print.
+  this
 }
 print!"string1".! "string2".! "string3".! 4.

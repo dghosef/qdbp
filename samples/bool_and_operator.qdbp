@@ -1,9 +1,9 @@
 true := {
   BoolVal[#True{}]
-  &&[val|
-    self BoolVal.
-      True? [val]
-      False? [self].
+  &&[that|
+    this BoolVal.
+      True? [that]
+      False? [this].
   ]
 }
 

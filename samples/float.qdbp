@@ -1,62 +1,62 @@
 (* Compile time typecheck to see that a and b!. have the same type. 
   returns a
 *)
-unify := {val with| 
+unify := {that with| 
   (#True{})
-    True? [val]
+    True? [that]
     False? [with!.].
 }
-is_float := {val|
-  unify! val with: {$qdbp_zero_float()}.
+is_float := {that|
+  unify! that with: {$qdbp_zero_float()}.
 }
-{ val|
+{ that|
   {
     Val[
-      unify! val with: {$qdbp_zero_float()}.
+      unify! that with: {$qdbp_zero_float()}.
     ]
     AsString[
-      @string! $qdbp_float_to_string(self Val.).
+      @string! $qdbp_float_to_string(this Val.).
     ]
     Print[
-      self AsString. Print.
+      this AsString. Print.
     ]
-    +[val|
-      new_val := $qdbp_float_add_float(self Val. is_float! (val Val).)
-      {self Val[new_val]}
+    +[that|
+      new_val := $qdbp_float_add_float(this Val. is_float! (that Val).)
+      {this Val[new_val]}
     ]
-    -[val|
-      new_val := $qdbp_float_sub_float(self Val. is_float! (val Val).)
-      {self Val[new_val]}
+    -[that|
+      new_val := $qdbp_float_sub_float(this Val. is_float! (that Val).)
+      {this Val[new_val]}
     ]
-    *[val|
-      new_val := $qdbp_float_mul_float(self Val. is_float! (val Val).)
-      {self Val[new_val]}
+    *[that|
+      new_val := $qdbp_float_mul_float(this Val. is_float! (that Val).)
+      {this Val[new_val]}
     ]
-    /[val|
-      new_val := $qdbp_float_div_float(self Val. is_float! (val Val).)
-      {self Val[new_val]}
+    /[that|
+      new_val := $qdbp_float_div_float(this Val. is_float! (that Val).)
+      {this Val[new_val]}
     ]
-    %[val|
-      new_val := $qdbp_float_mod_float(self Val. is_float! (val Val).)
-      {self Val[new_val]}
+    %[that|
+      new_val := $qdbp_float_mod_float(this Val. is_float! (that Val).)
+      {this Val[new_val]}
     ]
-    =[val|
-      $qdbp_float_eq_bool(self Val. is_float! (val Val).)
+    =[that|
+      $qdbp_float_eq_bool(this Val. is_float! (that Val).)
     ]
-    !=[val|
-      $qdbp_float_ne_bool(self Val. is_float! (val Val).)
+    !=[that|
+      $qdbp_float_ne_bool(this Val. is_float! (that Val).)
     ]
-    <[val|
-      $qdbp_float_lt_bool(self Val. is_float! (val Val).)
+    <[that|
+      $qdbp_float_lt_bool(this Val. is_float! (that Val).)
     ]
-    >[val|
-      $qdbp_float_gt_bool(self Val. is_float! (val Val).)
+    >[that|
+      $qdbp_float_gt_bool(this Val. is_float! (that Val).)
     ]
-    <=[val|
-      $qdbp_float_le_bool(self Val. is_float! (val Val).)
+    <=[that|
+      $qdbp_float_le_bool(this Val. is_float! (that Val).)
     ]
-    >=[val|
-      $qdbp_float_ge_bool(self Val. is_float! (val Val).)
+    >=[that|
+      $qdbp_float_ge_bool(this Val. is_float! (that Val).)
     ]
   }
 }

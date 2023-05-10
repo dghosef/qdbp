@@ -17,9 +17,9 @@ prototype := {
   Method1 [3] (* A method that just returns 3 *)
   (* This method takes an argument and returns it *)
   Method2[arg1 | arg1 ]
-  (* All methods take in implicit self argument that is always set to the value of
+  (* All methods take in implicit this argument that is always set to the value of
      the prototype it is in. Method3's return is equivalent to `prototype`*)
-  Method3[ self ]
+  Method3[ this ]
 }
 empty_prototype := {}
 
@@ -58,8 +58,8 @@ _ := print_args! arg1: 3. (* `print_args` is generic *)
 (* To be specific, variable names must start with a lowercase letter.
    Method names within a prototype must start with an uppercase letter or a symbol.
    We can use method names with symbols to emulate operators. For example, int
-   objects have a `+` method with a single argument, `val` *)
-five := 3 + val: 2.
+   objects have a `+` method with a single argument, `that` *)
+five := 3 + that: 2.
 
 (* Here is some syntax sugar that makes common prototype patterns less verbose *)
 (* To make "functions" easier to define, this: *)
@@ -69,8 +69,8 @@ my_fn := {x | x}
 (* In other words, to make an object with a single method `!`, we can omit the
    `[`, `]`, and `!` *)
 (* Also, if we omit the name of the first argument, it is automatically assumed
-   to be `val` *)
-five := 3 + val: 2. (* is equivalent to *) five := 3 + 2.
+   to be `that` *)
+five := 3 + that: 2. (* is equivalent to *) five := 3 + 2.
 (* Periods are optional when invocation is surrounded by parentheses *)
 three := identity_fn! x: 3. (* is the same as *) three := (identity_fn! x: 3)
 
@@ -78,7 +78,7 @@ three := identity_fn! x: 3. (* is the same as *) three := (identity_fn! x: 3)
    one or more of its methods *)
 small_circle := {
   Radius[3]
-  Diameter[(self Radius) * 2.]
+  Diameter[(this Radius) * 2.]
 }
 (* Same as `small_circle` but `Radius` now returns 6 *)
 big_circle := { small_circle
@@ -92,7 +92,7 @@ pi := 3
 
 (* Prototypes can also be extended with new methods *)
 big_circle := { big_circle
-  Area[(self Radius) * (self Radius). * pi.]
+  Area[(this Radius) * (this Radius). * pi.]
 }
 one_hundred_eight := big_circle Area.
 
@@ -101,7 +101,7 @@ one_hundred_eight := big_circle Area.
    is dependent on a parameter. For example, *)
 fn := {x | 
   { x
-    Method[val | val]
+    Method[that | that]
   }
 }
 (* The compiler can't disambiguate whether or not to replace the `Method` field in  `x`
@@ -119,8 +119,8 @@ false := #False{}
 
 (* We can pattern match on tagged objects. For example, this is a function that
    negates a bool. Like method invocation, notice the `.` at the end *)
-negate := {val |
-  val
+negate := {that |
+  that
     True? [#False{}]
     False? [#True{}].
 }
@@ -138,8 +138,8 @@ safe_divide := {a b|
 two := safe_divide! a: 4 b: 2.
 _ := 
   two
-    Ok? [val| 
-      val Print.
+    Ok? [that| 
+      that Print.
     ]
     Error? [
       "Error" ++ @newline . Print.
@@ -161,18 +161,18 @@ intlist := empty_list Append 3. Append 2.
 
 (* To end a program abruptly, the special keyword ABORT will kill it *)
 (* The "return type" of the `ABORT` changes according to the context *)
-get_val := {val |
-  val
+get_val := {that |
+  that
     Ok? [val| val]
     Error? [ABORT.].
 }
 
 (* The value of the literal 3 is actually the result of evaluating `@int`, 
    and then invoking `!` method of the result, passing in an object of type `int64`
-   in the target language* to the `val` parameter. In other words,  *)
+   in the target language* to the `that` parameter. In other words,  *)
   three := 3
   (* expands to 
-  three := @int! val: 3.  Where this `3` has type `int64` in the target language *)
+  three := @int! that: 3.  Where this `3` has type `int64` in the target language *)
 (* This allows users to have complete control over every aspect of their code,
    down to the methods of literals.
    A similar strategy is used for strings, doubles, etc *)

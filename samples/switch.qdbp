@@ -1,17 +1,17 @@
-switch := {val |
+switch := {that |
   {
-    Val[val]
+    Val[that]
     Result[#None{}]
-    Case[val then|
-      self Val. = val.
+    Case[that then|
+      this Val. = that.
         True? [
           result := then!.
-          {self Result[#Some result]}]
-        False? [self].
+          {this Result[#Some result]}]
+        False? [this].
     ]
     Default[then|
-      self Result.
-        Some? [val| val]
+      this Result.
+        Some? [that| that]
         None? [then!.].
     ]
   }

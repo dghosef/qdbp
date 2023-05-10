@@ -1,8 +1,8 @@
 pows_of_2_list := {
   Val[1]
   Next[
-    cur_val := self Val.
-    { self Val[cur_val * 2.] }
+    cur_val := this Val.
+    { this Val[cur_val * 2.] }
   ]
 }
 

@@ -1,8 +1,8 @@
 error := {
   Transform[fn|
-    self Val.
-      Error? [err| self]
-      Ok? [val| {self Val[#Ok fn! val.]}].
+    this Val.
+      Error? [err| this]
+      Ok? [that| {this Val[#Ok fn! that.]}].
   ]
 }
 
@@ -14,12 +14,12 @@ safe_divide := {a b|
 
 safe_divide_6 := {a b c d e f|
   (safe_divide! a: a b: b) 
-    Transform fn: {val | val / c.}.
-    Transform fn: {val | val / d.}.
-    Transform fn: {val | val / e.}.
-    Transform fn: {val | val / f.}.
+    Transform fn: {that | that / c.}.
+    Transform fn: {that | that / d.}.
+    Transform fn: {that | that / e.}.
+    Transform fn: {that | that / f.}.
 }
 
 safe_divide_6! a: 3996 b: 3 c: 1 d: 2 e: 2 f: 1. Val.
   Error? ["Error" Print.]
-  Ok? [val | val Print.].
+  Ok? [that | that Print.].

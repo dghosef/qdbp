@@ -8,4 +8,4 @@ result := safe_divide! a: 1 b: 0.
 
 result
   Error? ["error" Print.]
-  Ok?[val| val Print.].
+  Ok?[that| that Print.].
