@@ -36,7 +36,9 @@ let var_names_to_ints ast =
             let body = var_names_to_ints varnames body in
             ((name, nameLoc), ((varname varnames arg, argLoc), body, patternLoc), loc)
         ) cases in
-      `PatternMatch (receiver, cases, loc)
+      let receiver_id = Oo.id (object end) in
+      `Declaration ((receiver_id, loc), receiver, 
+                    `PatternMatch (receiver_id, cases, loc), loc)
     | `Declaration ((name, nameLoc), rhs, body, loc) ->
       let rhs = var_names_to_ints varnames rhs in
       let varnames = add_variable varnames name in

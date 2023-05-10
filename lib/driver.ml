@@ -68,6 +68,8 @@ let compile args =
   let ast = ResolveImports.resolve_imports imports ast in
   let tvars, ty, ast = Infer.infer files ast in
   let ast = VarNamesToInts.var_names_to_ints ast in
+  let _, ast = FreeVariables.free_variables ast in
+  let _ = Refcount.refcount Refcount.FvSet.empty Refcount.FvSet.empty ast in
   let ml = CodegenML.codegen_ml ast in
   let ml_output_file = match args.ml_output_file with
     | Some f -> f

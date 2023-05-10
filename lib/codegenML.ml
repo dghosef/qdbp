@@ -16,7 +16,7 @@ let codegen_ml ast =
   let varname id = 
     "__qdbp_var_" ^ (string_of_int (id))
   in
-  let rec codegen_method (args, body, _) =
+  let rec codegen_method (args, body, _, _) =
     let arg_names = List.map (fun (name, _) -> name) args in
     let arg_strs = List.map (
         fun name ->
@@ -29,13 +29,13 @@ let codegen_ml ast =
   and codegen_ml ast =
     match ast with
     | `EmptyPrototype _ -> "__qdbp_empty_prototype"
-    | `PrototypeCopy (ext, ((name, _), meth, _), _, _) -> 
+    | `PrototypeCopy (ext, ((name, _), meth, _), _, _, _) -> 
       let meth = codegen_method meth in
       let ext = codegen_ml ext in
       paren ("__qdbp_extend " ^ ext ^ " " ^ (quoted name) ^ " " ^ meth)
-    | `TaggedObject ((tag, _), value, _) -> 
+    | `TaggedObject ((tag, _), value, _, _) -> 
       paren ("__qdbp_tagged_object " ^ (quoted tag) ^ " " ^ (codegen_ml value))
-    | `MethodInvocation (receiver, (name, _), args, _) ->
+    | `MethodInvocation (receiver, (name, _), args, _, _) ->
       let args = List.map (
           fun (_, value, _) -> codegen_ml value
         ) args in 
@@ -44,10 +44,12 @@ let codegen_ml ast =
              (codegen_ml receiver) ^
              " " ^ (quoted name) ^ " " ^ args_str)
 
-    | `PatternMatch (receiver, cases, _) -> 
+    | `PatternMatch (receiver_id, cases, _, _) -> 
       let cases_methods = List.map (
           fun ((name, _), (arg, body, _), loc) ->
-            (name, ([arg], body, loc)))
+            let fvs = Refcount.fv body in 
+            let fvs = Refcount.FvSet.remove (fst arg) fvs in
+            (name, ([arg], body, loc, fvs)))
           cases in
       let cases_methods_strings = List.map (
           fun (tag, meth) ->
@@ -56,15 +58,15 @@ let codegen_ml ast =
       let lst = brace (
           String.concat ";" cases_methods_strings
         ) in
-      paren ("__qdbp_pattern_match " ^ (codegen_ml receiver) ^ " " ^ lst)
-    | `Declaration ((name, _), rhs, body, _) ->
+      paren ("__qdbp_pattern_match " ^ (varname receiver_id) ^ " " ^ lst)
+    | `Declaration ((name, _), rhs, body, _, _) ->
       paren (
         "let " ^ (varname name) ^ " = " ^ (codegen_ml rhs)
         ^ " in \n" ^ (codegen_ml body)
       )
-    | `VariableLookup (name, _) ->
+    | `VariableLookup (name, _, _) ->
       varname name
-    | `ExternalCall ((name, _), args, _) ->
+    | `ExternalCall ((name, _), args, _, _) ->
       let args = List.map (codegen_ml) args in
       let args = String.concat " " args in
       paren (name ^ " " ^ args)
