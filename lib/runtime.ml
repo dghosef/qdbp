@@ -1,8 +1,8 @@
 let prelude = {|
-module StringMap = Map.Make(String)
+module IntMap = Map.Make(struct type t = int let compare = compare end)
 type __qdbp_obj =
-  | TaggedObject of string * __qdbp_obj
-  | Prototype of (__qdbp_obj list -> __qdbp_obj) StringMap.t
+  | TaggedObject of int * __qdbp_obj
+  | Prototype of (__qdbp_obj list -> __qdbp_obj) IntMap.t
   | Int of int
   | String of string
   | Float of float
@@ -23,11 +23,11 @@ let __qdbp_rest lst =
   | _ :: xs -> xs
 
 let __qdbp_empty_prototype = 
-  Prototype StringMap.empty
+  Prototype IntMap.empty
 
 let __qdbp_extend prototype name value =
   match prototype with
-  | Prototype map -> Prototype (StringMap.add name value map)
+  | Prototype map -> Prototype (IntMap.add name value map)
   | _ -> failwith "INTERNAL ERROR: __qdbp_extend called on non-prototype"
 
 let __qdbp_tagged_object tag value =
@@ -38,11 +38,11 @@ let __qdbp_method_invocation receiver name arg =
   | Prototype map ->
     begin
     try
-      (StringMap.find name map) arg
+      (IntMap.find name map) arg
     with Not_found ->
       failwith 
-      ("INTERNAL ERROR: method " ^ name ^ " not found. The available methods are: " ^
-      (String.concat ", " (StringMap.fold (fun k _ acc -> k :: acc) map [])))
+      ("INTERNAL ERROR: method with label " ^ (string_of_int name) ^ " not found. The available methods are: " ^
+      (String.concat ", " (IntMap.fold (fun k _ acc -> (string_of_int k) :: acc) map [])))
     end
   | _ -> failwith "INTERNAL ERROR: __qdbp_method_invocation called on non-prototype"
 
@@ -53,8 +53,8 @@ let __qdbp_pattern_match value cases =
     meth [value]
   | _ -> failwith "INTERNAL ERROR: __qdbp_pattern_match called on non-tagged object"
 
-let __qdbp_true = TaggedObject ("True", __qdbp_empty_prototype)
-let __qdbp_false = TaggedObject ("False", __qdbp_empty_prototype)
+let __qdbp_true = TaggedObject (1, __qdbp_empty_prototype)
+let __qdbp_false = TaggedObject (0, __qdbp_empty_prototype)
 
 let __qdbp_make_binary_int_op_int op =
   fun x y ->

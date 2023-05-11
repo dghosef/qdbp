@@ -54,9 +54,10 @@ let str_of_locs ((loc1: Lexing.position), (loc2: Lexing.position)) files =
         line_list in
     String.concat "\n" line_list
 
-let compile_error msg locs files =
+let compile_error msg (locs: Lexing.position * Lexing.position) files =
   abort (
     "Compile Error:" ^ "\n" ^ 
     msg ^ "\n\n" ^
+    ((fst locs).pos_fname) ^ ":\n" ^
     (str_of_locs locs files)
   )

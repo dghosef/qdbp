@@ -32,9 +32,9 @@ let codegen_ml ast =
     | `PrototypeCopy (ext, ((name, _), meth, _), _, _, _) -> 
       let meth = codegen_method meth in
       let ext = codegen_ml ext in
-      paren ("__qdbp_extend " ^ ext ^ " " ^ (quoted name) ^ " " ^ meth)
+      paren ("__qdbp_extend " ^ ext ^ " " ^ (string_of_int name) ^ " " ^ meth)
     | `TaggedObject ((tag, _), value, _, _) -> 
-      paren ("__qdbp_tagged_object " ^ (quoted tag) ^ " " ^ (codegen_ml value))
+      paren ("__qdbp_tagged_object " ^ (string_of_int tag) ^ " " ^ (codegen_ml value))
     | `MethodInvocation (receiver, (name, _), args, _, _) ->
       let args = List.map (
           fun (_, value, _) -> codegen_ml value
@@ -42,7 +42,7 @@ let codegen_ml ast =
       let args_str = brace (String.concat "; " args) in
       paren ("__qdbp_method_invocation " ^
              (codegen_ml receiver) ^
-             " " ^ (quoted name) ^ " " ^ args_str)
+             " " ^ (string_of_int name) ^ " " ^ args_str)
 
     | `PatternMatch (receiver_id, cases, _, _) -> 
       let cases_methods = List.map (
@@ -53,7 +53,7 @@ let codegen_ml ast =
           cases in
       let cases_methods_strings = List.map (
           fun (tag, meth) ->
-            paren ((quoted tag) ^ ", " ^ (codegen_method meth))
+            paren ((string_of_int tag) ^ ", " ^ (codegen_method meth))
         ) cases_methods in
       let lst = brace (
           String.concat ";" cases_methods_strings
