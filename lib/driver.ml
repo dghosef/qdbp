@@ -67,12 +67,17 @@ let compile args =
   let (imports, files) = ResolveImports.build_import_map files ast in
   let ast = ResolveImports.resolve_imports imports ast in
   let tvars, ty, ast = Infer.infer files ast in
-  let ast = VarNamesToInts.names_to_ints ast in
+  let ast = NamesToInts.names_to_ints ast in
   let _, ast = FreeVariables.free_variables ast in
-  (*
   let _ = Refcount.refcount Refcount.FvSet.empty Refcount.FvSet.empty ast in
-  *)
   let ml = CodegenML.codegen_ml ast in
+  let methods, ast = CollectMethods.collect_methods ast in
+  let _ = LetBoundVariables.let_bound_variables ast in
+  let _ = CollectMethods.IntMap.map
+      ( fun (args, body, loc, fvs) ->
+          let bvs, body = LetBoundVariables.let_bound_variables body in 
+          (args, body, loc, fvs, bvs)
+      ) methods in
   let ml_output_file = match args.ml_output_file with
     | Some f -> f
     | None -> args.input_file ^ ".ml"

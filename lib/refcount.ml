@@ -19,7 +19,7 @@ let fv expr =
 
 
 let rec get_args = function
-  | `FFI_App (arg, rest) -> arg :: (get_args rest)
+  | `App (arg, rest) -> arg :: (get_args rest)
   | _ -> []
 let rec get_body = function
   | `Lambda (_,  body) -> get_body body
