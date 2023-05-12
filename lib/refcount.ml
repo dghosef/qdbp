@@ -143,14 +143,31 @@ let rec refcount delta gamma ast =
     let arg_exprs = List.tl app_args in
     let args = List.map2 (fun (name, _, loc) e -> (name, e, loc)) args arg_exprs in
     `MethodInvocation (receiver, (name, nameLoc), args, loc, fvs)
-  | `Method (args, body, loc, fvs) ->
-    let raw_args = List.map (fun (x, _) -> x) args in
-    let fst_arg, rest_args = match raw_args with
-      | [] -> (Oo.id (object end)), []
-      | x :: xs -> x, xs
-    in
-    let lambda = refcount_lambda delta gamma fst_arg rest_args body in
-    `Method (args, get_body lambda, loc, fvs)
+  | `Method (args, e, loc, ys) ->
+    (* Combine these two rules cuz some parameters are free and some aren't *)
+    (*
+    x ∈ fv(e)
+    ∅ | ys, x ⊢s e ⇝ e 
+    ys = fv(𝜆x . e)
+    Δ1 = ys − Γ
+    ________________________________________[slam]
+    Δ, Δ1 | Γ ⊢s 𝜆x . e ⇝ dup Δ1; 𝜆ys x . e 
+    *)
+    (*
+    x̸ \∈ fv(e)
+    ∅ | ys ⊢s e ⇝ e'
+    ys = fv(𝜆x . e)
+    Δ1 = ys − Γ
+    ___________________________________________________[slam-drop]
+    Δ, Δ1 | Γ ⊢s 𝜆x . e ⇝ dup Δ1; 𝜆ys x . (drop x ; e')    
+    *)
+    let arg_set = FvSet.of_list (List.map fst args) in 
+    let delta1 = FvSet.diff ys gamma in
+    let e' = refcount FvSet.empty (FvSet.union ys arg_set) e in
+    assert (FvSet.subset delta1 delta);
+    let drops = FvSet.diff arg_set (fv e) in
+    let e' = FvSet.fold (fun v e -> `Drop (v, e)) drops e' in
+    (`Method (args, e', loc, ys, delta1))
 
   | `PrototypeCopy (ext, ((name, nameLoc), meth, fieldLoc), loc, op, fvs) ->
     let app = refcount_app delta gamma ext [`Method meth] `Dispatch in
@@ -160,55 +177,16 @@ let rec refcount delta gamma ast =
     begin
       match meth with
       | `Method meth ->
-        `PrototypeCopy (ext, ((name, nameLoc), meth, fieldLoc), loc, op, fvs)
+        let (args, body, methLoc, methFvs, dups) = meth in
+        let meth = (args, body, methLoc, methFvs) in
+        let result = `PrototypeCopy (ext, ((name, nameLoc), meth, fieldLoc), loc, op, fvs) in
+        FvSet.fold (fun v e -> `Dup(v, e)) dups result
+
       | _ -> Error.internal_error "refcount: prototype copy"
     end
 
 
 
-and refcount_lambda delta gamma x rest_args body =
-  ignore delta;
-  let refcount_e delta gamma =
-    match rest_args with
-    | [] ->
-      let e' = refcount delta gamma body in
-      `Lambda (x, e')
-    | y :: rest_args ->
-      refcount_lambda delta gamma y rest_args body in
-  let fv_e = FvSet.diff (fv body) (FvSet.of_list (rest_args)) in 
-  (*
-  x ∈ fv(e)
-  ∅ | ys, x ⊢s e ⇝ e 
-  ys = fv(𝜆x . e)
-  Δ1 = ys − Γ
-  ________________________________________[slam]
-  Δ, Δ1 | Γ ⊢s 𝜆x . e ⇝ dup Δ1; 𝜆ys x . e 
-  *)
-  if FvSet.mem x fv_e then
-    begin
-      let ys = FvSet.remove x fv_e in
-      let delta1 = FvSet.diff ys gamma in
-      assert (FvSet.subset delta1 delta);
-      let e' = refcount_e FvSet.empty (FvSet.add x ys) in
-      FvSet.fold (fun v expr -> `Dup (v, expr)) delta1 (`Lambda ((x, e')))
-    end
-  else if (not (FvSet.mem x fv_e)) then
-      (*
-      x̸ \∈ fv(e)
-      ∅ | ys ⊢s e ⇝ e'
-      ys = fv(𝜆x . e)
-      Δ1 = ys − Γ
-      ___________________________________________________[slam-drop]
-      Δ, Δ1 | Γ ⊢s 𝜆x . e ⇝ dup Δ1; 𝜆ys x . (drop x ; e')    
-      *)
-    begin
-      let ys = fv_e in 
-      let delta1 = FvSet.diff ys gamma in 
-      assert (FvSet.subset delta1 delta);
-      let e' = refcount_e FvSet.empty ys in 
-      FvSet.fold (fun v e -> `Dup (v, e)) delta1 (`Lambda (x, (`Drop (x, e'))))
-    end
-  else Error.internal_error "refcount: lambda"
 and refcount_app delta gamma e1 rest_args body =
   (*
   Δ, Γ2 | Γ − Γ2 ⊢s e1 ⇝ e1'

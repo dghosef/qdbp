@@ -71,7 +71,7 @@ let rec expr_to_c level expr =
     )
   | `Drop (v, e) -> c_call "DROP" [(varname v); (expr_to_c (level + 1) e)]
   | `Dup (v, e) -> c_call "DUP" [(varname v); (expr_to_c (level + 1) e)]
-  | `EmptyPrototype _ -> "&empty_prototype"
+  | `EmptyPrototype _ -> "empty_prototype()"
   | `ExternalCall (fn, args, _, _, _) ->
     c_call (fst fn) (List.map (expr_to_c (level + 1)) args)
 
@@ -111,7 +111,7 @@ let rec expr_to_c level expr =
       | `Replace ->
         "replace"
     in
-    let code_ptr = method_name meth_id in 
+    let code_ptr = "(void*)" ^ (method_name meth_id) in 
     let fv_list = List.map varname (FvSet.elements meth_fvs) in
     let captures_c =
       if (List.length fv_list) > 0 then
@@ -145,11 +145,10 @@ let fn_definitions methods =
     let bvs_declarations = List.map declare (VarSet.elements bvs) in
     let fvs_initializations = List.mapi init_fv (FvSet.elements fvs) in
     (fn_sig id args) ^ " " ^ (bracket ( "\n" ^
-                                        (String.concat "\n" bvs_declarations) ^ "\n" ^
-                                        (String.concat "\n" fvs_initializations) ^ "\n" ^
+                                        (String.concat "\n" (List.append bvs_declarations fvs_initializations)) ^ "\n" ^
                                         newline 1 ^ "tag_t tag; qdbp_object_ptr payload;" ^
                                         newline 1 ^ ("return ") ^
-                                        (expr_to_c 1 body) ^ ";"))
+                                        (expr_to_c 1 body) ^ ";\n"))
   in
   let method_strs = List.map fn_definition (IntMap.bindings methods) in
   String.concat "\n" method_strs

@@ -36,10 +36,6 @@ is_float := {that|
       new_val := $qdbp_float_div_float(this Val. is_float! (that Val).)
       {this Val[new_val]}
     ]
-    %[that|
-      new_val := $qdbp_float_mod_float(this Val. is_float! (that Val).)
-      {this Val[new_val]}
-    ]
     =[that|
       $qdbp_float_eq_bool(this Val. is_float! (that Val).)
     ]
