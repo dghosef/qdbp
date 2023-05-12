@@ -1,0 +1,48 @@
+zero := {
+  Val[#Zero{}]
+  ++[
+    new_val := #Succ this Val.
+    {this Val[new_val]}
+  ]
+  --[
+    new_val :=
+      this Val.
+        Zero? [ABORT.]
+        Succ? [n| n].
+    {this Val[new_val]}
+  ]
+  +[that|
+    add := {a b|
+      b
+        Zero? [a]
+        Succ? [n| 
+          this! a: #Succ a b: n.
+        ].
+    }
+    new_val := add! a: (this Val) b: (that Val).
+    {this Val[new_val]}
+  ]
+  -[that|
+    sub := {a b|
+      b
+        Zero? [a]
+        Succ? [n| 
+          a
+            Zero? [ABORT.]
+            Succ? [m| 
+              this! a: m b: n.
+            ].
+        ].
+    }
+    new_val := sub! a: (this Val) b: (that Val).
+    {this Val[new_val]}
+  ]
+}
+zero := zero + zero.
+one := zero++.
+two := one + one.
+three := two + one.
+four := three + one.
+seven := four + three.
+three := seven - four.
+zero
