@@ -46,9 +46,9 @@ let collect_methods ast =
       methods, `TaggedObject (tag, value, loc, fvs)
     | `PrototypeCopy (ext, (tag, meth, fieldLoc), loc, op, fvs) ->
       let methods, ext = collect_methods methods ext in 
-      let (args, body, methLoc, methFvs) = meth in 
+      let (args, body, methLoc, meth_fvs) = meth in 
       let methods, body = collect_methods methods body in
       let method_id = Oo.id (object end) in
-      let methods = IntMap.add method_id (args, body, methLoc, methFvs) methods in
-      methods, `PrototypeCopy (ext, (tag, method_id, fieldLoc), loc, op, fvs)
+      let methods = IntMap.add method_id (args, body, methLoc, meth_fvs) methods in
+      methods, `PrototypeCopy (ext, (tag, (method_id, meth_fvs), fieldLoc), loc, op, fvs)
   in collect_methods IntMap.empty ast

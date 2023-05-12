@@ -1,9 +1,11 @@
 // This file gets included first in every qdbp progrram
+// FIXME: Have record literals include label names
 #ifndef QDBP_RUNTIME_H
 #define QDBP_RUNTIME_H
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 /*
@@ -12,36 +14,36 @@
     ====================================================
 */
 // FIXME: All identifiers should start with __qdbp
-// FIXME: Add more typedefs?
-// FIXME: Assert all refcounts are 0 at end
-// FIXME: Pass by pointer more
+// FIXME: Clean all the adding to the list up
+typedef uint64_t label_t;
+typedef uint64_t tag_t;
+typedef int64_t refcount_t;
 struct qdbp_object;
 struct qdbp_method {
-  struct qdbp_object *captures;
-  uint64_t captures_size;
+  struct qdbp_object **captures;
+  size_t captures_size;
   void *code; // We don't know how many args so stay as a void* for now
 };
 struct qdbp_field {
-  uint64_t label;
+  label_t label;
   struct qdbp_method method;
 };
 
 struct qdbp_prototype {
-  uint64_t size;
+  size_t size;
   struct qdbp_field *fields;
 };
 
 struct qdbp_variant {
-  uint64_t label;
+  tag_t tag;
   struct qdbp_object *value;
 };
 
 union qdbp_object_data {
+  struct qdbp_prototype prototype;
   int64_t i;
   double f;
-  // FIXME: Unicode support
   char *s;
-  struct qdbp_prototype prototype;
   struct qdbp_variant variant;
 };
 
@@ -54,16 +56,55 @@ enum qdbp_object_kind {
 };
 
 struct qdbp_object {
-  int64_t refcount;
+  refcount_t refcount;
   enum qdbp_object_kind kind;
   union qdbp_object_data data;
 };
 typedef struct qdbp_object *qdbp_object_ptr;
+typedef struct qdbp_object **qdbp_object_arr;
 typedef struct qdbp_variant *qdbp_variant_ptr;
 typedef struct qdbp_prototype *qdbp_prototype_ptr;
 typedef struct qdbp_method *qdbp_method_ptr;
 typedef struct qdbp_field *qdbp_field_ptr;
+/*
+====================================================
+Basic Utilities
+====================================================
+*/
+void *qdbp_malloc(size_t size) { return malloc(size); }
+void qdbp_memcpy(void *dest, const void *src, size_t size) {
+  memcpy(dest, src, size);
+}
+// Keep track of objects for testing
+struct object_list_node {
+  qdbp_object_ptr obj;
+  struct object_list_node *next;
+};
+struct object_list_node *object_list = NULL;
+void print_refcounts() {
+  struct object_list_node *node = object_list;
+  while (node) {
+    refcount_t refcount = node->obj->refcount;
+    if (refcount > 0) {
+      printf("Error: refcount of %p is %lld\n", node->obj, refcount);
+    }
+    node = node->next;
+  }
+}
+qdbp_object_ptr make_object() {
+  qdbp_object_ptr new_obj =
+      (qdbp_object_ptr)qdbp_malloc(sizeof(struct qdbp_object));
+  // add new_obj to object_list
+  struct object_list_node *new_obj_list =
+      (struct object_list_node *)qdbp_malloc(sizeof(struct object_list_node));
+  new_obj_list->obj = new_obj;
+  new_obj_list->next = object_list;
+  object_list = new_obj_list;
+  return new_obj;
+}
 
+struct qdbp_object empty_prototype = {1, QDBP_PROTOTYPE,
+                                      (struct qdbp_prototype){0, NULL}};
 /*
     ====================================================
     Reference Counting Functions
@@ -76,23 +117,46 @@ void drop_variant(qdbp_variant_ptr variant);
 void drop(qdbp_object_ptr obj);
 
 void drop_prototype(qdbp_prototype_ptr proto) {
-  for (uint64_t i = 0; i < proto->size; i++) {
+  assert(proto);
+  for (size_t i = 0; i < proto->size; i++) {
+    assert(proto->fields);
     drop_method(&(proto->fields[i].method));
   }
 }
 
-void drop_variant(qdbp_variant_ptr variant) { drop(variant->value); }
+void drop_variant(qdbp_variant_ptr variant) {
+  assert(variant);
+  drop(variant->value);
+}
 
+// Be careful about dropping captures
 void drop_method(qdbp_method_ptr method) {
+  assert(method);
   for (int i = 0; i < method->captures_size; i++) {
-    drop(&(method->captures[i]));
+    drop((method->captures[i]));
   }
 }
 
+#define assert_refcount(obj)                                                   \
+  do {                                                                         \
+    assert((obj));                                                             \
+    if ((obj)->refcount <= 0) {                                                \
+      printf("refcount of %lld\n", (obj)->refcount);                           \
+      assert(false);                                                           \
+    };                                                                         \
+  } while (0);
+#define assert_obj_kind(obj, k)                                                \
+  assert_refcount(obj);                                                        \
+  assert((obj)->kind == k);
 void drop(qdbp_object_ptr obj) {
-  assert(obj->refcount > 0);
+  // The empty prototype never gets dropped so it can stay as a template
+  // for future prototypes
+  if (obj == &empty_prototype) {
+    return;
+  }
+  assert_refcount(obj);
   obj->refcount--;
-  if (obj->refcount == 0) {
+  if (obj->refcount <= 0) {
     switch (obj->kind) {
     case QDBP_INT:
     case QDBP_FLOAT:
@@ -100,49 +164,59 @@ void drop(qdbp_object_ptr obj) {
       break;
     case QDBP_PROTOTYPE:
       drop_prototype(&(obj->data.prototype));
+      break;
     case QDBP_VARIANT:
       drop_variant(&(obj->data.variant));
+      break;
     }
   }
 }
 
 void dup(qdbp_object_ptr obj) {
-  assert(obj->refcount > 0);
+  assert_refcount(obj);
   obj->refcount++;
 }
 
 void dup_captures(qdbp_method_ptr method) {
   for (int i = 0; i < method->captures_size; i++) {
-    dup(&(method->captures[i]));
+    dup((method->captures[i]));
   }
 }
 
-/*
-    ====================================================
-    Standard Memory Utilities
-    ====================================================
-*/
-void *qdbp_malloc(uint64_t size) { return malloc(size); }
-void qdbp_memcpy(void *dest, const void *src, uint64_t size) {
-  memcpy(dest, src, size);
+void dup_prototype_captures(qdbp_prototype_ptr proto) {
+  for (size_t i = 0; i < proto->size; i++) {
+    dup_captures(&(proto->fields[i].method));
+  }
+}
+void dup_prototype_captures_except(qdbp_prototype_ptr proto, label_t except) {
+  for (size_t i = 0; i < proto->size; i++) {
+    if (proto->fields[i].label != except) {
+      dup_captures(&(proto->fields[i].method));
+    }
+  }
 }
 /*
     ====================================================
     Prototype Utilities
     ====================================================
 */
-uint64_t prototype_get(const qdbp_prototype_ptr proto, uint64_t label) {
-  for (uint64_t i = 0; i < proto->size; i++) {
+
+size_t prototype_get(const qdbp_prototype_ptr proto, label_t label) {
+  for (size_t i = 0; i < proto->size; i++) {
     if (proto->fields[i].label == label) {
       return i;
     }
   }
+  printf("Label %llu not found in prototype\n", label);
+  for (size_t i = 0; i < proto->size; i++) {
+    printf("Label %llu found\n", proto->fields[i].label);
+  }
   assert(false);
 }
 
-// FIXME: These should just return prototypes not prototype ptrs
 struct qdbp_prototype raw_prototype_replace(const qdbp_prototype_ptr src,
                                             const qdbp_field_ptr new_field) {
+  assert(src->size > 0);
   // copy src
   qdbp_field_ptr new_fields =
       (qdbp_field_ptr)qdbp_malloc(sizeof(struct qdbp_field) * src->size);
@@ -166,22 +240,13 @@ struct qdbp_prototype raw_prototype_extend(const qdbp_prototype_ptr src,
   return new_prototype;
 }
 
-void dup_prototype_captures(qdbp_prototype_ptr proto) {
-  for (uint64_t i = 0; i < proto->size; i++) {
-    dup_captures(&(proto->fields[i].method));
-  }
-}
-void dup_prototype_captures_except(qdbp_prototype_ptr proto, uint64_t except) {
-  for (uint64_t i = 0; i < proto->size; i++) {
-    if (i != except) {
-      dup_captures(&(proto->fields[i].method));
-    }
-  }
-}
 /*
     ==========================================================
     Object Utilities. See Fig 7 of the perceus refcount paper
     ==========================================================
+    The basic theory is that every function "owns" each of its args
+    When the function returns, either the arg is returned(or an object that points
+    to it is returned) or the arg is dropped.
 */
 
 /* Prototype Invoke
@@ -192,14 +257,19 @@ void dup_prototype_captures_except(qdbp_prototype_ptr proto, uint64_t except) {
   - drop the prototype
   - call the code ptr
 */
-#define QDBP_INVOKE(object, label, args, method_type)                          \
-  (assert((object)->kind == QDBP_PROTOTYPE), assert((object)->refcount > 0),   \
-   qdbp_prototype_ptr prototype = &((object)->data.prototype),                 \
-   uint64_t method_index = prototype_get(prototype, (label)),                  \
-   qdbp_method_ptr method = &(prototype->fields[method_index].method),         \
-   dup_captures(method), method_type code_ptr = (method_type)method->code,     \
-   drop(object),                                                               \
-   code_ptr args QDBP_INVOKE((qdbp_object_ptr)NULL, 0, (), (*)(int)))
+qdbp_object_arr get_method(qdbp_object_ptr obj, label_t label,
+                           void **code_ptr /*output param*/) {
+  assert_obj_kind(obj, QDBP_PROTOTYPE);
+  struct qdbp_prototype prototype = (obj->data.prototype);
+  size_t idx = prototype_get(&prototype, label);
+  struct qdbp_method m = prototype.fields[idx].method;
+  dup_captures(&m);
+  *code_ptr = m.code;
+  qdbp_object_arr ret = m.captures;
+  drop(obj);
+  return ret;
+}
+
 /* Prototype Extension
 `extend prototype label method`
   - Do the prototype extension
@@ -207,12 +277,25 @@ void dup_prototype_captures_except(qdbp_prototype_ptr proto, uint64_t except) {
   - Dup all the captures
   - Drop the old prototype
 */
-qdbp_object_ptr extend(qdbp_object_ptr obj, const qdbp_field_ptr f) {
-  assert(obj->kind == QDBP_PROTOTYPE);
-  assert(obj->refcount > 0);
+qdbp_object_arr make_captures(qdbp_object_arr captures, size_t size) {
+  if (size == 0) {
+    return NULL;
+  } else {
+    qdbp_object_arr out =
+        (qdbp_object_arr)qdbp_malloc(sizeof(struct qdbp_object*) * size);
+    qdbp_memcpy(out, captures, sizeof(struct qdbp_object*) * size);
+    return out;
+  }
+}
+
+qdbp_object_ptr extend(qdbp_object_ptr obj, label_t label, void *code,
+                       qdbp_object_arr captures, size_t captures_size) {
+  struct qdbp_field f = {
+      label, {make_captures(captures, captures_size), captures_size, code}};
+  assert_obj_kind(obj, QDBP_PROTOTYPE);
   qdbp_prototype_ptr prototype = &(obj->data.prototype);
-  struct qdbp_prototype new_prototype = raw_prototype_extend(prototype, f);
-  qdbp_object_ptr new_obj = (qdbp_object_ptr)qdbp_malloc(sizeof(struct qdbp_object));
+  struct qdbp_prototype new_prototype = raw_prototype_extend(prototype, &f);
+  qdbp_object_ptr new_obj = make_object();
   new_obj->kind = QDBP_PROTOTYPE;
   new_obj->refcount = 1;
   new_obj->data.prototype = new_prototype;
@@ -227,16 +310,20 @@ Identical to above except we don't dup captures of new method
   - dup all the shared captures between the old and new prototype
   - drop prototype
 */
-qdbp_object_ptr replace(qdbp_object_ptr obj, const qdbp_field_ptr f) {
-  assert(obj->kind == QDBP_PROTOTYPE);
-  assert(obj->refcount > 0);
+qdbp_object_ptr replace(qdbp_object_ptr obj, label_t label, void *code,
+                        qdbp_object_arr captures, size_t captures_size) {
+  assert_obj_kind(obj, QDBP_PROTOTYPE);
+  struct qdbp_field f = {
+      label, {make_captures(captures, captures_size), captures_size, code}};
   struct qdbp_prototype new_prototype =
-      raw_prototype_replace(&(obj->data.prototype), f);
-  dup_prototype_captures_except(&(obj->data.prototype), f->label);
-  qdbp_object_ptr new_obj = (qdbp_object_ptr)qdbp_malloc(sizeof(struct qdbp_object));
+      raw_prototype_replace(&(obj->data.prototype), &f);
+  dup_prototype_captures_except(&(obj->data.prototype), f.label);
+
+  qdbp_object_ptr new_obj = make_object();
   new_obj->kind = QDBP_PROTOTYPE;
   new_obj->refcount = 1;
   new_obj->data.prototype = new_prototype;
+
   drop(obj);
   return new_obj;
 }
@@ -244,12 +331,12 @@ qdbp_object_ptr replace(qdbp_object_ptr obj, const qdbp_field_ptr f) {
 `variant label value`
   - create a new variant w/ refcount 1 in the heap
 */
-qdbp_object_ptr variant_create(uint64_t label, qdbp_object_ptr value) {
-  assert(value->refcount > 0);
-  qdbp_object_ptr new_obj = (qdbp_object_ptr)qdbp_malloc(sizeof(struct qdbp_object));
+qdbp_object_ptr variant_create(tag_t tag, qdbp_object_ptr value) {
+  assert_refcount(value);
+  qdbp_object_ptr new_obj = make_object();
   new_obj->kind = QDBP_VARIANT;
   new_obj->refcount = 1;
-  new_obj->data.variant.label = label;
+  new_obj->data.variant.tag = tag;
   new_obj->data.variant.value = value;
   return new_obj;
 }
@@ -258,17 +345,47 @@ qdbp_object_ptr variant_create(uint64_t label, qdbp_object_ptr value) {
   - drop the variant
   - execute the variant stuff
 */
-qdbp_object_ptr decompose_variant(qdbp_object_ptr obj, uint64_t *label) {
-  assert(obj->kind == QDBP_VARIANT);
-  assert(obj->refcount > 0);
+void decompose_variant(qdbp_object_ptr obj, tag_t *tag,
+                       qdbp_object_ptr *payload) {
+  assert_obj_kind(obj, QDBP_VARIANT);
   qdbp_object_ptr value = obj->data.variant.value;
-  *label = obj->data.variant.label;
+  *tag = obj->data.variant.tag;
   dup(value);
   drop(obj);
-  return value;
+  // return value, tag
+  *payload = value;
 }
 
-// Let expression. Assumes that lhs has been declared already
-#define LET(lhs, rhs, in) (lhs = (rhs), (in))
+// Macros/Fns for the various kinds of expressions
+#define DROP(v, expr) (drop(v), (expr))
+#define DUP(v, expr) (dup(v), (expr))
+#define LET(lhs, rhs, in)                                                      \
+  ((lhs = (rhs)), (in)) // assume lhs has been declared already
+#define MATCH(tag1, tag2, arg, ifmatch, ifnomatch)                             \
+  ((tag1) == (tag2) ? (LET(arg, payload, ifmatch)) : (ifnomatch))
+qdbp_object_ptr match_failed() { assert(false); }
+
+qdbp_object_ptr qdbp_int(int64_t i) {
+  qdbp_object_ptr new_obj = make_object();
+  new_obj->kind = QDBP_INT;
+  new_obj->refcount = 1;
+  new_obj->data.i = i;
+  return new_obj;
+}
+
+qdbp_object_ptr qdbp_string(char *s) {
+  qdbp_object_ptr new_obj = make_object();
+  new_obj->kind = QDBP_STRING;
+  new_obj->refcount = 1;
+  new_obj->data.s = s;
+  return new_obj;
+}
+
+qdbp_object_ptr qdbp_float(double f) {
+  qdbp_object_ptr new_obj = make_object();
+  new_obj->kind = QDBP_FLOAT;
+  new_obj->refcount = 1;
+  new_obj->data.f = f;
+  return new_obj;
+}
 #endif
-int main() {}

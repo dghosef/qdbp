@@ -39,6 +39,7 @@ let rec let_bound_variables ast =
       fun bvs (tag, (arg, body, patternLoc), loc) ->
         let bvs', body = let_bound_variables body in
         let bvs'' = VarSet.union bvs bvs' in
+        let bvs'' = VarSet.add (fst arg) bvs'' in
         bvs'', (tag, (arg, body, patternLoc), loc)
     ) VarSet.empty cases in
     bvs, `PatternMatch (v, cases, loc, fvs, bvs)

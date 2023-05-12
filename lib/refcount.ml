@@ -109,6 +109,7 @@ let rec refcount delta gamma ast =
     `EmptyPrototype loc
   | `PatternMatch (x, cases, loc, fvs) ->
     assert (FvSet.mem x gamma);
+    let gamma = FvSet.remove x gamma in
     let cases = List.map (
         fun ((name, nameLoc), ((bv_pi, bv_pi_loc), ei, methLoc), loc) ->
           (*
