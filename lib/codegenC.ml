@@ -101,7 +101,7 @@ let rec expr_to_c level expr =
     in
 
     paren ((c_call "decompose_variant" [(varname v); "&tag"; "&payload"]) ^ "," ^ (newline level)^
-    cases_to_c level cases)
+           cases_to_c level cases)
   | `PrototypeCopy (ext, ((label, _), (meth_id, meth_fvs), _), _, op, _, _) ->
     let ext_c = expr_to_c (level + 1) ext in
     let label_c = string_of_int label in
@@ -142,11 +142,16 @@ let fn_definitions methods =
       "qdbp_object_ptr " ^ (varname id) ^
       " = (captures" ^ (brace (string_of_int idx)) ^ ");"
     in
+    let receiver_drop = match args with
+      | v :: _ -> (newline 1) ^ "drop(" ^ (varname (fst v)) ^ ");"
+      | [] -> ""
+    in
     let bvs_declarations = List.map declare (VarSet.elements bvs) in
     let fvs_initializations = List.mapi init_fv (FvSet.elements fvs) in
     (fn_sig id args) ^ " " ^ (bracket ( "\n" ^
                                         (String.concat "\n" (List.append bvs_declarations fvs_initializations)) ^ "\n" ^
                                         newline 1 ^ "tag_t tag; qdbp_object_ptr payload;" ^
+                                        receiver_drop ^
                                         newline 1 ^ ("return ") ^
                                         (expr_to_c 1 body) ^ ";\n"))
   in
@@ -162,4 +167,4 @@ let codegen_c methods main_method_id =
   invoke_fns methods ^ "\n" ^
   fn_declarations methods ^ "\n" ^
   fn_definitions methods ^ "\n" ^
-  "int main() {qdbp_object_ptr result = " ^ main_method ^ "(NULL); drop(result); print_refcounts(); return 0;}"
+  "int main() {qdbp_object_ptr result = " ^ main_method ^ "(NULL); drop(result); check_mem(); return 0;}"
