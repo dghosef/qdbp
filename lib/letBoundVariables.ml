@@ -3,12 +3,12 @@ module VarSet = Set.Make(struct type t = int let compare = compare end)
 let rec let_bound_variables ast =
   match ast with
   | `Abort a -> VarSet.empty, `Abort a
-  | `Declaration (lhs, rhs, body, loc, fvs) ->
+  | `Declaration (lhs, rhs, body, loc) ->
     let bvs, rhs = let_bound_variables rhs in
     let bvs', body = let_bound_variables body in
     let bvs'' = VarSet.union bvs bvs' in
     let bvs'' = VarSet.add (fst lhs) bvs'' in
-    bvs'', `Declaration (lhs, rhs, body, loc, fvs, bvs'')
+    bvs'', `Declaration (lhs, rhs, body, loc, bvs'')
   | `VariableLookup v ->
     VarSet.empty, `VariableLookup v
   | `EmptyPrototype e ->
@@ -19,7 +19,7 @@ let rec let_bound_variables ast =
     VarSet.empty, `IntLiteral i
   | `FloatLiteral f ->
     VarSet.empty, `FloatLiteral f
-  | `MethodInvocation (receiver, label, args, loc, fvs) ->
+  | `MethodInvocation (receiver, label, args, loc) ->
     let bvs, receiver = let_bound_variables receiver in
     let bvs', args = List.fold_left_map (
       fun bvs (name, expr, loc) ->
@@ -27,14 +27,14 @@ let rec let_bound_variables ast =
         VarSet.union bvs bvs', (name, expr, loc)
     ) bvs args in
     let bvs'' = VarSet.union bvs bvs' in
-    bvs'', `MethodInvocation (receiver, label, args, loc, fvs, bvs'')
+    bvs'', `MethodInvocation (receiver, label, args, loc, bvs'')
   | `Drop (v, value) ->
     let bvs, value = let_bound_variables value in
     bvs, `Drop (v, value)
   | `Dup (v, value) ->
     let bvs, value = let_bound_variables value in
     bvs, `Dup (v, value)
-  | `PatternMatch (v, cases, loc, fvs) ->
+  | `PatternMatch (v, cases, loc) ->
     let bvs, cases = List.fold_left_map (
       fun bvs (tag, (arg, body, patternLoc), loc) ->
         let bvs', body = let_bound_variables body in
@@ -42,19 +42,19 @@ let rec let_bound_variables ast =
         let bvs'' = VarSet.add (fst arg) bvs'' in
         bvs'', (tag, (arg, body, patternLoc), loc)
     ) VarSet.empty cases in
-    bvs, `PatternMatch (v, cases, loc, fvs, bvs)
-  | `PrototypeCopy (ext, (tag, meth, fieldLoc), loc, op, fvs) ->
+    bvs, `PatternMatch (v, cases, loc, bvs)
+  | `PrototypeCopy (ext, (tag, meth, fieldLoc), loc, op) ->
     let bvs, ext = let_bound_variables ext in
-    bvs, `PrototypeCopy (ext, (tag, meth, fieldLoc), loc, op, fvs, bvs)
-  | `TaggedObject (tag, value, loc, fvs) ->
+    bvs, `PrototypeCopy (ext, (tag, meth, fieldLoc), loc, op, bvs)
+  | `TaggedObject (tag, value, loc) ->
     let bvs, value = let_bound_variables value in
-    bvs, `TaggedObject (tag, value, loc, fvs, bvs)
-  | `ExternalCall (fn, args, loc, fvs) ->
+    bvs, `TaggedObject (tag, value, loc, bvs)
+  | `ExternalCall (fn, args, loc) ->
     let bvs, args = List.fold_left_map (
       fun bvs arg ->
         let bvs', arg = let_bound_variables arg in
         VarSet.union bvs bvs', arg
     ) VarSet.empty args in
-    bvs, `ExternalCall (fn, args, loc, fvs, bvs)
+    bvs, `ExternalCall (fn, args, loc, bvs)
 
 

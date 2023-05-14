@@ -62,7 +62,7 @@ let c_call fn args =
 let rec expr_to_c level expr =
   match expr with
   | `Abort _ -> "qdbp_abort()"
-  | `Declaration (lhs, rhs, body, _, _, _) ->
+  | `Declaration (lhs, rhs, body, _, _) ->
     let body_c = expr_to_c (level + 1) body in
     let rhs_c = expr_to_c (level + 1) rhs in
     "LET" ^ paren(
@@ -72,7 +72,7 @@ let rec expr_to_c level expr =
   | `Drop (v, e) -> c_call "DROP" [(varname v); (expr_to_c (level + 1) e)]
   | `Dup (v, e) -> c_call "DUP" [(varname v); (expr_to_c (level + 1) e)]
   | `EmptyPrototype _ -> "empty_prototype()"
-  | `ExternalCall (fn, args, _, _, _) ->
+  | `ExternalCall (fn, args, _, _) ->
     c_call (fst fn) (List.map (expr_to_c (level + 1)) args)
 
   | `FloatLiteral (f, _) -> c_call "qdbp_float" [string_of_float f]
@@ -80,13 +80,13 @@ let rec expr_to_c level expr =
   (* FIXME: *)
   | `StringLiteral (s, _) -> c_call "qdbp_string" [quoted s]
 
-  | `MethodInvocation (receiver, label, args, _, _, _) ->
+  | `MethodInvocation (receiver, label, args, _, _) ->
     let args_c = List.map (fun (_, e, _) -> expr_to_c (level + 1) e) args in
     let label_c = string_of_int (fst label) in
     let receiver_c = expr_to_c (level + 1) receiver in
     c_call (invoke_fn_name (List.length args))
       (receiver_c :: label_c :: args_c)
-  | `PatternMatch (v, cases, _, _, _) ->
+  | `PatternMatch (v, cases, _, _) ->
     let rec cases_to_c level cases =
       match cases with
       | [] -> "match_failed()"
@@ -102,7 +102,7 @@ let rec expr_to_c level expr =
 
     paren ((c_call "decompose_variant" [(varname v); "&tag"; "&payload"]) ^ "," ^ (newline level)^
            cases_to_c level cases)
-  | `PrototypeCopy (ext, ((label, _), (meth_id, meth_fvs), _), _, op, _, _) ->
+  | `PrototypeCopy (ext, ((label, _), (meth_id, meth_fvs), _), _, op, _) ->
     let ext_c = expr_to_c (level + 1) ext in
     let label_c = string_of_int label in
     let fn = match op with
@@ -125,12 +125,12 @@ let rec expr_to_c level expr =
       captures_c;
       string_of_int (List.length fv_list)
     ]
-  | `TaggedObject ((tag, _), value, _, _, _) ->
+  | `TaggedObject ((tag, _), value, _, _) ->
     c_call "variant_create" [
       (string_of_int tag);
       expr_to_c (level + 1) value
     ]
-  | `VariableLookup (v, _, _) ->
+  | `VariableLookup (v, _) ->
     varname v
 
 let fn_definitions methods =

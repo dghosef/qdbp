@@ -1,11 +1,14 @@
 #ifndef QDBP_BASIC_FNS
 #define QDBP_BASIC_FNS
-// The drawback of using perceus reference counting is that all FFI called
-// functions must be very careful with memory usage. In particular, the
-// invariant that MUST be maintained is that all args must either be dropped
-// or returned to the caller. They cannot be modified other than with the drop
-// fn. To simplify, we always drop all args and return newly created
-// objects(with refcount=1)
+/*
+Every function that qdbp calls must follow the following rules:
+- Type of return value must be `qdbp_object_ptr`
+- All arguments must have type `qdbp_object_ptr`
+- For each argument `a`, either
+  - The return value has 0 references to `a` and `a` is dropped
+  - The return value has `n` references to `a` and `dup` is called on `a` `n - 1` times
+*/
+
 
 #include "runtime.h"
 #include <math.h>

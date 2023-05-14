@@ -72,6 +72,7 @@ let compile args =
   let fvs, ast = FreeVariables.free_variables ast in
   let ml = CodegenML.codegen_ml ast in
   let ast = Refcount.refcount Refcount.FvSet.empty Refcount.FvSet.empty ast in
+  let ast = Anf.anf ast (fun x -> x) in
   let methods, ast = CollectMethods.collect_methods ast in
   let bvs, ast = LetBoundVariables.let_bound_variables ast in
   let methods = CollectMethods.IntMap.map
