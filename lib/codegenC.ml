@@ -69,8 +69,8 @@ let rec expr_to_c level expr =
       (varname (fst lhs)) ^ ", " ^ rhs_c ^ "," ^
       (newline (level + 1)) ^ body_c
     )
-  | `Drop (v, e) -> c_call "DROP" [(varname v); (expr_to_c (level + 1) e)]
-  | `Dup (v, e) -> c_call "DUP" [(varname v); (expr_to_c (level + 1) e)]
+  | `Drop (v, e, cnt) -> c_call "DROP" [(varname v); string_of_int cnt; (expr_to_c (level + 1) e);]
+  | `Dup (v, e, cnt) -> c_call "DUP" [(varname v); string_of_int cnt; (expr_to_c (level + 1) e);]
   | `EmptyPrototype _ -> "empty_prototype()"
   | `ExternalCall (fn, args, _, _) ->
     c_call (fst fn) (List.map (expr_to_c (level + 1)) args)
@@ -142,8 +142,10 @@ let fn_definitions methods =
       "qdbp_object_ptr " ^ (varname id) ^
       " = (captures" ^ (brace (string_of_int idx)) ^ ");"
     in
-    let receiver_drop = match args with
-      | v :: _ -> (newline 1) ^ "drop(" ^ (varname (fst v)) ^ ");"
+    (* Naively, we dup the first arg at callsite then drop it here *)
+    (* Instead, omit both operations *)
+    let _ = match args with
+      | v :: _ -> (newline 1) ^ "drop(" ^ (varname (fst v)) ^ ", 1);"
       | [] -> ""
     in
     let bvs_declarations = List.map declare (VarSet.elements bvs) in
@@ -151,7 +153,6 @@ let fn_definitions methods =
     (fn_sig id args) ^ " " ^ (bracket ( "\n" ^
                                         (String.concat "\n" (List.append bvs_declarations fvs_initializations)) ^ "\n" ^
                                         newline 1 ^ "tag_t tag; qdbp_object_ptr payload;" ^
-                                        receiver_drop ^
                                         newline 1 ^ ("return ") ^
                                         (expr_to_c 1 body) ^ ";\n"))
   in
@@ -167,4 +168,4 @@ let codegen_c methods main_method_id =
   invoke_fns methods ^ "\n" ^
   fn_declarations methods ^ "\n" ^
   fn_definitions methods ^ "\n" ^
-  "int main() {qdbp_object_ptr result = " ^ main_method ^ "(NULL); drop(result); check_mem(); return 0;}"
+  "int main() {qdbp_object_ptr result = " ^ main_method ^ "(NULL); drop(result, 1); check_mem(); return 0;}"

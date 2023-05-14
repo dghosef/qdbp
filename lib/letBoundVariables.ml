@@ -28,12 +28,12 @@ let rec let_bound_variables ast =
     ) bvs args in
     let bvs'' = VarSet.union bvs bvs' in
     bvs'', `MethodInvocation (receiver, label, args, loc, bvs'')
-  | `Drop (v, value) ->
+  | `Drop (v, value, cnt) ->
     let bvs, value = let_bound_variables value in
-    bvs, `Drop (v, value)
-  | `Dup (v, value) ->
+    bvs, `Drop (v, value, cnt)
+  | `Dup (v, value, cnt) ->
     let bvs, value = let_bound_variables value in
-    bvs, `Dup (v, value)
+    bvs, `Dup (v, value, cnt)
   | `PatternMatch (v, cases, loc) ->
     let bvs, cases = List.fold_left_map (
       fun bvs (tag, (arg, body, patternLoc), loc) ->

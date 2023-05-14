@@ -1,4 +1,5 @@
 module FvSet = FreeVariables.FvSet
+module VarMap = Map.Make(struct type t = int let compare = compare end)
 
 let fv expr =
   match expr with
@@ -123,6 +124,9 @@ let rec refcount delta gamma ast =
           let gamma_i' = FvSet.diff (FvSet.add bv_pi gamma) gamma_i in
           let ei' = refcount delta gamma_i ei in
           let body = FvSet.fold (fun v e -> `Drop (v, e)) gamma_i' ei' in
+          (* push down drop/dup *)
+          let body = `Drop(x, body) in
+          let body = `Dup(bv_pi , body) in
           ((name, nameLoc), ((bv_pi, bv_pi_loc), body, methLoc), loc) )
         cases in
     `PatternMatch (x, cases, loc, fvs)
@@ -140,6 +144,11 @@ let rec refcount delta gamma ast =
     let app = refcount_app delta gamma receiver arg_exprs `Dispatch in
     let app_args = get_args app in
     let receiver = List.hd app_args in
+    (* Naively, `receiver` is always dupped here and then dropped upon dispatch *)
+    (* Instead, we can skip the dup and on dispatch skip the drop *)
+    let receiver = match receiver with
+      | `Dup (_, e) -> e
+      | e -> e in
     let arg_exprs = List.tl app_args in
     let args = List.map2 (fun (name, _, loc) e -> (name, e, loc)) args arg_exprs in
     `MethodInvocation (receiver, (name, nameLoc), args, loc, fvs)
@@ -208,3 +217,72 @@ and refcount_app delta gamma e1 rest_args body =
   let e1' = refcount (FvSet.union delta gamma2) (FvSet.diff gamma gamma2) e1 in 
   let e2' = refcount_e2 delta gamma2 in 
   `App (e1', e2')
+
+let rec fusion expr =
+  let rec collect_rc_ops expr =
+    match expr with
+    | `Dup(v, e) ->
+      let ops, e = collect_rc_ops e in
+      begin
+        VarMap.update v (fun cnt -> match cnt with
+            | Some c -> Some (c + 1)
+            | None -> Some 1) ops
+      end, e
+    | `Drop(v, e) ->
+      let ops, e = collect_rc_ops e in
+      begin
+        VarMap.update v (fun cnt -> match cnt with
+            | Some c -> Some (c - 1)
+            | None -> Some (-1)) ops
+      end, e
+    | e -> VarMap.empty, e
+  in
+  match expr with
+  | `PrototypeCopy (ext, ((name, nameLoc), meth, fieldLoc), loc, op) ->
+    let (args, body, methLoc, methFvs) = meth in
+    `PrototypeCopy ((fusion ext), ((name, nameLoc),
+                                   (args, (fusion body), methLoc, methFvs),
+                                   fieldLoc), loc, op)
+  | `TaggedObject (tag, payload, loc) ->
+    `TaggedObject (tag, (fusion payload), loc)
+  | `MethodInvocation (receiver, (name, nameLoc), args, loc) ->
+    let args = List.map (fun (name, value, loc) -> (name, fusion value, loc)) args in
+    `MethodInvocation ((fusion receiver), (name, nameLoc), args, loc)
+  | `PatternMatch (x, cases, loc) -> 
+    let cases = List.map (
+        fun (name, (v, body, methLoc), loc) ->
+          (name, (v, fusion body, methLoc), loc)) cases in
+    `PatternMatch (x, cases, loc)
+
+  | `Declaration (l, r, body, loc) ->
+    `Declaration (l, fusion r, fusion body, loc)
+
+  | `VariableLookup _ as v -> v
+  | `ExternalCall ((name, nameLoc), args, loc) -> 
+    let args = List.map fusion args in
+    `ExternalCall ((name, nameLoc), args, loc)
+  | `IntLiteral _ as i -> i
+  | `FloatLiteral _ as f -> f
+  | `EmptyPrototype _ as e -> e
+  | `StringLiteral _ as s -> s
+  | `Abort _ as a-> a
+
+  | `Drop _
+  | `Dup _ as d ->
+    let ops, e = collect_rc_ops d in
+    VarMap.fold (fun var rc e ->
+        if rc < 0 then 
+          `Drop (var, e, -1 * rc)
+        else if rc > 0 then
+          `Dup (var, e, rc)
+        else e
+      ) ops (fusion e)
+
+  | `App _ ->
+    Error.internal_error "Should not have `App here"
+  | `Lambda _ ->
+    Error.internal_error "Should not have `Lambda here"
+  | `Method _ ->
+    Error.internal_error "Should not have `Method here"
+  | `Dispatch ->
+    Error.internal_error "Should not have `Dispatch here"

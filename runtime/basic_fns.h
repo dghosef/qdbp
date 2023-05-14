@@ -6,9 +6,9 @@ Every function that qdbp calls must follow the following rules:
 - All arguments must have type `qdbp_object_ptr`
 - For each argument `a`, either
   - The return value has 0 references to `a` and `a` is dropped
-  - The return value has `n` references to `a` and `dup` is called on `a` `n - 1` times
+  - The return value has `n` references to `a` and `dup` is called on `a` `n -
+1` times
 */
-
 
 #include "runtime.h"
 #include <math.h>
@@ -33,11 +33,21 @@ qdbp_object_ptr qdbp_false() {
   qdbp_object_ptr name(qdbp_object_ptr a, qdbp_object_ptr b) {                 \
     assert_obj_kind(a, QDBP_INT);                                              \
     assert_obj_kind(b, QDBP_INT);                                              \
-    qdbp_object_ptr result = make_object(                                      \
-        QDBP_INT, (union qdbp_object_data){.i = a->data.i op b->data.i});      \
-    drop(a);                                                                   \
-    drop(b);                                                                   \
-    return result;                                                             \
+    if (is_unique(a)) {                                                        \
+      a->data.i = a->data.i op b->data.i;                                      \
+      drop(b, 1);                                                              \
+      return a;                                                                \
+    } else if (is_unique(b)) {                                                 \
+      b->data.i = b->data.i op a->data.i;                                      \
+      drop(a, 1);                                                              \
+      return b;                                                                \
+    } else {                                                                   \
+      qdbp_object_ptr result = make_object(                                    \
+          QDBP_INT, (union qdbp_object_data){.i = a->data.i op b->data.i});    \
+      drop(a, 1);                                                              \
+      drop(b, 1);                                                              \
+      return result;                                                           \
+    }                                                                          \
   }
 
 #define qdbp_float_binop(name, op)                                             \
@@ -46,8 +56,8 @@ qdbp_object_ptr qdbp_false() {
     assert_obj_kind(b, QDBP_FLOAT);                                            \
     qdbp_object_ptr result = make_object(                                      \
         QDBP_FLOAT, (union qdbp_object_data){.f = a->data.f op b->data.f});    \
-    drop(a);                                                                   \
-    drop(b);                                                                   \
+    drop(a, 1);                                                                \
+    drop(b, 1);                                                                \
     return result;                                                             \
   }
 
@@ -57,8 +67,8 @@ qdbp_object_ptr qdbp_false() {
     assert_obj_kind(b, QDBP_INT);                                              \
     qdbp_object_ptr result =                                                   \
         a->data.i op b->data.i ? qdbp_true() : qdbp_false();                   \
-    drop(a);                                                                   \
-    drop(b);                                                                   \
+    drop(a, 1);                                                                \
+    drop(b, 1);                                                                \
     return result;                                                             \
   }
 
@@ -68,8 +78,8 @@ qdbp_object_ptr qdbp_false() {
     assert_obj_kind(b, QDBP_FLOAT);                                            \
     qdbp_object_ptr result =                                                   \
         a->data.f op b->data.f ? qdbp_true() : qdbp_false();                   \
-    drop(a);                                                                   \
-    drop(b);                                                                   \
+    drop(a, 1);                                                                \
+    drop(b, 1);                                                                \
     return result;                                                             \
   }
 char *empty_string() {
@@ -92,18 +102,18 @@ qdbp_object_ptr concat_string(qdbp_object_ptr a, qdbp_object_ptr b) {
   assert_obj_kind(b, QDBP_STRING);
   const char *a_str = a->data.s;
   const char *b_str = b->data.s;
-  drop(a);
-  drop(b);
+  drop(a, 1);
+  drop(b, 1);
   return make_object(QDBP_STRING,
                      (union qdbp_object_data){.s = c_str_concat(a_str, b_str)});
 }
 // qdbp_print_string_int
 qdbp_object_ptr qdbp_print_string_int(qdbp_object_ptr s) {
-    assert_obj_kind(s, QDBP_STRING);
-    printf("%s", s->data.s);
-    fflush(stdout);
-    drop(s);
-    return make_object(QDBP_INT, (union qdbp_object_data){.i=0});
+  assert_obj_kind(s, QDBP_STRING);
+  printf("%s", s->data.s);
+  fflush(stdout);
+  drop(s, 1);
+  return make_object(QDBP_INT, (union qdbp_object_data){.i = 0});
 }
 // qdbp_float_to_string
 qdbp_object_ptr qdbp_empty_string() {
@@ -141,7 +151,7 @@ size_t itoa_bufsize(int64_t i) {
 qdbp_object_ptr qdbp_int_to_string(qdbp_object_ptr i) {
   assert_obj_kind(i, QDBP_INT);
   int64_t val = i->data.i;
-  drop(i);
+  drop(i, 1);
   int bufsize = itoa_bufsize(val);
   char *s = (char *)qdbp_malloc(bufsize);
   assert(snprintf(s, bufsize, "%lld", val) == bufsize - 1);
@@ -166,8 +176,8 @@ qdbp_object_ptr qdbp_float_mod_float(qdbp_object_ptr a, qdbp_object_ptr b) {
   assert_obj_kind(b, QDBP_FLOAT);
   qdbp_object_ptr result = make_object(
       QDBP_FLOAT, (union qdbp_object_data){.f = fmod(a->data.f, b->data.f)});
-  drop(a);
-  drop(b);
+  drop(a, 1);
+  drop(b, 1);
   return result;
 }
 #endif

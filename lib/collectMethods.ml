@@ -17,12 +17,12 @@ let collect_methods ast =
       let methods, rhs = collect_methods methods rhs in 
       let methods, body = collect_methods methods body in
       methods, `Declaration (lhs, rhs, body, loc)
-    | `Drop (v, body) -> 
+    | `Drop (v, body, cnt) -> 
       let methods, body = collect_methods methods body in
-      methods, `Drop (v, body)
-    | `Dup (v, body) ->
+      methods, `Drop (v, body, cnt)
+    | `Dup (v, body, cnt) ->
       let methods, body = collect_methods methods body in
-      methods, `Dup (v, body)
+      methods, `Dup (v, body, cnt)
     | `ExternalCall (fn, args, loc) ->
       let methods, args = List.fold_left_map collect_methods methods args in
       methods, `ExternalCall (fn, args, loc)

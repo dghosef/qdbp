@@ -3,6 +3,7 @@
 
 #ifndef QDBP_RUNTIME_H
 #define QDBP_RUNTIME_H
+#include "bump.h"
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -11,21 +12,25 @@
 #include <string.h>
 // config
 // You could also add fsanitize=undefined
-
 // Features
-static const bool FREE_SUPPORT = true;
+// Not all are mutually exclusive
+static const bool REFCOUNT = true;
+static const bool BUMP_ALLOCATOR = false;
 static const bool BINARY_SEARCH_ENABLED = false;
 static const size_t BINARY_SEARCH_THRESHOLD = 30;
 static const bool REUSE_PROTO_REPLACE = true;
-static const bool FREELIST = true;
+static const bool OBJ_FREELIST = true;
+static const bool FIELD_FREELIST = true;
+static const bool CAPTURE_FREELIST = true;
 #define FREELIST_SIZE 1000
 
 // Dynamic checks
-static const bool CHECK_MALLOC_FREE = true;
-static const bool VERIFY_REFCOUNTS = true;
-static const bool DYNAMIC_TYPECHECK = true;
-static const bool CHECK_DUPLICATE_LABELS = true;
-static const bool CHECK_PROTOTYPE_ORDERED = true;
+static const bool CHECK_MALLOC_FREE =
+    false; // very slow
+static const bool VERIFY_REFCOUNTS = false;
+static const bool DYNAMIC_TYPECHECK = false;
+static const bool CHECK_DUPLICATE_LABELS = false;
+static const bool CHECK_PROTOTYPE_ORDERED = false;
 
 /*
     ====================================================
@@ -160,7 +165,12 @@ void *qdbp_malloc(size_t size) {
   if (size == 0) {
     return NULL;
   }
-  void *ptr = malloc(size);
+  void *ptr;
+  if (BUMP_ALLOCATOR) {
+    ptr = bump_alloc(size);
+  } else {
+    ptr = malloc(size);
+  }
   if (CHECK_MALLOC_FREE) {
     add_to_malloc_list(ptr);
   }
@@ -170,38 +180,50 @@ void qdbp_free(void *ptr) {
   if (CHECK_MALLOC_FREE) {
     remove_from_malloc_list(ptr);
   }
-  if (FREE_SUPPORT) {
+  if (!BUMP_ALLOCATOR) {
     free(ptr);
   }
 }
-qdbp_object_ptr freelist[FREELIST_SIZE] = {0};
-size_t freelist_idx = 0;
-qdbp_object_ptr freelist_pop() {
-  if (freelist_idx == 0) {
-    assert(false);
+
+#define MK_FREELIST(type, name)                                                \
+  struct name##_t {                                                            \
+    type objects[FREELIST_SIZE];                                               \
+    size_t idx;                                                                \
+  };                                                                           \
+  struct name##_t name = {.idx = 0, .objects = {0}};                           \
+                                                                               \
+  type pop_##name() {                                                          \
+    if (name.idx == 0) {                                                       \
+      assert(false);                                                           \
+    }                                                                          \
+    name.idx--;                                                                \
+    return name.objects[name.idx];                                             \
+  }                                                                            \
+  bool push_##name(type obj) {                                                 \
+    if (name.idx == FREELIST_SIZE) {                                           \
+      return false;                                                            \
+    }                                                                          \
+    name.objects[name.idx] = obj;                                              \
+    name.idx++;                                                                \
+    return true;                                                               \
+  }                                                                            \
+  void name##_remove_all_from_malloc_list() {                                  \
+    for (size_t i = 0; i < name.idx; i++) {                                    \
+      remove_from_malloc_list(name.objects[i]);                                \
+    }                                                                          \
   }
-  freelist_idx--;
-  return freelist[freelist_idx];
-}
-qdbp_object_ptr freelist_push(qdbp_object_ptr obj) {
-  if (freelist_idx == FREELIST_SIZE) {
-    assert(false);
-  }
-  freelist[freelist_idx] = obj;
-  freelist_idx++;
-  return obj;
-}
+MK_FREELIST(qdbp_object_ptr, freelist)
 
 void qdbp_free_obj(qdbp_object_ptr obj) {
-  if (FREELIST && freelist_idx < FREELIST_SIZE) {
-    freelist_push(obj);
+  if (OBJ_FREELIST && push_freelist(obj)) {
+
   } else {
     qdbp_free((void *)obj);
   }
 }
 qdbp_object_ptr qdbp_malloc_obj() {
-  if (FREELIST && freelist_idx > 0) {
-    return freelist_pop();
+  if (OBJ_FREELIST && freelist.idx > 0) {
+    return pop_freelist();
   } else {
     return (qdbp_object_ptr)qdbp_malloc(sizeof(struct qdbp_object));
   }
@@ -213,40 +235,12 @@ struct object_list_node {
   struct object_list_node *next;
 };
 struct object_list_node *object_list = NULL;
-void check_mem() {
-  // We can't do this if freeing is on cuz the objects might already be freed
-  if (!FREE_SUPPORT) {
-    struct object_list_node *node = object_list;
-    while (node) {
-      refcount_t refcount = node->obj->refcount;
-      if (refcount > 0) {
-        printf("Error: refcount of %p is %lld\n", (void *)node->obj, refcount);
-      }
-      node = node->next;
-    }
-  } else {
-    assert(!object_list);
-  }
-  // Make sure that everything that has been malloc'd has been freed
-  if (CHECK_MALLOC_FREE) {
-    if (FREELIST) {
-      for (size_t i = 0; i < freelist_idx; i++) {
-        remove_from_malloc_list(freelist[i]);
-      }
-    }
-    struct malloc_list_node *node = malloc_list;
-    while (node) {
-      printf("Error: %p was malloc'd but not freed\n", node->ptr);
-      node = node->next;
-    }
-  }
-}
 qdbp_object_ptr make_object(enum qdbp_object_kind kind,
                             union qdbp_object_data data) {
   qdbp_object_ptr new_obj = qdbp_malloc_obj();
   // add new_obj to object_list. Only if freeing is off otherwise
   // object might be freed before we get to it
-  if (!FREE_SUPPORT) {
+  if (BUMP_ALLOCATOR && VERIFY_REFCOUNTS) {
     struct object_list_node *new_obj_list =
         (struct object_list_node *)malloc(sizeof(struct object_list_node));
     new_obj_list->obj = new_obj;
@@ -260,9 +254,10 @@ qdbp_object_ptr make_object(enum qdbp_object_kind kind,
 }
 
 qdbp_object_ptr empty_prototype() {
-  qdbp_object_ptr obj = make_object(
+  static qdbp_object_ptr obj = make_object(
       QDBP_PROTOTYPE,
       (union qdbp_object_data){.prototype = {.size = 0, .fields = NULL}});
+  obj->refcount++;
   return obj;
 }
 /*
@@ -284,8 +279,123 @@ void del_method(qdbp_method_ptr method);
 void del_prototype(qdbp_prototype_ptr proto);
 void del_variant(qdbp_variant_ptr variant);
 void del_obj(qdbp_object_ptr obj);
-bool drop(qdbp_object_ptr obj);
+bool drop(qdbp_object_ptr obj, refcount_t cnt);
 
+// FIXME: Remove code duplication
+#define MAKE_CASES                                                             \
+  MAKE_CASE(1)                                                                 \
+  MAKE_CASE(2)                                                                 \
+  MAKE_CASE(3)                                                                 \
+  MAKE_CASE(4)                                                                 \
+  MAKE_CASE(5)                                                                 \
+  MAKE_CASE(6)                                                                 \
+  MAKE_CASE(8)                                                                 \
+  MAKE_CASE(9)                                                                 \
+  MAKE_CASE(10)
+#define MK_FREELISTS(type, name)                                               \
+  MK_FREELIST(type, name##1)                                                   \
+  MK_FREELIST(type, name##2)                                                   \
+  MK_FREELIST(type, name##3)                                                   \
+  MK_FREELIST(type, name##4)                                                   \
+  MK_FREELIST(type, name##5)                                                   \
+  MK_FREELIST(type, name##6)                                                   \
+  MK_FREELIST(type, name##7)                                                   \
+  MK_FREELIST(type, name##8)                                                   \
+  MK_FREELIST(type, name##9)                                                   \
+  MK_FREELIST(type, name##10)
+
+MK_FREELISTS(qdbp_field_ptr, field_freelist)
+
+bool pop_field_freelist(size_t size, qdbp_field_ptr *field) {
+
+#define MAKE_CASE(n)                                                           \
+  case n:                                                                      \
+    if (field_freelist##n.idx > 0) {                                           \
+      *field = pop_field_freelist##n();                                        \
+      return true;                                                             \
+    }                                                                          \
+    break;
+
+  switch (size) {
+    MAKE_CASES
+#undef MAKE_CASE
+  default:
+    return false;
+    break;
+  }
+  return false;
+}
+
+bool push_field_freelist(size_t size, qdbp_field_ptr field) {
+  if (!field) {
+    return false;
+  }
+#define MAKE_CASE(n)                                                           \
+  case n:                                                                      \
+    return push_field_freelist##n(field);                                      \
+    break;
+  switch (size) {
+    MAKE_CASES
+#undef MAKE_CASE
+  default:
+    return false;
+    break;
+  }
+}
+
+qdbp_field_ptr make_field_arr(size_t size) {
+  qdbp_field_ptr field;
+  if (FIELD_FREELIST && pop_field_freelist(size, &field)) {
+    return field;
+  } else {
+    return (qdbp_field_ptr)qdbp_malloc(sizeof(struct qdbp_field) * size);
+  }
+}
+void free_field_arr(qdbp_field_ptr arr, size_t size) {
+  if (arr) {
+    if (FIELD_FREELIST && push_field_freelist(size, arr)) {
+      return;
+    } else {
+      qdbp_free(arr);
+    }
+  }
+}
+MK_FREELISTS(qdbp_object_arr, capture_freelist)
+
+bool pop_capture_freelist(size_t size, qdbp_object_arr *capture) {
+#define MAKE_CASE(n)                                                           \
+  case n:                                                                      \
+    if (capture_freelist##n.idx > 0) {                                         \
+      *capture = pop_capture_freelist##n();                                    \
+      return true;                                                             \
+    }                                                                          \
+    break;
+  switch (size) {
+    MAKE_CASES
+#undef MAKE_CASE
+  default:
+    return false;
+    break;
+  }
+  return false;
+}
+
+bool push_capture_freelist(size_t size, qdbp_object_arr capture) {
+  if (!capture) {
+    return false;
+  }
+#define MAKE_CASE(n)                                                           \
+  case n:                                                                      \
+    return push_capture_freelist##n(capture);                                  \
+    break;
+  switch (size) {
+    MAKE_CASES
+#undef MAKE_CASE
+  default:
+    return false;
+    break;
+  }
+}
 void del_prototype(qdbp_prototype_ptr proto) {
   assert(proto);
   for (size_t i = 0; i < proto->size; i++) {
@@ -293,75 +403,111 @@ void del_prototype(qdbp_prototype_ptr proto) {
     del_method(&(proto->fields[i].method));
   }
   if (proto->size > 0) {
-    qdbp_free(proto->fields);
+    free_field_arr(proto->fields, proto->size);
   }
 }
 
 void del_variant(qdbp_variant_ptr variant) {
   assert(variant);
-  drop(variant->value);
+  drop(variant->value, 1);
 }
 
-void del_method(qdbp_method_ptr method) {
-  assert(method);
-  for (size_t i = 0; i < method->captures_size; i++) {
-    drop((method->captures[i]));
+qdbp_object_arr make_capture_arr(size_t size) {
+  qdbp_object_arr capture;
+  if (CAPTURE_FREELIST && pop_capture_freelist(size, &capture)) {
+    return capture;
+  } else {
+    return (qdbp_object_ptr *)qdbp_malloc(sizeof(qdbp_object_ptr) * size);
   }
-  if (method->captures_size > 0) {
-    qdbp_free(method->captures);
+}
+void free_capture_arr(qdbp_object_arr arr, size_t size) {
+  if (arr) {
+    if (CAPTURE_FREELIST && push_capture_freelist(size, arr)) {
+      return;
+    } else {
+      qdbp_free(arr);
+    }
+  }
+}
+void del_method(qdbp_method_ptr method) {
+  if (REFCOUNT) {
+    assert(method);
+    for (size_t i = 0; i < method->captures_size; i++) {
+      drop((method->captures[i]), 1);
+    }
+    if (method->captures_size > 0) {
+      free_capture_arr(method->captures, method->captures_size);
+    }
   }
 }
 
 void del_obj(qdbp_object_ptr obj) {
 
-  switch (obj->kind) {
-  case QDBP_INT:
-    break;
-  case QDBP_FLOAT:
-    break;
-  case QDBP_STRING:
-    qdbp_free(obj->data.s);
-    break;
-  case QDBP_PROTOTYPE:
-    del_prototype(&(obj->data.prototype));
-    break;
-  case QDBP_VARIANT:
-    del_variant(&(obj->data.variant));
-    break;
+  if (REFCOUNT) {
+    switch (obj->kind) {
+    case QDBP_INT:
+      break;
+    case QDBP_FLOAT:
+      break;
+    case QDBP_STRING:
+      qdbp_free(obj->data.s);
+      break;
+    case QDBP_PROTOTYPE:
+      del_prototype(&(obj->data.prototype));
+      break;
+    case QDBP_VARIANT:
+      del_variant(&(obj->data.variant));
+      break;
+    }
+    qdbp_free_obj(obj);
   }
-  qdbp_free_obj(obj);
 }
 
-bool drop(qdbp_object_ptr obj) {
+bool drop(qdbp_object_ptr obj, refcount_t cnt) {
   assert_refcount(obj);
-  decref(obj);
-  if (obj->refcount == 0) {
-    del_obj(obj);
-    return true;
+  if(VERIFY_REFCOUNTS) {
+    assert(obj->refcount >= cnt);
   }
-  return false;
+  if (REFCOUNT) {
+    obj->refcount -= cnt;
+    if (obj->refcount == 0) {
+      del_obj(obj);
+      return true;
+    }
+    return false;
+  } else {
+    return false;
+  }
 }
 
-void dup(qdbp_object_ptr obj) {
+void obj_dup(qdbp_object_ptr obj, refcount_t cnt) {
   assert_refcount(obj);
-  obj->refcount++;
+  if (REFCOUNT) {
+    obj->refcount += cnt;
+  }
 }
 
 void dup_captures(qdbp_method_ptr method) {
-  for (size_t i = 0; i < method->captures_size; i++) {
-    dup((method->captures[i]));
+  if (REFCOUNT) {
+    for (size_t i = 0; i < method->captures_size; i++) {
+      obj_dup((method->captures[i]), 1);
+    }
   }
 }
 
 void dup_prototype_captures(qdbp_prototype_ptr proto) {
-  for (size_t i = 0; i < proto->size; i++) {
-    dup_captures(&(proto->fields[i].method));
+  if (REFCOUNT) {
+    for (size_t i = 0; i < proto->size; i++) {
+      dup_captures(&(proto->fields[i].method));
+    }
   }
 }
 void dup_prototype_captures_except(qdbp_prototype_ptr proto, label_t except) {
-  for (size_t i = 0; i < proto->size; i++) {
-    if (proto->fields[i].label != except) {
-      dup_captures(&(proto->fields[i].method));
+  if (REFCOUNT) {
+    for (size_t i = 0; i < proto->size; i++) {
+      if (proto->fields[i].label != except) {
+        dup_captures(&(proto->fields[i].method));
+      }
     }
   }
 }
@@ -410,7 +556,7 @@ size_t binary_prototype_get(const qdbp_prototype_ptr proto, label_t label) {
   __builtin_unreachable();
 }
 size_t prototype_get(const qdbp_prototype_ptr proto, label_t label) {
-  if (CHECK_PROTOTYPE_ORDERED) {
+  if (BINARY_SEARCH_ENABLED && CHECK_PROTOTYPE_ORDERED) {
     for (size_t i = 1; i < proto->size; i++) {
       assert(proto->fields[i].label > proto->fields[i - 1].label);
     }
@@ -427,9 +573,8 @@ void copy_captures_except(qdbp_prototype_ptr new_prototype, label_t except) {
   for (size_t i = 0; i < new_prototype->size; i++) {
     if (new_prototype->fields[i].label != except) {
       qdbp_object_arr original = new_prototype->fields[i].method.captures;
-      new_prototype->fields[i].method.captures = (qdbp_object_ptr *)qdbp_malloc(
-          sizeof(qdbp_object_ptr) *
-          new_prototype->fields[i].method.captures_size);
+      new_prototype->fields[i].method.captures =
+          make_capture_arr(new_prototype->fields[i].method.captures_size);
       qdbp_memcpy(new_prototype->fields[i].method.captures, original,
                   sizeof(qdbp_object_ptr) *
                       new_prototype->fields[i].method.captures_size);
@@ -441,8 +586,7 @@ struct qdbp_prototype raw_prototype_replace(const qdbp_prototype_ptr src,
                                             const qdbp_field_ptr new_field) {
   assert(src->size > 0);
   // copy src
-  qdbp_field_ptr new_fields =
-      (qdbp_field_ptr)qdbp_malloc(sizeof(struct qdbp_field) * src->size);
+  qdbp_field_ptr new_fields = make_field_arr(src->size);
   qdbp_memcpy(new_fields, src->fields, sizeof(struct qdbp_field) * src->size);
   struct qdbp_prototype new_prototype = {.size = src->size,
                                          .fields = new_fields};
@@ -456,8 +600,7 @@ struct qdbp_prototype raw_prototype_replace(const qdbp_prototype_ptr src,
 struct qdbp_prototype raw_prototype_extend(const qdbp_prototype_ptr src,
                                            const qdbp_field_ptr new_field) {
   // copy src
-  qdbp_field_ptr new_fields =
-      (qdbp_field_ptr)qdbp_malloc(sizeof(struct qdbp_field) * (src->size + 1));
+  qdbp_field_ptr new_fields = make_field_arr((src->size + 1));
   struct qdbp_prototype new_prototype = {.size = src->size + 1,
                                          .fields = new_fields};
   // Add the new field. Make sure it is in order!!
@@ -468,18 +611,23 @@ struct qdbp_prototype raw_prototype_extend(const qdbp_prototype_ptr src,
   }
   size_t src_pos = 0;
   size_t dest_pos = 0;
-  for (src_pos = 0; src_pos < src->size; src_pos++) {
-    if (src->fields[src_pos].label > new_field->label) {
-      break;
+  if (BINARY_SEARCH_ENABLED) {
+    for (src_pos = 0; src_pos < src->size; src_pos++) {
+      if (src->fields[src_pos].label > new_field->label) {
+        break;
+      }
+      new_fields[dest_pos] = src->fields[src_pos];
+      dest_pos++;
     }
-    new_fields[dest_pos] = src->fields[src_pos];
+    new_fields[dest_pos] = *new_field;
     dest_pos++;
-  }
-  new_fields[dest_pos] = *new_field;
-  dest_pos++;
-  for (; src_pos < src->size; src_pos++) {
-    new_fields[dest_pos] = src->fields[src_pos];
-    dest_pos++;
+    for (; src_pos < src->size; src_pos++) {
+      new_fields[dest_pos] = src->fields[src_pos];
+      dest_pos++;
+    }
+  } else {
+    qdbp_memcpy(new_fields, src->fields, src->size * sizeof(struct qdbp_field));
+    new_fields[src->size] = *new_field;
   }
   // Copy all the capture arrays
   copy_captures_except(&new_prototype, new_field->label);
@@ -546,7 +694,7 @@ qdbp_object_ptr extend(qdbp_object_ptr obj, label_t label, void *code,
   qdbp_object_ptr new_obj = make_object(
       QDBP_PROTOTYPE, (union qdbp_object_data){.prototype = new_prototype});
   dup_prototype_captures(prototype);
-  drop(obj);
+  drop(obj, 1);
   return new_obj;
 }
 /* Prototype Replacement
@@ -572,7 +720,7 @@ qdbp_object_ptr replace(qdbp_object_ptr obj, label_t label, void *code,
     qdbp_object_ptr new_obj = make_object(
         QDBP_PROTOTYPE, (union qdbp_object_data){.prototype = new_prototype});
 
-    drop(obj);
+    drop(obj, 1);
     return new_obj;
   } else {
     // find the index to replace
@@ -604,15 +752,13 @@ void decompose_variant(qdbp_object_ptr obj, tag_t *tag,
   assert_obj_kind(obj, QDBP_VARIANT);
   qdbp_object_ptr value = obj->data.variant.value;
   *tag = obj->data.variant.tag;
-  dup(value);
-  drop(obj);
   // return value, tag
   *payload = value;
 }
 
 // Macros/Fns for the various kinds of expressions
-#define DROP(v, expr) (drop(v), (expr))
-#define DUP(v, expr) (dup(v), (expr))
+#define DROP(v, cnt, expr) (drop(v, cnt), (expr))
+#define DUP(v, cnt, expr) (obj_dup(v, cnt), (expr))
 #define LET(lhs, rhs, in)                                                      \
   ((lhs = (rhs)), (in)) // assume lhs has been declared already
 #define MATCH(tag1, tag2, arg, ifmatch, ifnomatch)                             \
@@ -640,5 +786,55 @@ qdbp_object_ptr qdbp_float(double f) {
   qdbp_object_ptr new_obj =
       make_object(QDBP_FLOAT, (union qdbp_object_data){.f = f});
   return new_obj;
+}
+void check_mem() {
+  // We can't do this if freeing is on cuz the objects might already be freed
+  if (BUMP_ALLOCATOR && VERIFY_REFCOUNTS) {
+    struct object_list_node *node = object_list;
+    while (node) {
+      refcount_t refcount = node->obj->refcount;
+      if (refcount > 0) {
+        printf("Error: refcount of %p is %lld\n", (void *)node->obj, refcount);
+      }
+      node = node->next;
+    }
+  } else {
+    assert(!object_list);
+  }
+  // Make sure that everything that has been malloc'd has been freed
+  if (CHECK_MALLOC_FREE) {
+    if (OBJ_FREELIST) {
+      freelist_remove_all_from_malloc_list();
+    }
+    if (FIELD_FREELIST) {
+      field_freelist1_remove_all_from_malloc_list();
+      field_freelist2_remove_all_from_malloc_list();
+      field_freelist3_remove_all_from_malloc_list();
+      field_freelist4_remove_all_from_malloc_list();
+      field_freelist5_remove_all_from_malloc_list();
+      field_freelist6_remove_all_from_malloc_list();
+      field_freelist7_remove_all_from_malloc_list();
+      field_freelist8_remove_all_from_malloc_list();
+      field_freelist9_remove_all_from_malloc_list();
+      field_freelist10_remove_all_from_malloc_list();
+    }
+    if (CAPTURE_FREELIST) {
+      capture_freelist1_remove_all_from_malloc_list();
+      capture_freelist2_remove_all_from_malloc_list();
+      capture_freelist3_remove_all_from_malloc_list();
+      capture_freelist4_remove_all_from_malloc_list();
+      capture_freelist5_remove_all_from_malloc_list();
+      capture_freelist6_remove_all_from_malloc_list();
+      capture_freelist7_remove_all_from_malloc_list();
+      capture_freelist8_remove_all_from_malloc_list();
+      capture_freelist9_remove_all_from_malloc_list();
+      capture_freelist10_remove_all_from_malloc_list();
+    }
+    struct malloc_list_node *node = malloc_list;
+    while (node) {
+      printf("Error: %p was malloc'd but not freed\n", node->ptr);
+      node = node->next;
+    }
+  }
 }
 #endif
