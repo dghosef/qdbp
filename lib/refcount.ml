@@ -219,6 +219,23 @@ and refcount_app delta gamma e1 rest_args body =
   `App (e1', e2')
 
 let rec fusion expr =
+  let rec rc_map expr =
+    begin
+      match expr with
+      | `Drop(v, e) -> let map, e = rc_map e in
+        VarMap.update v (fun entry ->
+            match entry with
+            | Some cnt -> Some (cnt - 1)
+            | None -> Some (0 - 1)
+          ) map, e
+      | `Dup(v, e) -> let map, e = rc_map e in
+        VarMap.update v (fun entry ->
+            match entry with
+            | Some cnt -> Some (cnt + 1)
+            | None -> Some (0 + 1)
+          ) map, e
+      | e -> VarMap.empty, (fusion e)
+    end in
   match expr with
   | `PrototypeCopy (ext, ((name, nameLoc), meth, fieldLoc), loc, op) ->
     let (args, body, methLoc, methFvs) = meth in
@@ -254,26 +271,18 @@ let rec fusion expr =
     However, you are free to rearrange dup and drops amongst themselves
     And you can move dups before drops
   *)
-  | `Drop (v, e) ->
-    let e = fusion e in
-    begin
-      match e with
-      |`Drop (v', e, n) when v = v' -> `Drop(v, e, n + 1)
-      | `Dup(v', e, n) when v = v' ->
-        if n = 1 then e else
-          `Dup(v', e, n - 1)
-      | _ -> 
-        `Drop(v, e, 1)
-    end
-  | `Dup (v, e) ->
-    begin
-      let e = fusion e in 
-      match e with
-      | `Dup(v', e, n) when v = v' -> `Dup(v', e, n + 1)
-      | `Drop(v', e, n) when v = v' -> if n = 1 then e else `Dup(v', e, n - 1)
-      | _ -> `Dup(v, e, 1)
-    end
-
+  
+  | `Drop _
+  | `Dup _ as d->
+    let map, e = rc_map d in
+    let e = VarMap.fold (fun v cnt e ->
+      if v < 0 then `Drop(v, e, -1 * cnt) else e
+    ) map e
+    in
+    let e = VarMap.fold (fun v cnt e ->
+      if v < 0 then `Dup(v, e, cnt) else e
+    ) map e
+    in e
   | `App _ ->
     Error.internal_error "Should not have `App here"
   | `Lambda _ ->
