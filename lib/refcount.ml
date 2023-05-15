@@ -225,7 +225,7 @@ let rec fusion expr =
       | `Drop(v, e) -> let map, e = rc_map e in
         VarMap.update v (fun entry ->
             match entry with
-            | Some cnt -> Some (cnt - 1)
+            | Some cnt ->  Some (cnt - 1)
             | None -> Some (0 - 1)
           ) map, e
       | `Dup(v, e) -> let map, e = rc_map e in
@@ -276,11 +276,11 @@ let rec fusion expr =
   | `Dup _ as d->
     let map, e = rc_map d in
     let e = VarMap.fold (fun v cnt e ->
-      if v < 0 then `Drop(v, e, -1 * cnt) else e
+      if cnt < 0 then `Drop(v, e, -1 * cnt) else e
     ) map e
     in
     let e = VarMap.fold (fun v cnt e ->
-      if v < 0 then `Dup(v, e, cnt) else e
+      if cnt > 0 then `Dup(v, e, cnt) else e
     ) map e
     in e
   | `App _ ->

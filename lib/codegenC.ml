@@ -161,9 +161,11 @@ let fn_definitions methods =
   String.concat "\n" method_strs
 
 
-let codegen_c methods main_method_id =
+let codegen_c methods main_method_id max_label =
   let main_method = method_name main_method_id in
-  {|#include "runtime.h"
+  "#define LABEL_CNT " ^ (string_of_int max_label) ^
+  {|
+#include "runtime.h"
 #include "basic_fns.h"
 |} ^
   invoke_fns methods ^ "\n" ^

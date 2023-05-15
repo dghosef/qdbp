@@ -8,19 +8,28 @@ let varname varnames name =
   StringMap.find name varnames
 
 let names_to_ints ast =
-  (* FIXME: Make this purely functional *)
+  (* FIXME: Make functional *)
   let label_map = Hashtbl.create 10 in
-  (* Need to hardcode so we can use from FFI *)
-  Hashtbl.add label_map "False" 0;
-  Hashtbl.add label_map "True" 1;
+  let cur_label = ref 0 in
   let get_label name =
     match Hashtbl.find_opt label_map name with
     | Some label -> label
     | None ->
-      let label = Oo.id (object end) in
+      let label = !cur_label in
+      cur_label := label + 1;
       Hashtbl.add label_map name label;
-      label
-  in
+      label in
+  let tag_map = Hashtbl.create 10 in
+  let get_tag name =
+    match Hashtbl.find_opt tag_map name with
+    | Some tag -> tag
+    | None ->
+      let tag = Oo.id (object end) in
+      Hashtbl.add tag_map name tag;
+      tag in
+  let _ = Hashtbl.add tag_map "False" 0 in
+  let _ = Hashtbl.add tag_map "True" 1 in
+  (* FIXME: Make this purely functional *)
   let rec names_to_ints varnames ast =
     match ast with
     | `EmptyPrototype loc ->
@@ -36,7 +45,7 @@ let names_to_ints ast =
         (ext, (((get_label name), labelLoc), (args, body, methLoc), fieldLoc), loc, op)
     | `TaggedObject ((tag, tagLoc), value, loc) -> 
       let value = names_to_ints varnames value in
-      `TaggedObject (((get_label tag), tagLoc), value, loc)
+      `TaggedObject (((get_tag tag), tagLoc), value, loc)
     | `MethodInvocation (receiver, (name, labelLoc), args, loc) ->
       let args = List.map (fun (name, arg, loc) -> name, names_to_ints varnames arg, loc) args in
       let receiver = names_to_ints varnames receiver in
@@ -47,7 +56,7 @@ let names_to_ints ast =
           fun ((name, nameLoc), ((arg, argLoc), body, patternLoc), loc) ->
             let varnames = add_variable varnames arg in
             let body = names_to_ints varnames body in
-            (((get_label name), nameLoc), ((varname varnames arg, argLoc), body, patternLoc), loc)
+            (((get_tag name), nameLoc), ((varname varnames arg, argLoc), body, patternLoc), loc)
         ) cases in
       let receiver_id = Oo.id (object end) in
       `Declaration ((receiver_id, loc), receiver, 
@@ -72,4 +81,5 @@ let names_to_ints ast =
     | `Abort loc ->
       `Abort loc
   in 
-  names_to_ints StringMap.empty ast
+  let ast = names_to_ints StringMap.empty ast in
+  ast, !cur_label + 1
