@@ -18,16 +18,6 @@ qdbp_object_ptr qdbp_abort() {
   printf("aborting\n");
   exit(0);
 }
-qdbp_object_ptr qdbp_true() {
-  return make_object(QDBP_VARIANT,
-                     (union qdbp_object_data){
-                         .variant = {.tag = 1, .value = empty_prototype()}});
-}
-qdbp_object_ptr qdbp_false() {
-  return make_object(QDBP_VARIANT,
-                     (union qdbp_object_data){
-                         .variant = {.tag = 0, .value = empty_prototype()}});
-}
 
 #define qdbp_int_binop(name, op)                                               \
   qdbp_object_ptr name(qdbp_object_ptr a, qdbp_object_ptr b) {                 \
@@ -38,7 +28,7 @@ qdbp_object_ptr qdbp_false() {
       drop(b, 1);                                                              \
       return a;                                                                \
     } else if (is_unique(b)) {                                                 \
-      b->data.i = b->data.i op a->data.i;                                      \
+      b->data.i = a->data.i op b->data.i;                                      \
       drop(a, 1);                                                              \
       return b;                                                                \
     } else {                                                                   \
@@ -54,11 +44,21 @@ qdbp_object_ptr qdbp_false() {
   qdbp_object_ptr name(qdbp_object_ptr a, qdbp_object_ptr b) {                 \
     assert_obj_kind(a, QDBP_FLOAT);                                            \
     assert_obj_kind(b, QDBP_FLOAT);                                            \
-    qdbp_object_ptr result = make_object(                                      \
-        QDBP_FLOAT, (union qdbp_object_data){.f = a->data.f op b->data.f});    \
-    drop(a, 1);                                                                \
-    drop(b, 1);                                                                \
-    return result;                                                             \
+    if (is_unique(a)) {                                                        \
+      a->data.f = a->data.f op b->data.f;                                      \
+      drop(b, 1);                                                              \
+      return a;                                                                \
+    } else if (is_unique(b)) {                                                 \
+      b->data.f = a->data.f op b->data.f;                                      \
+      drop(a, 1);                                                              \
+      return b;                                                                \
+    } else {                                                                   \
+      qdbp_object_ptr result = make_object(                                    \
+          QDBP_FLOAT, (union qdbp_object_data){.f = a->data.f op b->data.f});  \
+      drop(a, 1);                                                              \
+      drop(b, 1);                                                              \
+      return result;                                                           \
+    }                                                                          \
   }
 
 #define qdbp_intcmp_binop(name, op)                                            \

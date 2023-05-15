@@ -70,7 +70,8 @@ let rec expr_to_c level expr =
       (newline (level + 1)) ^ body_c
     )
   | `Drop (v, e, cnt) -> c_call "DROP" [(varname v); string_of_int cnt; (expr_to_c (level + 1) e);]
-  | `Dup (v, e, cnt) -> c_call "DUP" [(varname v); string_of_int cnt; (expr_to_c (level + 1) e);]
+  | `Dup (v, e, cnt) ->
+    c_call "DUP" [(varname v); string_of_int cnt; (expr_to_c (level + 1) e);]
   | `EmptyPrototype _ -> "empty_prototype()"
   | `ExternalCall (fn, args, _, _) ->
     c_call (fst fn) (List.map (expr_to_c (level + 1)) args)
@@ -168,4 +169,4 @@ let codegen_c methods main_method_id =
   invoke_fns methods ^ "\n" ^
   fn_declarations methods ^ "\n" ^
   fn_definitions methods ^ "\n" ^
-  "int main() {qdbp_object_ptr result = " ^ main_method ^ "(NULL); drop(result, 1); check_mem(); return 0;}"
+  "int main() {init(); qdbp_object_ptr result = " ^ main_method ^ "(NULL); drop(result, 1); check_mem(); return 0;}"

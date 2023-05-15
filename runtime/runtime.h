@@ -4,6 +4,7 @@
 #ifndef QDBP_RUNTIME_H
 #define QDBP_RUNTIME_H
 #include "bump.h"
+#include "mempool.h"
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -15,8 +16,8 @@
 // Features
 // Not all are mutually exclusive
 static const bool REFCOUNT = true;
-static const bool BUMP_ALLOCATOR = false;
-static const bool BINARY_SEARCH_ENABLED = false;
+static const bool BUMP_ALLOCATOR = true;
+static const bool BINARY_SEARCH_ENABLED = true;
 static const size_t BINARY_SEARCH_THRESHOLD = 30;
 static const bool REUSE_PROTO_REPLACE = true;
 static const bool OBJ_FREELIST = true;
@@ -24,9 +25,17 @@ static const bool FIELD_FREELIST = true;
 static const bool CAPTURE_FREELIST = true;
 #define FREELIST_SIZE 1000
 
+// Change the # of times `action` is called for a different # of freelists
+// IMPORTANT: Keep NUM_FREELISTS and FORALL_FREELISTS synced
+static const size_t NUM_FREELISTS = 20;
+#define FORALL_FREELISTS(action)                                               \
+  action(1) action(2) action(3) action(4) action(5) action(6) action(7)        \
+      action(8) action(9) action(10) action(11) action(12) action(13)          \
+          action(14) action(15) action(16) action(17) action(18) action(19)    \
+              action(20)
+
 // Dynamic checks
-static const bool CHECK_MALLOC_FREE =
-    false; // very slow
+static const bool CHECK_MALLOC_FREE = false; // very slow
 static const bool VERIFY_REFCOUNTS = false;
 static const bool DYNAMIC_TYPECHECK = false;
 static const bool CHECK_DUPLICATE_LABELS = false;
@@ -99,12 +108,34 @@ typedef struct qdbp_field *qdbp_field_ptr;
 Basic Utilities
 ====================================================
 */
+void print_object(qdbp_object_ptr obj) {
+  switch (obj->kind) {
+  case QDBP_INT:
+    printf("int %lld\n", obj->data.i);
+    break;
+  case QDBP_FLOAT:
+    printf("float %f\n", obj->data.f);
+    break;
+  case QDBP_STRING:
+    printf("str %s\n", obj->data.s);
+    break;
+  case QDBP_PROTOTYPE:
+    for (size_t i = 0; i < obj->data.prototype.size; i++) {
+      printf("field %lld\n", obj->data.prototype.fields[i].label);
+    }
+    break;
+  case QDBP_VARIANT:
+    printf("variant %lld\n", obj->data.variant.tag);
+    break;
+  }
+}
 #define assert_refcount(obj)                                                   \
   do {                                                                         \
     if (VERIFY_REFCOUNTS)                                                      \
       assert((obj));                                                           \
     if ((obj)->refcount <= 0) {                                                \
       printf("refcount of %lld\n", (obj)->refcount);                           \
+      print_object(obj);                                                       \
       assert(false);                                                           \
     };                                                                         \
   } while (0);
@@ -174,6 +205,7 @@ void *qdbp_malloc(size_t size) {
   if (CHECK_MALLOC_FREE) {
     add_to_malloc_list(ptr);
   }
+  assert(ptr);
   return ptr;
 }
 void qdbp_free(void *ptr) {
@@ -221,6 +253,8 @@ void qdbp_free_obj(qdbp_object_ptr obj) {
     qdbp_free((void *)obj);
   }
 }
+mp_pool_t obj_pool;
+
 qdbp_object_ptr qdbp_malloc_obj() {
   if (OBJ_FREELIST && freelist.idx > 0) {
     return pop_freelist();
@@ -254,11 +288,20 @@ qdbp_object_ptr make_object(enum qdbp_object_kind kind,
 }
 
 qdbp_object_ptr empty_prototype() {
-  static qdbp_object_ptr obj = make_object(
+  qdbp_object_ptr obj = make_object(
       QDBP_PROTOTYPE,
       (union qdbp_object_data){.prototype = {.size = 0, .fields = NULL}});
-  obj->refcount++;
   return obj;
+}
+qdbp_object_ptr qdbp_true() {
+  return make_object(QDBP_VARIANT,
+                     (union qdbp_object_data){
+                         .variant = {.tag = 1, .value = empty_prototype()}});
+}
+qdbp_object_ptr qdbp_false() {
+  return make_object(QDBP_VARIANT,
+                     (union qdbp_object_data){
+                         .variant = {.tag = 0, .value = empty_prototype()}});
 }
 /*
     ====================================================
@@ -268,7 +311,7 @@ qdbp_object_ptr empty_prototype() {
 bool is_unique(qdbp_object_ptr obj) {
   assert(obj);
   assert(obj->refcount >= 0);
-  return obj->refcount == 1;
+  return REFCOUNT && obj->refcount == 1;
 }
 void decref(qdbp_object_ptr obj) {
   assert_refcount(obj);
@@ -282,29 +325,14 @@ void del_obj(qdbp_object_ptr obj);
 bool drop(qdbp_object_ptr obj, refcount_t cnt);
 
 // FIXME: Remove code duplication
-#define MAKE_CASES                                                             \
-  MAKE_CASE(1)                                                                 \
-  MAKE_CASE(2)                                                                 \
-  MAKE_CASE(3)                                                                 \
-  MAKE_CASE(4)                                                                 \
-  MAKE_CASE(5)                                                                 \
-  MAKE_CASE(6)                                                                 \
-  MAKE_CASE(8)                                                                 \
-  MAKE_CASE(9)                                                                 \
-  MAKE_CASE(10)
-#define MK_FREELISTS(type, name)                                               \
-  MK_FREELIST(type, name##1)                                                   \
-  MK_FREELIST(type, name##2)                                                   \
-  MK_FREELIST(type, name##3)                                                   \
-  MK_FREELIST(type, name##4)                                                   \
-  MK_FREELIST(type, name##5)                                                   \
-  MK_FREELIST(type, name##6)                                                   \
-  MK_FREELIST(type, name##7)                                                   \
-  MK_FREELIST(type, name##8)                                                   \
-  MK_FREELIST(type, name##9)                                                   \
-  MK_FREELIST(type, name##10)
 
-MK_FREELISTS(qdbp_field_ptr, field_freelist)
+#define MAKE_CASES FORALL_FREELISTS(MAKE_CASE)
+
+#define MK_FIELD_FREELIST(n) MK_FREELIST(qdbp_field_ptr, field_freelist##n)
+FORALL_FREELISTS(MK_FIELD_FREELIST)
+
+#define MK_CAPTURE_FREELIST(n) MK_FREELIST(qdbp_object_arr, capture_freelist##n)
+FORALL_FREELISTS(MK_CAPTURE_FREELIST)
 
 bool pop_field_freelist(size_t size, qdbp_field_ptr *field) {
 
@@ -360,7 +388,6 @@ void free_field_arr(qdbp_field_ptr arr, size_t size) {
     }
   }
 }
-MK_FREELISTS(qdbp_object_arr, capture_freelist)
 
 bool pop_capture_freelist(size_t size, qdbp_object_arr *capture) {
 #define MAKE_CASE(n)                                                           \
@@ -430,42 +457,38 @@ void free_capture_arr(qdbp_object_arr arr, size_t size) {
   }
 }
 void del_method(qdbp_method_ptr method) {
-  if (REFCOUNT) {
-    assert(method);
-    for (size_t i = 0; i < method->captures_size; i++) {
-      drop((method->captures[i]), 1);
-    }
-    if (method->captures_size > 0) {
-      free_capture_arr(method->captures, method->captures_size);
-    }
+  assert(method);
+  for (size_t i = 0; i < method->captures_size; i++) {
+    drop((method->captures[i]), 1);
+  }
+  if (method->captures_size > 0) {
+    free_capture_arr(method->captures, method->captures_size);
   }
 }
 
 void del_obj(qdbp_object_ptr obj) {
 
-  if (REFCOUNT) {
-    switch (obj->kind) {
-    case QDBP_INT:
-      break;
-    case QDBP_FLOAT:
-      break;
-    case QDBP_STRING:
-      qdbp_free(obj->data.s);
-      break;
-    case QDBP_PROTOTYPE:
-      del_prototype(&(obj->data.prototype));
-      break;
-    case QDBP_VARIANT:
-      del_variant(&(obj->data.variant));
-      break;
-    }
-    qdbp_free_obj(obj);
+  switch (obj->kind) {
+  case QDBP_INT:
+    break;
+  case QDBP_FLOAT:
+    break;
+  case QDBP_STRING:
+    qdbp_free(obj->data.s);
+    break;
+  case QDBP_PROTOTYPE:
+    del_prototype(&(obj->data.prototype));
+    break;
+  case QDBP_VARIANT:
+    del_variant(&(obj->data.variant));
+    break;
   }
+  qdbp_free_obj(obj);
 }
 
 bool drop(qdbp_object_ptr obj, refcount_t cnt) {
   assert_refcount(obj);
-  if(VERIFY_REFCOUNTS) {
+  if (VERIFY_REFCOUNTS) {
     assert(obj->refcount >= cnt);
   }
   if (REFCOUNT) {
@@ -488,26 +511,20 @@ void obj_dup(qdbp_object_ptr obj, refcount_t cnt) {
 }
 
 void dup_captures(qdbp_method_ptr method) {
-  if (REFCOUNT) {
-    for (size_t i = 0; i < method->captures_size; i++) {
-      obj_dup((method->captures[i]), 1);
-    }
+  for (size_t i = 0; i < method->captures_size; i++) {
+    obj_dup((method->captures[i]), 1);
   }
 }
 
 void dup_prototype_captures(qdbp_prototype_ptr proto) {
-  if (REFCOUNT) {
-    for (size_t i = 0; i < proto->size; i++) {
-      dup_captures(&(proto->fields[i].method));
-    }
+  for (size_t i = 0; i < proto->size; i++) {
+    dup_captures(&(proto->fields[i].method));
   }
 }
 void dup_prototype_captures_except(qdbp_prototype_ptr proto, label_t except) {
-  if (REFCOUNT) {
-    for (size_t i = 0; i < proto->size; i++) {
-      if (proto->fields[i].label != except) {
-        dup_captures(&(proto->fields[i].method));
-      }
+  for (size_t i = 0; i < proto->size; i++) {
+    if (proto->fields[i].label != except) {
+      dup_captures(&(proto->fields[i].method));
     }
   }
 }
@@ -807,33 +824,44 @@ void check_mem() {
       freelist_remove_all_from_malloc_list();
     }
     if (FIELD_FREELIST) {
-      field_freelist1_remove_all_from_malloc_list();
-      field_freelist2_remove_all_from_malloc_list();
-      field_freelist3_remove_all_from_malloc_list();
-      field_freelist4_remove_all_from_malloc_list();
-      field_freelist5_remove_all_from_malloc_list();
-      field_freelist6_remove_all_from_malloc_list();
-      field_freelist7_remove_all_from_malloc_list();
-      field_freelist8_remove_all_from_malloc_list();
-      field_freelist9_remove_all_from_malloc_list();
-      field_freelist10_remove_all_from_malloc_list();
+
+#define RM_FIELD_FROM_MALLOC_LIST(n)                                           \
+  field_freelist##n##_remove_all_from_malloc_list();
+      FORALL_FREELISTS(RM_FIELD_FROM_MALLOC_LIST)
     }
     if (CAPTURE_FREELIST) {
-      capture_freelist1_remove_all_from_malloc_list();
-      capture_freelist2_remove_all_from_malloc_list();
-      capture_freelist3_remove_all_from_malloc_list();
-      capture_freelist4_remove_all_from_malloc_list();
-      capture_freelist5_remove_all_from_malloc_list();
-      capture_freelist6_remove_all_from_malloc_list();
-      capture_freelist7_remove_all_from_malloc_list();
-      capture_freelist8_remove_all_from_malloc_list();
-      capture_freelist9_remove_all_from_malloc_list();
-      capture_freelist10_remove_all_from_malloc_list();
+#define RM_CAPTURE_FROM_MALLOC_LIST(n)                                         \
+  capture_freelist##n##_remove_all_from_malloc_list();
+      FORALL_FREELISTS(RM_CAPTURE_FROM_MALLOC_LIST)
     }
     struct malloc_list_node *node = malloc_list;
     while (node) {
       printf("Error: %p was malloc'd but not freed\n", node->ptr);
       node = node->next;
+    }
+  }
+}
+void init() {
+  size_t total_freelist_mem = 0;
+  total_freelist_mem += sizeof(struct freelist_t);
+  total_freelist_mem += sizeof(struct qdbp_object) * FREELIST_SIZE;
+  for (size_t i = 0; i < NUM_FREELISTS; i++) {
+    total_freelist_mem += sizeof(struct qdbp_field) * FREELIST_SIZE;
+    total_freelist_mem += sizeof(struct field_freelist1_t);
+    total_freelist_mem += sizeof(qdbp_object_ptr) * FREELIST_SIZE;
+    total_freelist_mem += sizeof(struct capture_freelist1_t);
+  }
+  printf("Total freelist mem: %zu\n", total_freelist_mem);
+
+  bump_init();
+  for (int i = 0; i < FREELIST_SIZE; i++) {
+    if (!CHECK_MALLOC_FREE) {
+      push_freelist(qdbp_malloc(sizeof(struct qdbp_object)));
+
+#define PUSH_FREELIST(n)                                                       \
+  push_capture_freelist##n(qdbp_malloc(sizeof(qdbp_object_ptr) * n));          \
+  push_field_freelist##n(qdbp_malloc(sizeof(struct qdbp_field) * n));
+      FORALL_FREELISTS(PUSH_FREELIST)
     }
   }
 }

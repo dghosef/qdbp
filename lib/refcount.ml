@@ -219,24 +219,6 @@ and refcount_app delta gamma e1 rest_args body =
   `App (e1', e2')
 
 let rec fusion expr =
-  let rec collect_rc_ops expr =
-    match expr with
-    | `Dup(v, e) ->
-      let ops, e = collect_rc_ops e in
-      begin
-        VarMap.update v (fun cnt -> match cnt with
-            | Some c -> Some (c + 1)
-            | None -> Some 1) ops
-      end, e
-    | `Drop(v, e) ->
-      let ops, e = collect_rc_ops e in
-      begin
-        VarMap.update v (fun cnt -> match cnt with
-            | Some c -> Some (c - 1)
-            | None -> Some (-1)) ops
-      end, e
-    | e -> VarMap.empty, e
-  in
   match expr with
   | `PrototypeCopy (ext, ((name, nameLoc), meth, fieldLoc), loc, op) ->
     let (args, body, methLoc, methFvs) = meth in
@@ -267,16 +249,30 @@ let rec fusion expr =
   | `StringLiteral _ as s -> s
   | `Abort _ as a-> a
 
-  | `Drop _
-  | `Dup _ as d ->
-    let ops, e = collect_rc_ops d in
-    VarMap.fold (fun var rc e ->
-        if rc < 0 then 
-          `Drop (var, e, -1 * rc)
-        else if rc > 0 then
-          `Dup (var, e, rc)
-        else e
-      ) ops (fusion e)
+  (*
+    The one rule is that you cannot move any drops before dups
+    However, you are free to rearrange dup and drops amongst themselves
+    And you can move dups before drops
+  *)
+  | `Drop (v, e) ->
+    let e = fusion e in
+    begin
+      match e with
+      |`Drop (v', e, n) when v = v' -> `Drop(v, e, n + 1)
+      | `Dup(v', e, n) when v = v' ->
+        if n = 1 then e else
+          `Dup(v', e, n - 1)
+      | _ -> 
+        `Drop(v, e, 1)
+    end
+  | `Dup (v, e) ->
+    begin
+      let e = fusion e in 
+      match e with
+      | `Dup(v', e, n) when v = v' -> `Dup(v', e, n + 1)
+      | `Drop(v', e, n) when v = v' -> if n = 1 then e else `Dup(v', e, n - 1)
+      | _ -> `Dup(v, e, 1)
+    end
 
   | `App _ ->
     Error.internal_error "Should not have `App here"
