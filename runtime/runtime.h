@@ -5,6 +5,7 @@
 #define QDBP_RUNTIME_H
 #include "bump.h"
 #include "mempool.h"
+#include <Judy.h>
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -15,7 +16,6 @@
 // You could also add fsanitize=undefined
 // Features
 // Not all are mutually exclusive
-static const size_t PROTO_HEADER_THRESHOLD = 2;
 static const bool REFCOUNT = true;
 static const bool BUMP_ALLOCATOR = true;
 static const bool BINARY_SEARCH_ENABLED = true;
@@ -24,8 +24,7 @@ static const bool REUSE_PROTO_REPLACE = true;
 static const bool OBJ_FREELIST = true;
 static const bool FIELD_FREELIST = true;
 static const bool CAPTURE_FREELIST = true;
-static const bool PROTO_HEADER_FREELIST = true;
-#define FREELIST_SIZE 100
+#define FREELIST_SIZE 1000
 
 // Change the # of times `action` is called for a different # of freelists
 // IMPORTANT: Keep NUM_FREELISTS and FORALL_FREELISTS synced
@@ -37,11 +36,10 @@ static const size_t NUM_FREELISTS = 20;
               action(20)
 
 // Dynamic checks
-static const bool CHECK_MALLOC_FREE = false; // very slow
+static const bool CHECK_MALLOC_FREE = true; // very slow
 static const bool VERIFY_REFCOUNTS = false;
 static const bool DYNAMIC_TYPECHECK = false;
 static const bool CHECK_DUPLICATE_LABELS = false;
-static const bool CHECK_PROTOTYPE_ORDERED = false;
 
 /*
     ====================================================
@@ -68,14 +66,10 @@ struct qdbp_field {
   struct qdbp_method method;
 };
 
-struct qdbp_prototype_header {
-  refcount_t rc;
-  size_t labels[LABEL_CNT];
-};
 struct qdbp_prototype {
   size_t size;
-  struct qdbp_prototype_header *header;
   struct qdbp_field *fields;
+  Pvoid_t labels;
 };
 
 struct qdbp_variant {
@@ -110,7 +104,6 @@ typedef struct qdbp_variant *qdbp_variant_ptr;
 typedef struct qdbp_prototype *qdbp_prototype_ptr;
 typedef struct qdbp_method *qdbp_method_ptr;
 typedef struct qdbp_field *qdbp_field_ptr;
-typedef struct qdbp_prototype_header *qdbp_proto_header_ptr;
 /*
 ====================================================
 Basic Utilities
@@ -128,9 +121,7 @@ void print_object(qdbp_object_ptr obj) {
     printf("str %s\n", obj->data.s);
     break;
   case QDBP_PROTOTYPE:
-    for (size_t i = 0; i < obj->data.prototype.size; i++) {
-      printf("field %lld\n", obj->data.prototype.fields[i].label);
-    }
+    printf("PROTO\n");
     break;
   case QDBP_VARIANT:
     printf("variant %lld\n", obj->data.variant.tag);
@@ -143,13 +134,6 @@ void print_object(qdbp_object_ptr obj) {
       assert((obj));                                                           \
       if ((obj)->refcount <= 0) {                                              \
         printf("refcount of %lld\n", (obj)->refcount);                         \
-        print_object(obj);                                                     \
-        assert(false);                                                         \
-      };                                                                       \
-      if ((obj)->kind == QDBP_PROTOTYPE &&                                     \
-          (obj)->data.prototype.size >= PROTO_HEADER_THRESHOLD &&              \
-          (obj)->data.prototype.header->rc <= 0) {                             \
-        printf("refcount of %lld\n", ((obj)->data.prototype.header->rc));      \
         print_object(obj);                                                     \
         assert(false);                                                         \
       };                                                                       \
@@ -260,20 +244,6 @@ void qdbp_free(void *ptr) {
       remove_from_malloc_list(name.objects[i]);                                \
     }                                                                          \
   }
-MK_FREELIST(qdbp_proto_header_ptr, proto_header_freelist)
-qdbp_proto_header_ptr mk_proto_header() {
-  qdbp_proto_header_ptr ptr;
-  if (PROTO_HEADER_FREELIST && proto_header_freelist.idx > 0) {
-    ptr = pop_proto_header_freelist();
-  } else {
-    ptr = qdbp_malloc(sizeof(struct qdbp_prototype_header));
-  }
-  ptr->rc = 1;
-  for (size_t i = 0; i < LABEL_CNT; i++) {
-    ptr->labels[i] = LABEL_CNT + 1;
-  }
-  return ptr;
-}
 MK_FREELIST(qdbp_object_ptr, freelist)
 
 void qdbp_free_obj(qdbp_object_ptr obj) {
@@ -319,12 +289,9 @@ qdbp_object_ptr make_object(enum qdbp_object_kind kind,
 
 qdbp_object_ptr empty_prototype() {
   qdbp_object_ptr obj = make_object(
-      QDBP_PROTOTYPE, (union qdbp_object_data){
-                          .prototype = {.size = 0,
-                                        .fields = NULL,
-                                        .header = PROTO_HEADER_THRESHOLD <= 0
-                                                      ? mk_proto_header()
-                                                      : NULL}});
+      QDBP_PROTOTYPE,
+      (union qdbp_object_data){
+          .prototype = {.size = 0, .fields = NULL, .labels = NULL}});
   return obj;
 }
 qdbp_object_ptr qdbp_true() {
@@ -457,22 +424,6 @@ bool push_capture_freelist(size_t size, qdbp_object_arr capture) {
     break;
   }
 }
-void del_proto_header(qdbp_proto_header_ptr header) {
-  if (PROTO_HEADER_FREELIST && !push_proto_header_freelist(header)) {
-    qdbp_free(header);
-  }
-}
-void drop_proto_header(const qdbp_prototype_ptr proto) {
-  if (proto->size >= PROTO_HEADER_THRESHOLD) {
-    if (VERIFY_REFCOUNTS) {
-      assert(proto->header->rc > 0);
-    }
-    proto->header->rc--;
-    if (proto->header->rc == 0) {
-      del_proto_header(proto->header);
-    }
-  }
-}
 void del_prototype(qdbp_prototype_ptr proto) {
   assert(proto);
   for (size_t i = 0; i < proto->size; i++) {
@@ -482,7 +433,12 @@ void del_prototype(qdbp_prototype_ptr proto) {
   if (proto->size > 0) {
     free_field_arr(proto->fields, proto->size);
   }
-  drop_proto_header(proto);
+  int rc;
+  JLFA(rc, proto->labels);
+  if(rc != 0 && DYNAMIC_TYPECHECK) {
+    printf("Failed to free labels");
+    assert(false);
+  }
 }
 
 void del_variant(qdbp_variant_ptr variant) {
@@ -561,18 +517,6 @@ void obj_dup(qdbp_object_ptr obj, refcount_t cnt) {
   }
 }
 
-qdbp_proto_header_ptr dup_header(const qdbp_prototype_ptr proto) {
-  if (proto->size >= PROTO_HEADER_THRESHOLD) {
-    if (VERIFY_REFCOUNTS) {
-      assert(proto->header->rc > 0);
-    }
-    proto->header->rc++;
-    return proto->header;
-  } else {
-    assert(proto->header == NULL);
-    return NULL;
-  }
-}
 void dup_captures(qdbp_method_ptr method) {
   for (size_t i = 0; i < method->captures_size; i++) {
     obj_dup((method->captures[i]), 1);
@@ -610,46 +554,64 @@ size_t linear_prototype_get(const qdbp_prototype_ptr proto, label_t label) {
   assert(false);
   __builtin_unreachable();
 }
-size_t binary_prototype_get(const qdbp_prototype_ptr proto, label_t label) {
-  if (CHECK_PROTOTYPE_ORDERED) {
-    for (size_t i = 1; i < proto->size; i++) {
-      assert(proto->fields[i].label > proto->fields[i - 1].label);
-    }
-  }
-  size_t low = 0;
-  size_t high = proto->size - 1;
-  while (low <= high) {
-    size_t mid = (low + high) / 2;
-    if (proto->fields[mid].label < label) {
-      low = mid + 1;
-    } else if (proto->fields[mid].label > label) {
-      high = mid - 1;
-    } else {
-      return mid;
-    }
-  }
-  printf("Label %llu not found in prototype\n", label);
-  for (size_t i = 0; i < proto->size; i++) {
-    printf("Label %llu found\n", proto->fields[i].label);
-  }
-  assert(false);
-  __builtin_unreachable();
-}
 size_t prototype_get(const qdbp_prototype_ptr proto, label_t label) {
   if (DYNAMIC_TYPECHECK) {
     assert(label < LABEL_CNT);
   }
   if (proto->size == 1) {
     return 0;
-  } else if (proto->size < PROTO_HEADER_THRESHOLD) {
-    return linear_prototype_get(proto, label);
   } else {
-    size_t result = proto->header->labels[label];
-    if (DYNAMIC_TYPECHECK && result > LABEL_CNT + 1) {
+    return linear_prototype_get(proto, label);
+  }
+}
+void label_add(qdbp_prototype_ptr proto, label_t label, qdbp_field_ptr field) {
+  Word_t *PValue;
+  if (DYNAMIC_TYPECHECK) {
+    assert(field->label == label);
+    void *get;
+    JLG(get, proto->labels, label);
+    if (get != NULL) {
+      printf("Label %llu already exists in prototype\n", label);
       assert(false);
     }
-    return result;
   }
+  JLI(PValue, proto->labels, label);
+  *PValue = (uintptr_t)field;
+}
+void label_replace(qdbp_prototype_ptr proto, label_t label,
+                   qdbp_field_ptr field) {
+  if (DYNAMIC_TYPECHECK) {
+    void *get;
+    JLG(get, proto->labels, label);
+    if (get == NULL) {
+      printf("Label %llu does not exist in prototype\n", label);
+      assert(false);
+    }
+  }
+  int rc;
+  JLD(rc, proto->labels, label);
+  if (DYNAMIC_TYPECHECK) {
+    assert(rc);
+  }
+  Word_t *PValue;
+  JLI(PValue, proto->labels, label);
+  *PValue = (uintptr_t)field;
+}
+qdbp_field_ptr label_get(qdbp_prototype_ptr proto, label_t label) {
+  Word_t *PValue;
+  if(DYNAMIC_TYPECHECK) {
+    assert(proto);
+    assert(proto->labels);
+  }
+  JLG(PValue, proto->labels, label);
+  qdbp_field_ptr field = *(qdbp_field_ptr *)PValue;
+  if (DYNAMIC_TYPECHECK) {
+    assert(proto->labels);
+    assert(field != NULL);
+    assert(field->label == label);
+    assert(&(proto->fields[linear_prototype_get(proto, label)]) == field);
+  }
+  return field;
 }
 
 void copy_captures_except(qdbp_prototype_ptr new_prototype, label_t except) {
@@ -673,9 +635,14 @@ struct qdbp_prototype raw_prototype_replace(const qdbp_prototype_ptr src,
   qdbp_field_ptr new_fields = make_field_arr(src->size);
   qdbp_memcpy(new_fields, src->fields, sizeof(struct qdbp_field) * src->size);
   struct qdbp_prototype new_prototype = {
-      .size = src->size, .fields = new_fields, .header = dup_header(src)};
+      .size = src->size, .fields = new_fields, .labels = NULL};
+
+  for (size_t i = 0; i < new_prototype.size; i++) {
+    label_add(&new_prototype, new_prototype.fields[i].label,
+              &new_prototype.fields[i]);
+  }
   // overwrite the field
-  new_prototype.fields[prototype_get(&new_prototype, new_field->label)] =
+  *label_get(&new_prototype, new_field->label) =
       *new_field;
   copy_captures_except(&new_prototype, new_field->label);
   return new_prototype;
@@ -688,32 +655,8 @@ struct qdbp_prototype raw_prototype_extend(const qdbp_prototype_ptr src,
     assert(src->size <= LABEL_CNT);
   }
   qdbp_field_ptr new_fields = make_field_arr((src->size + 1));
-  qdbp_proto_header_ptr header;
-  if (src->size + 1 < PROTO_HEADER_THRESHOLD) {
-    header = NULL;
-  } else if (src->size + 1 == PROTO_HEADER_THRESHOLD) {
-    header = mk_proto_header();
-    for (size_t i = 0; i < src->size; i++) {
-      header->labels[src->fields[i].label] = i;
-    }
-    header->labels[new_field->label] = src->size;
-  } else {
-    if (src->header->labels[new_field->label] == src->size) {
-      header = dup_header(src);
-
-    } else if (src->header->labels[new_field->label] > LABEL_CNT) {
-      header = dup_header(src);
-      header->labels[new_field->label] = src->size;
-    } else {
-      header = mk_proto_header();
-      for (size_t i = 0; i < src->size; i++) {
-        header->labels[src->fields[i].label] = i;
-      }
-      header->labels[new_field->label] = src->size;
-    }
-  }
   struct qdbp_prototype new_prototype = {
-      .size = src->size + 1, .fields = new_fields, .header = header};
+      .size = src->size + 1, .fields = new_fields, .labels = NULL};
   // Add the new field. Make sure it is in order!!
   if (CHECK_DUPLICATE_LABELS) {
     for (size_t i = 0; i < src->size; i++) {
@@ -726,6 +669,10 @@ struct qdbp_prototype raw_prototype_extend(const qdbp_prototype_ptr src,
   new_fields[src->size] = *new_field;
   // Copy all the capture arrays
   copy_captures_except(&new_prototype, new_field->label);
+  for (size_t i = 0; i < new_prototype.size; i++) {
+    label_add(&new_prototype, new_prototype.fields[i].label,
+              &new_prototype.fields[i]);
+  }
   return new_prototype;
 }
 
@@ -749,9 +696,8 @@ struct qdbp_prototype raw_prototype_extend(const qdbp_prototype_ptr src,
 qdbp_object_arr get_method(qdbp_object_ptr obj, label_t label,
                            void **code_ptr /*output param*/) {
   assert_obj_kind(obj, QDBP_PROTOTYPE);
-  struct qdbp_prototype prototype = (obj->data.prototype);
-  size_t idx = prototype_get(&prototype, label);
-  struct qdbp_method m = prototype.fields[idx].method;
+  struct qdbp_method m =
+      label_get(&(obj->data.prototype), label)->method;
   dup_captures(&m);
   *code_ptr = m.code;
   qdbp_object_arr ret = m.captures;
@@ -912,9 +858,6 @@ void check_mem() {
   capture_freelist##n##_remove_all_from_malloc_list();
       FORALL_FREELISTS(RM_CAPTURE_FROM_MALLOC_LIST)
     }
-    if (PROTO_HEADER_FREELIST) {
-      proto_header_freelist_remove_all_from_malloc_list();
-    }
     struct malloc_list_node *node = malloc_list;
     while (node) {
       printf("Error: %p was malloc'd but not freed\n", node->ptr);
@@ -931,9 +874,6 @@ void init() {
     total_freelist_mem += sizeof(struct field_freelist1_t);
     total_freelist_mem += sizeof(qdbp_object_ptr) * FREELIST_SIZE;
     total_freelist_mem += sizeof(struct capture_freelist1_t);
-    total_freelist_mem += sizeof(struct qdbp_prototype_header) * FREELIST_SIZE;
-    total_freelist_mem += sizeof(struct proto_header_freelist_t);
-
   }
   printf("Total freelist mem: %zu\n", total_freelist_mem);
 
