@@ -25,7 +25,7 @@ static const bool OBJ_FREELIST = true;
 static const bool FIELD_FREELIST = true;
 static const bool CAPTURE_FREELIST = true;
 static const bool PROTO_HEADER_FREELIST = true;
-#define FREELIST_SIZE 1000
+#define FREELIST_SIZE 100
 
 // Change the # of times `action` is called for a different # of freelists
 // IMPORTANT: Keep NUM_FREELISTS and FORALL_FREELISTS synced
@@ -931,6 +931,9 @@ void init() {
     total_freelist_mem += sizeof(struct field_freelist1_t);
     total_freelist_mem += sizeof(qdbp_object_ptr) * FREELIST_SIZE;
     total_freelist_mem += sizeof(struct capture_freelist1_t);
+    total_freelist_mem += sizeof(struct qdbp_prototype_header) * FREELIST_SIZE;
+    total_freelist_mem += sizeof(struct proto_header_freelist_t);
+
   }
   printf("Total freelist mem: %zu\n", total_freelist_mem);
 
