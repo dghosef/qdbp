@@ -65,7 +65,6 @@ struct qdbp_field {
 };
 
 struct qdbp_prototype {
-  struct qdbp_field *fields;
   Pvoid_t labels;
 };
 
@@ -242,6 +241,29 @@ void qdbp_free(void *ptr) {
       remove_from_malloc_list(name.objects[i]);                                \
     }                                                                          \
   }
+MK_FREELIST(qdbp_field_ptr, field_freelist)
+
+void qdbp_free_field(qdbp_field_ptr field) {
+  qdbp_free((void*)field);
+}
+qdbp_field_ptr qdbp_malloc_field() {
+  if(FIELD_FREELIST && field_freelist.idx > 0) {
+    return pop_field_freelist();
+  }
+  else {
+    return (qdbp_field_ptr)qdbp_malloc(sizeof(struct qdbp_field));
+  }
+}
+void free_fields(qdbp_prototype_ptr proto) {
+  Word_t label = 0;
+  qdbp_field_ptr *PValue;
+  JLF(PValue, proto->labels, label);
+  while (PValue != NULL) {
+    qdbp_free_field(*PValue);
+    JLN(PValue, proto->labels, label);
+  }
+}
+
 MK_FREELIST(qdbp_object_ptr, freelist)
 
 void qdbp_free_obj(qdbp_object_ptr obj) {
@@ -288,8 +310,7 @@ qdbp_object_ptr make_object(enum qdbp_object_kind kind,
 qdbp_object_ptr empty_prototype() {
   qdbp_object_ptr obj = make_object(
       QDBP_PROTOTYPE,
-      (union qdbp_object_data){
-          .prototype = {.fields = NULL, .labels = NULL}});
+      (union qdbp_object_data){.prototype = {.labels = NULL}});
   return obj;
 }
 qdbp_object_ptr qdbp_true() {
@@ -327,66 +348,9 @@ bool drop(qdbp_object_ptr obj, refcount_t cnt);
 
 #define MAKE_CASES FORALL_FREELISTS(MAKE_CASE)
 
-#define MK_FIELD_FREELIST(n) MK_FREELIST(qdbp_field_ptr, field_freelist##n)
-FORALL_FREELISTS(MK_FIELD_FREELIST)
-
 #define MK_CAPTURE_FREELIST(n) MK_FREELIST(qdbp_object_arr, capture_freelist##n)
 FORALL_FREELISTS(MK_CAPTURE_FREELIST)
 
-bool pop_field_freelist(size_t size, qdbp_field_ptr *field) {
-
-#define MAKE_CASE(n)                                                           \
-  case n:                                                                      \
-    if (field_freelist##n.idx > 0) {                                           \
-      *field = pop_field_freelist##n();                                        \
-      return true;                                                             \
-    }                                                                          \
-    break;
-
-  switch (size) {
-    MAKE_CASES
-#undef MAKE_CASE
-  default:
-    return false;
-    break;
-  }
-  return false;
-}
-
-bool push_field_freelist(size_t size, qdbp_field_ptr field) {
-  if (!field) {
-    return false;
-  }
-#define MAKE_CASE(n)                                                           \
-  case n:                                                                      \
-    return push_field_freelist##n(field);                                      \
-    break;
-  switch (size) {
-    MAKE_CASES
-#undef MAKE_CASE
-  default:
-    return false;
-    break;
-  }
-}
-
-qdbp_field_ptr make_field_arr(size_t size) {
-  qdbp_field_ptr field;
-  if (FIELD_FREELIST && pop_field_freelist(size, &field)) {
-    return field;
-  } else {
-    return (qdbp_field_ptr)qdbp_malloc(sizeof(struct qdbp_field) * size);
-  }
-}
-void free_field_arr(qdbp_field_ptr arr, size_t size) {
-  if (arr) {
-    if (FIELD_FREELIST && push_field_freelist(size, arr)) {
-      return;
-    } else {
-      qdbp_free(arr);
-    }
-  }
-}
 
 bool pop_capture_freelist(size_t size, qdbp_object_arr *capture) {
 #define MAKE_CASE(n)                                                           \
@@ -445,7 +409,7 @@ void del_prototype(qdbp_prototype_ptr proto) {
     JLN(PValue, proto->labels, label);
   }
 
-  free_field_arr(proto->fields, proto_size(proto));
+  free_fields(proto);
   int rc;
   if (proto->labels) {
     JLFA(rc, proto->labels);
@@ -633,21 +597,16 @@ struct qdbp_prototype raw_prototype_replace(const qdbp_prototype_ptr src,
                                             label_t new_label) {
   size_t src_size = proto_size(src);
   assert(src_size);
-  // copy src
-  qdbp_field_ptr new_fields = make_field_arr(src_size);
-  qdbp_memcpy(new_fields, src->fields, sizeof(struct qdbp_field) * src_size);
-  struct qdbp_prototype new_prototype = {
-      .fields = new_fields, .labels = NULL};
+  struct qdbp_prototype new_prototype = {.labels = NULL};
 
   Word_t label = 0;
   qdbp_field_ptr *PValue;
   JLF(PValue, src->labels, label);
-  size_t i = 0;
   while (PValue != NULL) {
-    label_add(&new_prototype, label, &new_prototype.fields[i]);
-    (new_prototype.fields[i]) = **PValue;
+    qdbp_field_ptr new_field_ptr = qdbp_malloc_field();
+    label_add(&new_prototype, label, new_field_ptr);
+    *new_field_ptr = **PValue;
     JLN(PValue, src->labels, label);
-    i++;
   }
 
   // overwrite the field
@@ -664,23 +623,20 @@ struct qdbp_prototype raw_prototype_extend(const qdbp_prototype_ptr src,
   if (DYNAMIC_TYPECHECK) {
     assert(src_size <= LABEL_CNT);
   }
-  qdbp_field_ptr new_fields = make_field_arr((src_size + 1));
-  struct qdbp_prototype new_prototype = {
-      .fields = new_fields, .labels = NULL};
-
+  struct qdbp_prototype new_prototype = {.labels = NULL};
 
   Word_t label = 0;
   qdbp_field_ptr *PValue;
   JLF(PValue, src->labels, label);
-  size_t i = 0;
   while (PValue != NULL) {
-    label_add(&new_prototype, label, &new_prototype.fields[i]);
-    (new_prototype.fields[i]) = **PValue;
+    qdbp_field_ptr new_field_ptr = qdbp_malloc_field();
+    *new_field_ptr = **PValue;
+    label_add(&new_prototype, label, new_field_ptr);
     JLN(PValue, src->labels, label);
-    i++;
   }
-  new_fields[src_size] = *new_field;
-  label_add(&new_prototype, new_label, &new_prototype.fields[src_size]);
+  qdbp_field_ptr new_field_ptr = qdbp_malloc_field();
+  *new_field_ptr = *new_field;
+  label_add(&new_prototype, new_label, new_field_ptr);
   copy_captures_except(&new_prototype, new_label);
   return new_prototype;
 }
@@ -738,7 +694,8 @@ qdbp_object_ptr extend(qdbp_object_ptr obj, label_t label, void *code,
                  .code = code}};
   assert_obj_kind(obj, QDBP_PROTOTYPE);
   qdbp_prototype_ptr prototype = &(obj->data.prototype);
-  struct qdbp_prototype new_prototype = raw_prototype_extend(prototype, &f, label);
+  struct qdbp_prototype new_prototype =
+      raw_prototype_extend(prototype, &f, label);
   qdbp_object_ptr new_obj = make_object(
       QDBP_PROTOTYPE, (union qdbp_object_data){.prototype = new_prototype});
   dup_prototype_captures(prototype);
@@ -853,12 +810,6 @@ void check_mem() {
     if (OBJ_FREELIST) {
       freelist_remove_all_from_malloc_list();
     }
-    if (FIELD_FREELIST) {
-
-#define RM_FIELD_FROM_MALLOC_LIST(n)                                           \
-  field_freelist##n##_remove_all_from_malloc_list();
-      FORALL_FREELISTS(RM_FIELD_FROM_MALLOC_LIST)
-    }
     if (CAPTURE_FREELIST) {
 #define RM_CAPTURE_FROM_MALLOC_LIST(n)                                         \
   capture_freelist##n##_remove_all_from_malloc_list();
@@ -877,9 +828,7 @@ void init() {
   total_freelist_mem += sizeof(struct qdbp_object) * FREELIST_SIZE;
   for (size_t i = 0; i < NUM_FREELISTS; i++) {
     total_freelist_mem += sizeof(struct qdbp_field) * FREELIST_SIZE;
-    total_freelist_mem += sizeof(struct field_freelist1_t);
     total_freelist_mem += sizeof(qdbp_object_ptr) * FREELIST_SIZE;
-    total_freelist_mem += sizeof(struct capture_freelist1_t);
   }
   printf("Total freelist mem: %zu\n", total_freelist_mem);
 
@@ -889,9 +838,8 @@ void init() {
       push_freelist(qdbp_malloc(sizeof(struct qdbp_object)));
 
 #define PUSH_FREELIST(n)                                                       \
-  push_capture_freelist##n(qdbp_malloc(sizeof(qdbp_object_ptr) * n));          \
-  push_field_freelist##n(qdbp_malloc(sizeof(struct qdbp_field) * n));
-      FORALL_FREELISTS(PUSH_FREELIST)
+  push_capture_freelist##n(qdbp_malloc(sizeof(qdbp_object_ptr) * n));          
+  FORALL_FREELISTS(PUSH_FREELIST)
     }
   }
 }
