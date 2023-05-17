@@ -3,7 +3,6 @@
 
 #ifndef QDBP_RUNTIME_H
 #define QDBP_RUNTIME_H
-#include "bump.h"
 #include "mempool.h"
 #include <Judy.h>
 #include <assert.h>
@@ -14,31 +13,15 @@
 #include <string.h>
 // config
 // You could also add fsanitize=undefined
-// Features
-// Not all are mutually exclusive
-static const bool REFCOUNT = true;
-static const bool BUMP_ALLOCATOR = true;
-static const bool BINARY_SEARCH_ENABLED = true;
-static const size_t BINARY_SEARCH_THRESHOLD = 30;
-static const bool REUSE_PROTO_REPLACE = true;
+static const bool REUSE_ANALYSIS = true;
 static const bool OBJ_FREELIST = true;
 static const bool FIELD_FREELIST = true;
-static const bool CAPTURE_FREELIST = true;
 #define FREELIST_SIZE 1000
 
-// Change the # of times `action` is called for a different # of freelists
-// IMPORTANT: Keep NUM_FREELISTS and FORALL_FREELISTS synced
-static const size_t NUM_FREELISTS = 20;
-#define FORALL_FREELISTS(action)                                               \
-  action(1) action(2) action(3) action(4) action(5) action(6) action(7)        \
-      action(8) action(9) action(10) action(11) action(12) action(13)          \
-          action(14) action(15) action(16) action(17) action(18) action(19)    \
-              action(20)
-
 // Dynamic checks
-static const bool CHECK_MALLOC_FREE = true; // very slow
-static const bool VERIFY_REFCOUNTS = true;
-static const bool DYNAMIC_TYPECHECK = true;
+static const bool CHECK_MALLOC_FREE = false; // very slow
+static const bool VERIFY_REFCOUNTS = false;
+static const bool DYNAMIC_TYPECHECK = false;
 
 /*
     ====================================================
@@ -52,8 +35,9 @@ static const bool DYNAMIC_TYPECHECK = true;
 // Have make string, make int, etc fns
 // FIXME: Check all accesses are asserted
 typedef uint64_t label_t;
-typedef uint64_t tag_t;
-typedef int64_t refcount_t;
+typedef uint32_t tag_t;
+typedef uint32_t refcount_t;
+
 struct qdbp_object;
 struct qdbp_method {
   struct qdbp_object **captures;
@@ -69,14 +53,13 @@ struct qdbp_prototype {
 };
 
 struct qdbp_variant {
-  tag_t tag;
   struct qdbp_object *value;
 };
 
 union qdbp_object_data {
   struct qdbp_prototype prototype;
-  int64_t i;
-  double f;
+  int64_t i; // FIXME: Int128_t
+  double f;  // FIXME: float128
   char *s;
   struct qdbp_variant variant;
 };
@@ -89,9 +72,12 @@ enum qdbp_object_kind {
   QDBP_VARIANT
 };
 
+struct __attribute__((packed)) qdbp_object_metadata {
+  refcount_t rc;
+  tag_t tag;
+};
 struct qdbp_object {
-  refcount_t refcount;
-  enum qdbp_object_kind kind;
+  struct qdbp_object_metadata metadata;
   union qdbp_object_data data;
 };
 typedef struct qdbp_object *qdbp_object_ptr;
@@ -106,32 +92,42 @@ Basic Utilities
 ====================================================
 */
 
-void print_object(qdbp_object_ptr obj) {
-  switch (obj->kind) {
-  case QDBP_INT:
-    printf("int %lld\n", obj->data.i);
-    break;
-  case QDBP_FLOAT:
-    printf("float %f\n", obj->data.f);
-    break;
-  case QDBP_STRING:
-    printf("str %s\n", obj->data.s);
-    break;
-  case QDBP_PROTOTYPE:
-    printf("PROTO\n");
-    break;
-  case QDBP_VARIANT:
-    printf("variant %lld\n", obj->data.variant.tag);
-    break;
+void incref(qdbp_object_ptr obj, refcount_t amount) {
+  obj->metadata.rc += amount;
+}
+void decref(qdbp_object_ptr obj, refcount_t amount) {
+  obj->metadata.rc -= amount;
+}
+void set_refcount(qdbp_object_ptr obj, refcount_t refcount) {
+  obj->metadata.rc = refcount;
+}
+refcount_t get_refcount(qdbp_object_ptr obj) { return obj->metadata.rc; }
+
+// The kind is the upper 32 bits and the tag is the bottom 32 bits
+enum qdbp_object_kind get_kind(qdbp_object_ptr obj) {
+  if (DYNAMIC_TYPECHECK) {
+    assert(obj->metadata.tag != QDBP_VARIANT);
   }
+  if (obj->metadata.tag > QDBP_VARIANT) {
+    return QDBP_VARIANT;
+  } else {
+    return obj->metadata.tag;
+  }
+}
+
+void set_tag(qdbp_object_ptr o, tag_t t) { o->metadata.tag = t; }
+tag_t get_tag(qdbp_object_ptr o) {
+  if (DYNAMIC_TYPECHECK) {
+    assert(o->metadata.tag > QDBP_VARIANT);
+  }
+  return o->metadata.tag;
 }
 #define assert_refcount(obj)                                                   \
   do {                                                                         \
     if (VERIFY_REFCOUNTS) {                                                    \
       assert((obj));                                                           \
-      if ((obj)->refcount <= 0) {                                              \
-        printf("refcount of %lld\n", (obj)->refcount);                         \
-        print_object(obj);                                                     \
+      if (get_refcount(obj) <= 0) {                                            \
+        printf("refcount of %u\n", get_refcount(obj));                         \
         assert(false);                                                         \
       };                                                                       \
     }                                                                          \
@@ -140,7 +136,7 @@ void print_object(qdbp_object_ptr obj) {
   do {                                                                         \
     assert_refcount(obj);                                                      \
     if (DYNAMIC_TYPECHECK) {                                                   \
-      assert((obj)->kind == k);                                                \
+      assert(get_kind(obj) == k);                                              \
     }                                                                          \
   } while (0);
 void qdbp_memcpy(void *dest, const void *src, size_t size) {
@@ -194,11 +190,7 @@ void *qdbp_malloc(size_t size) {
     return NULL;
   }
   void *ptr;
-  if (BUMP_ALLOCATOR) {
-    ptr = bump_alloc(size);
-  } else {
-    ptr = malloc(size);
-  }
+  ptr = malloc(size);
   if (CHECK_MALLOC_FREE) {
     add_to_malloc_list(ptr);
   }
@@ -209,9 +201,7 @@ void qdbp_free(void *ptr) {
   if (CHECK_MALLOC_FREE) {
     remove_from_malloc_list(ptr);
   }
-  if (!BUMP_ALLOCATOR) {
-    free(ptr);
-  }
+  free(ptr);
 }
 
 #define MK_FREELIST(type, name)                                                \
@@ -244,13 +234,16 @@ void qdbp_free(void *ptr) {
 MK_FREELIST(qdbp_field_ptr, field_freelist)
 
 void qdbp_free_field(qdbp_field_ptr field) {
-  qdbp_free((void*)field);
+  if (FIELD_FREELIST && push_field_freelist(field)) {
+
+  } else {
+    qdbp_free((void *)field);
+  }
 }
 qdbp_field_ptr qdbp_malloc_field() {
-  if(FIELD_FREELIST && field_freelist.idx > 0) {
+  if (FIELD_FREELIST && field_freelist.idx > 0) {
     return pop_field_freelist();
-  }
-  else {
+  } else {
     return (qdbp_field_ptr)qdbp_malloc(sizeof(struct qdbp_field));
   }
 }
@@ -284,44 +277,29 @@ qdbp_object_ptr qdbp_malloc_obj() {
 }
 
 // Keep track of objects for testing
-struct object_list_node {
-  qdbp_object_ptr obj;
-  struct object_list_node *next;
-};
-struct object_list_node *object_list = NULL;
-qdbp_object_ptr make_object(enum qdbp_object_kind kind,
-                            union qdbp_object_data data) {
+qdbp_object_ptr make_object(tag_t tag, union qdbp_object_data data) {
   qdbp_object_ptr new_obj = qdbp_malloc_obj();
-  // add new_obj to object_list. Only if freeing is off otherwise
-  // object might be freed before we get to it
-  if (BUMP_ALLOCATOR && VERIFY_REFCOUNTS) {
-    struct object_list_node *new_obj_list =
-        (struct object_list_node *)malloc(sizeof(struct object_list_node));
-    new_obj_list->obj = new_obj;
-    new_obj_list->next = object_list;
-    object_list = new_obj_list;
-  }
-  new_obj->refcount = 1;
-  new_obj->kind = kind;
+  set_refcount(new_obj, 1);
+  set_tag(new_obj, tag);
   new_obj->data = data;
   return new_obj;
 }
 
 qdbp_object_ptr empty_prototype() {
   qdbp_object_ptr obj = make_object(
-      QDBP_PROTOTYPE,
-      (union qdbp_object_data){.prototype = {.labels = NULL}});
+      QDBP_PROTOTYPE, (union qdbp_object_data){.prototype = {.labels = NULL}});
   return obj;
 }
 qdbp_object_ptr qdbp_true() {
-  return make_object(QDBP_VARIANT,
-                     (union qdbp_object_data){
-                         .variant = {.tag = 1, .value = empty_prototype()}});
+  qdbp_object_ptr o = make_object(
+      21, // FIXME: Have these values generated by ocaml
+      (union qdbp_object_data){.variant = {.value = empty_prototype()}});
+  return o;
 }
 qdbp_object_ptr qdbp_false() {
-  return make_object(QDBP_VARIANT,
-                     (union qdbp_object_data){
-                         .variant = {.tag = 0, .value = empty_prototype()}});
+  qdbp_object_ptr o = make_object(
+      20, (union qdbp_object_data){.variant = {.value = empty_prototype()}});
+  return o;
 }
 /*
     ====================================================
@@ -330,12 +308,8 @@ qdbp_object_ptr qdbp_false() {
 */
 bool is_unique(qdbp_object_ptr obj) {
   assert(obj);
-  assert(obj->refcount >= 0);
-  return REFCOUNT && obj->refcount == 1;
-}
-void decref(qdbp_object_ptr obj) {
-  assert_refcount(obj);
-  obj->refcount--;
+  assert(get_refcount(obj) >= 0);
+  return get_refcount(obj) == 1;
 }
 
 void del_method(qdbp_method_ptr method);
@@ -348,54 +322,10 @@ bool drop(qdbp_object_ptr obj, refcount_t cnt);
 
 #define MAKE_CASES FORALL_FREELISTS(MAKE_CASE)
 
-#define MK_CAPTURE_FREELIST(n) MK_FREELIST(qdbp_object_arr, capture_freelist##n)
-FORALL_FREELISTS(MK_CAPTURE_FREELIST)
-
-
-bool pop_capture_freelist(size_t size, qdbp_object_arr *capture) {
-#define MAKE_CASE(n)                                                           \
-  case n:                                                                      \
-    if (capture_freelist##n.idx > 0) {                                         \
-      *capture = pop_capture_freelist##n();                                    \
-      return true;                                                             \
-    }                                                                          \
-    break;
-  switch (size) {
-    MAKE_CASES
-#undef MAKE_CASE
-  default:
-    return false;
-    break;
-  }
-  return false;
-}
-
-bool push_capture_freelist(size_t size, qdbp_object_arr capture) {
-  if (!capture) {
-    return false;
-  }
-#define MAKE_CASE(n)                                                           \
-  case n:                                                                      \
-    return push_capture_freelist##n(capture);                                  \
-    break;
-  switch (size) {
-    MAKE_CASES
-#undef MAKE_CASE
-  default:
-    return false;
-    break;
-  }
-}
 size_t proto_size(qdbp_prototype_ptr proto) {
-  size_t size = 0;
-  Word_t label = 0;
-  qdbp_field_ptr *PValue;
-  JLF(PValue, proto->labels, label);
-  while (PValue != NULL) {
-    size++;
-    JLN(PValue, proto->labels, label);
-  }
-  return size;
+  size_t ret;
+  JLC(ret, proto->labels, 0, -1);
+  return ret;
 }
 void del_prototype(qdbp_prototype_ptr proto) {
   if (DYNAMIC_TYPECHECK) {
@@ -427,19 +357,11 @@ void del_variant(qdbp_variant_ptr variant) {
 
 qdbp_object_arr make_capture_arr(size_t size) {
   qdbp_object_arr capture;
-  if (CAPTURE_FREELIST && pop_capture_freelist(size, &capture)) {
-    return capture;
-  } else {
-    return (qdbp_object_ptr *)qdbp_malloc(sizeof(qdbp_object_ptr) * size);
-  }
+  return (qdbp_object_ptr *)qdbp_malloc(sizeof(qdbp_object_ptr) * size);
 }
 void free_capture_arr(qdbp_object_arr arr, size_t size) {
   if (arr) {
-    if (CAPTURE_FREELIST && push_capture_freelist(size, arr)) {
-      return;
-    } else {
-      qdbp_free(arr);
-    }
+    qdbp_free(arr);
   }
 }
 void del_method(qdbp_method_ptr method) {
@@ -454,7 +376,7 @@ void del_method(qdbp_method_ptr method) {
 
 void del_obj(qdbp_object_ptr obj) {
 
-  switch (obj->kind) {
+  switch (get_kind(obj)) {
   case QDBP_INT:
     break;
   case QDBP_FLOAT:
@@ -475,25 +397,19 @@ void del_obj(qdbp_object_ptr obj) {
 bool drop(qdbp_object_ptr obj, refcount_t cnt) {
   assert_refcount(obj);
   if (VERIFY_REFCOUNTS) {
-    assert(obj->refcount >= cnt);
+    assert(get_refcount(obj) >= cnt);
   }
-  if (REFCOUNT) {
-    obj->refcount -= cnt;
-    if (obj->refcount == 0) {
-      del_obj(obj);
-      return true;
-    }
-    return false;
-  } else {
-    return false;
+  decref(obj, cnt);
+  if (get_refcount(obj) == 0) {
+    del_obj(obj);
+    return true;
   }
+  return false;
 }
 
 void obj_dup(qdbp_object_ptr obj, refcount_t cnt) {
   assert_refcount(obj);
-  if (REFCOUNT) {
-    obj->refcount += cnt;
-  }
+  incref(obj, cnt);
 }
 
 void dup_captures(qdbp_method_ptr method) {
@@ -686,21 +602,30 @@ qdbp_object_arr make_captures(qdbp_object_arr captures, size_t size) {
   }
 }
 
-qdbp_object_ptr extend(qdbp_object_ptr obj, label_t label, void *code,
-                       qdbp_object_arr captures, size_t captures_size) {
+__attribute__((always_inline)) qdbp_object_ptr extend(qdbp_object_ptr obj,
+                                                      label_t label, void *code,
+                                                      qdbp_object_arr captures,
+                                                      size_t captures_size) {
   struct qdbp_field f = {
       .method = {.captures = make_captures(captures, captures_size),
                  .captures_size = captures_size,
                  .code = code}};
   assert_obj_kind(obj, QDBP_PROTOTYPE);
-  qdbp_prototype_ptr prototype = &(obj->data.prototype);
-  struct qdbp_prototype new_prototype =
-      raw_prototype_extend(prototype, &f, label);
-  qdbp_object_ptr new_obj = make_object(
-      QDBP_PROTOTYPE, (union qdbp_object_data){.prototype = new_prototype});
-  dup_prototype_captures(prototype);
-  drop(obj, 1);
-  return new_obj;
+  if (!REUSE_ANALYSIS || !is_unique(obj)) {
+    qdbp_prototype_ptr prototype = &(obj->data.prototype);
+    struct qdbp_prototype new_prototype =
+        raw_prototype_extend(prototype, &f, label);
+    qdbp_object_ptr new_obj = make_object(
+        QDBP_PROTOTYPE, (union qdbp_object_data){.prototype = new_prototype});
+    dup_prototype_captures(prototype);
+    drop(obj, 1);
+    return new_obj;
+  } else {
+    qdbp_field_ptr new_field = qdbp_malloc_field();
+    *new_field = f;
+    label_add(&(obj->data.prototype), label, new_field);
+    return obj;
+  }
 }
 /* Prototype Replacement
 Identical to above except we don't dup captures of new method
@@ -709,14 +634,15 @@ Identical to above except we don't dup captures of new method
   - dup all the shared captures between the old and new prototype
   - drop prototype
 */
-qdbp_object_ptr replace(qdbp_object_ptr obj, label_t label, void *code,
-                        qdbp_object_arr captures, size_t captures_size) {
+__attribute__((always_inline)) qdbp_object_ptr
+replace(qdbp_object_ptr obj, label_t label, void *code,
+        qdbp_object_arr captures, size_t captures_size) {
   assert_obj_kind(obj, QDBP_PROTOTYPE);
   struct qdbp_field f = {
       .method = {.captures = make_captures(captures, captures_size),
                  .captures_size = captures_size,
                  .code = code}};
-  if (!REUSE_PROTO_REPLACE || !is_unique(obj)) {
+  if (!REUSE_ANALYSIS || !is_unique(obj)) {
     struct qdbp_prototype new_prototype =
         raw_prototype_replace(&(obj->data.prototype), &f, label);
     dup_prototype_captures_except(&(obj->data.prototype), label);
@@ -741,9 +667,8 @@ qdbp_object_ptr replace(qdbp_object_ptr obj, label_t label, void *code,
 */
 qdbp_object_ptr variant_create(tag_t tag, qdbp_object_ptr value) {
   assert_refcount(value);
-  qdbp_object_ptr new_obj = make_object(
-      QDBP_VARIANT,
-      (union qdbp_object_data){.variant = {.tag = tag, .value = value}});
+  qdbp_object_ptr new_obj =
+      make_object(tag, (union qdbp_object_data){.variant = {.value = value}});
   return new_obj;
 }
 /* Variant Pattern Matching
@@ -755,7 +680,7 @@ void decompose_variant(qdbp_object_ptr obj, tag_t *tag,
                        qdbp_object_ptr *payload) {
   assert_obj_kind(obj, QDBP_VARIANT);
   qdbp_object_ptr value = obj->data.variant.value;
-  *tag = obj->data.variant.tag;
+  *tag = get_tag(obj);
   // return value, tag
   *payload = value;
 }
@@ -792,28 +717,13 @@ qdbp_object_ptr qdbp_float(double f) {
   return new_obj;
 }
 void check_mem() {
-  // We can't do this if freeing is on cuz the objects might already be freed
-  if (BUMP_ALLOCATOR && VERIFY_REFCOUNTS) {
-    struct object_list_node *node = object_list;
-    while (node) {
-      refcount_t refcount = node->obj->refcount;
-      if (refcount > 0) {
-        printf("Error: refcount of %p is %lld\n", (void *)node->obj, refcount);
-      }
-      node = node->next;
-    }
-  } else {
-    assert(!object_list);
-  }
   // Make sure that everything that has been malloc'd has been freed
   if (CHECK_MALLOC_FREE) {
+    if (FIELD_FREELIST) {
+      field_freelist_remove_all_from_malloc_list();
+    }
     if (OBJ_FREELIST) {
       freelist_remove_all_from_malloc_list();
-    }
-    if (CAPTURE_FREELIST) {
-#define RM_CAPTURE_FROM_MALLOC_LIST(n)                                         \
-  capture_freelist##n##_remove_all_from_malloc_list();
-      FORALL_FREELISTS(RM_CAPTURE_FROM_MALLOC_LIST)
     }
     struct malloc_list_node *node = malloc_list;
     while (node) {
@@ -823,23 +733,10 @@ void check_mem() {
   }
 }
 void init() {
-  size_t total_freelist_mem = 0;
-  total_freelist_mem += sizeof(struct freelist_t);
-  total_freelist_mem += sizeof(struct qdbp_object) * FREELIST_SIZE;
-  for (size_t i = 0; i < NUM_FREELISTS; i++) {
-    total_freelist_mem += sizeof(struct qdbp_field) * FREELIST_SIZE;
-    total_freelist_mem += sizeof(qdbp_object_ptr) * FREELIST_SIZE;
-  }
-  printf("Total freelist mem: %zu\n", total_freelist_mem);
-
-  bump_init();
   for (int i = 0; i < FREELIST_SIZE; i++) {
     if (!CHECK_MALLOC_FREE) {
       push_freelist(qdbp_malloc(sizeof(struct qdbp_object)));
-
-#define PUSH_FREELIST(n)                                                       \
-  push_capture_freelist##n(qdbp_malloc(sizeof(qdbp_object_ptr) * n));          
-  FORALL_FREELISTS(PUSH_FREELIST)
+      push_field_freelist(qdbp_malloc(sizeof(struct qdbp_field)));
     }
   }
 }

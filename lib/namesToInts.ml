@@ -20,15 +20,22 @@ let names_to_ints ast =
       Hashtbl.add label_map name label;
       label in
   let tag_map = Hashtbl.create 10 in
+  let cur_tag = ref 22 in
   let get_tag name =
     match Hashtbl.find_opt tag_map name with
     | Some tag -> tag
     | None ->
-      let tag = Oo.id (object end) in
+      let tag = !cur_tag in
+      cur_tag := tag + 1;
       Hashtbl.add tag_map name tag;
       tag in
-  let _ = Hashtbl.add tag_map "False" 0 in
-  let _ = Hashtbl.add tag_map "True" 1 in
+  (* IMPORTANT: Must keep this updated with 
+      qdbp_true() and qdbp_false() in runtime.h
+  *)
+
+
+  let _ = Hashtbl.add tag_map "False" 20 in
+  let _ = Hashtbl.add tag_map "True" 21 in
   (* FIXME: Make this purely functional *)
   let rec names_to_ints varnames ast =
     match ast with
