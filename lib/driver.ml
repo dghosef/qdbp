@@ -68,6 +68,12 @@ let compile args =
   let ast = ResolveImports.resolve_imports imports ast in
   let tvars, ty, ast = Infer.infer files ast in
   let loc = Infer.loc_of ast in
+
+  let _, ast = FreeVariablesStr.free_variables ast in
+  let ast = Inline.inline ast in
+  let _, ast = FreeVariablesStr.free_variables ast in
+  let ast = Inline.inline ast in
+
   let ast, max_label = NamesToInts.names_to_ints ast in
   let fvs, ast = FreeVariables.free_variables ast in
   let ml = CodegenML.codegen_ml ast in
