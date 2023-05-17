@@ -66,7 +66,10 @@ let inline expr =
       let peval_receiver, receiver = inline env receiver in
       begin
         match (peval_receiver) with
-        | `Variant (label, payload) ->
+        | `Variant (label, payload) when
+            (List.length (List.find_all (
+                 fun ((tag, _), _, _) ->
+                   label = tag) cases)) = 1 ->
           let case = List.find (
               fun ((tag, _), _, _) ->
                 label = tag) cases in
@@ -75,7 +78,7 @@ let inline expr =
               env in 
           let pevalbody, body = inline env body in
           pevalbody, `PatternMatch (receiver, [(tag, ((argname, argloc), body, patternLoc), caseLoc)], loc) 
-        | `Unit -> 
+        | `Unit | `Variant _ -> 
           let cases = List.map (fun ((tag, tagLoc), ((arg, argLoc), body, patternLoc), caseLoc) ->
               let env = StringMap.add arg `Unit env in
               let _, body = inline env body in
