@@ -10,17 +10,19 @@ Every function that qdbp calls must follow the following rules:
 1` times
 */
 
+// FIXME: Safe arithmetic
+
 #include "runtime.h"
 #include <math.h>
 #include <stdio.h>
 
-qdbp_object_ptr qdbp_abort() {
+static qdbp_object_ptr qdbp_abort() {
   printf("aborting\n");
   exit(0);
 }
 
 #define qdbp_int_binop(name, op)                                               \
-  qdbp_object_ptr name(qdbp_object_ptr a, qdbp_object_ptr b) {                 \
+  static qdbp_object_ptr name(qdbp_object_ptr a, qdbp_object_ptr b) {                 \
     assert_obj_kind(a, QDBP_INT);                                              \
     assert_obj_kind(b, QDBP_INT);                                              \
     if (is_unique(a)) {                                                        \
@@ -41,7 +43,7 @@ qdbp_object_ptr qdbp_abort() {
   }
 
 #define qdbp_float_binop(name, op)                                             \
-  qdbp_object_ptr name(qdbp_object_ptr a, qdbp_object_ptr b) {                 \
+  static qdbp_object_ptr name(qdbp_object_ptr a, qdbp_object_ptr b) {                 \
     assert_obj_kind(a, QDBP_FLOAT);                                            \
     assert_obj_kind(b, QDBP_FLOAT);                                            \
     if (is_unique(a)) {                                                        \
@@ -62,7 +64,7 @@ qdbp_object_ptr qdbp_abort() {
   }
 
 #define qdbp_intcmp_binop(name, op)                                            \
-  qdbp_object_ptr name(qdbp_object_ptr a, qdbp_object_ptr b) {                 \
+  static qdbp_object_ptr name(qdbp_object_ptr a, qdbp_object_ptr b) {                 \
     assert_obj_kind(a, QDBP_INT);                                              \
     assert_obj_kind(b, QDBP_INT);                                              \
     qdbp_object_ptr result =                                                   \
@@ -73,7 +75,7 @@ qdbp_object_ptr qdbp_abort() {
   }
 
 #define qdbp_floatcmp_binop(name, op)                                          \
-  qdbp_object_ptr name(qdbp_object_ptr a, qdbp_object_ptr b) {                 \
+  static qdbp_object_ptr name(qdbp_object_ptr a, qdbp_object_ptr b) {                 \
     assert_obj_kind(a, QDBP_FLOAT);                                            \
     assert_obj_kind(b, QDBP_FLOAT);                                            \
     qdbp_object_ptr result =                                                   \
@@ -82,12 +84,12 @@ qdbp_object_ptr qdbp_abort() {
     drop(b, 1);                                                                \
     return result;                                                             \
   }
-char *empty_string() {
+static char *empty_string() {
   char *s = (char *)qdbp_malloc(1);
   s[0] = '\0';
   return s;
 }
-char *c_str_concat(const char *a, const char *b) {
+static char *c_str_concat(const char *a, const char *b) {
   int lena = strlen(a);
   int lenb = strlen(b);
   char *con = (char *)qdbp_malloc(lena + lenb + 1);
@@ -97,7 +99,7 @@ char *c_str_concat(const char *a, const char *b) {
   return con;
 }
 // concat_string
-qdbp_object_ptr concat_string(qdbp_object_ptr a, qdbp_object_ptr b) {
+static qdbp_object_ptr concat_string(qdbp_object_ptr a, qdbp_object_ptr b) {
   assert_obj_kind(a, QDBP_STRING);
   assert_obj_kind(b, QDBP_STRING);
   const char *a_str = a->data.s;
@@ -108,7 +110,7 @@ qdbp_object_ptr concat_string(qdbp_object_ptr a, qdbp_object_ptr b) {
                      (union qdbp_object_data){.s = c_str_concat(a_str, b_str)});
 }
 // qdbp_print_string_int
-qdbp_object_ptr qdbp_print_string_int(qdbp_object_ptr s) {
+static qdbp_object_ptr qdbp_print_string_int(qdbp_object_ptr s) {
   assert_obj_kind(s, QDBP_STRING);
   printf("%s", s->data.s);
   fflush(stdout);
@@ -116,11 +118,11 @@ qdbp_object_ptr qdbp_print_string_int(qdbp_object_ptr s) {
   return make_object(QDBP_INT, (union qdbp_object_data){.i = 0});
 }
 // qdbp_float_to_string
-qdbp_object_ptr qdbp_empty_string() {
+static qdbp_object_ptr qdbp_empty_string() {
   return make_object(QDBP_STRING,
                      (union qdbp_object_data){.s = empty_string()});
 }
-qdbp_object_ptr qdbp_zero_int() {
+static qdbp_object_ptr qdbp_zero_int() {
   return make_object(QDBP_INT, (union qdbp_object_data){.i = 0});
 }
 
@@ -136,7 +138,7 @@ qdbp_int_binop(qdbp_int_add_int, +) qdbp_int_binop(qdbp_int_sub_int, -)
                                 qdbp_intcmp_binop(
                                     qdbp_int_ne_bool,
                                     !=) void ____() /* fix formatting issues*/;
-size_t itoa_bufsize(int64_t i) {
+static size_t itoa_bufsize(int64_t i) {
   size_t result = 2; // '\0' at the end, first digit
   if (i < 0) {
     i *= -1;
@@ -148,7 +150,7 @@ size_t itoa_bufsize(int64_t i) {
   }
   return result;
 }
-qdbp_object_ptr qdbp_int_to_string(qdbp_object_ptr i) {
+static qdbp_object_ptr qdbp_int_to_string(qdbp_object_ptr i) {
   assert_obj_kind(i, QDBP_INT);
   int64_t val = i->data.i;
   drop(i, 1);
@@ -158,7 +160,7 @@ qdbp_object_ptr qdbp_int_to_string(qdbp_object_ptr i) {
   return make_object(QDBP_STRING, (union qdbp_object_data){.s = s});
 }
 
-qdbp_object_ptr qdbp_zero_float() {
+static qdbp_object_ptr qdbp_zero_float() {
   return make_object(QDBP_FLOAT, (union qdbp_object_data){.f = 0.0});
 }
 qdbp_float_binop(qdbp_float_add_float, +) qdbp_float_binop(qdbp_float_sub_float,
@@ -171,7 +173,7 @@ qdbp_float_binop(qdbp_float_add_float, +) qdbp_float_binop(qdbp_float_sub_float,
                 qdbp_floatcmp_binop(qdbp_float_ge_bool,
                                     >=) void ____() /* fix formatting issues*/;
 
-qdbp_object_ptr qdbp_float_mod_float(qdbp_object_ptr a, qdbp_object_ptr b) {
+static qdbp_object_ptr qdbp_float_mod_float(qdbp_object_ptr a, qdbp_object_ptr b) {
   assert_obj_kind(a, QDBP_FLOAT);
   assert_obj_kind(b, QDBP_FLOAT);
   qdbp_object_ptr result = make_object(

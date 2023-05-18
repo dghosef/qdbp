@@ -10,7 +10,8 @@ let varname varnames name =
 let names_to_ints ast =
   (* FIXME: Make functional *)
   let label_map = Hashtbl.create 10 in
-  let cur_label = ref 0 in
+  (* Save the first 100 labels for reserved labels*)
+  let cur_label = ref 100 in
   let get_label name =
     match Hashtbl.find_opt label_map name with
     | Some label -> label
@@ -19,8 +20,25 @@ let names_to_ints ast =
       cur_label := label + 1;
       Hashtbl.add label_map name label;
       label in
+    (* MUST keep in sync with int_proto.h *)
+  Hashtbl.add label_map "+" 0;
+  Hashtbl.add label_map "-" 1;
+  Hashtbl.add label_map "*" 2;
+  Hashtbl.add label_map "/" 3;
+  Hashtbl.add label_map "%" 4;
+  Hashtbl.add label_map "=" 5;
+  Hashtbl.add label_map "!=" 6;
+  Hashtbl.add label_map "<" 7;
+  Hashtbl.add label_map ">" 8;
+  Hashtbl.add label_map "<=" 9;
+  Hashtbl.add label_map ">=" 10;
+  Hashtbl.add label_map "Val" 11;
+  Hashtbl.add label_map "AsString" 12;
+  Hashtbl.add label_map "Print" 13;
+
   let tag_map = Hashtbl.create 10 in
-  let cur_tag = ref 22 in
+  (* Save the first 100 for reserved tags *)
+  let cur_tag = ref 100 in
   let get_tag name =
     match Hashtbl.find_opt tag_map name with
     | Some tag -> tag
@@ -89,4 +107,5 @@ let names_to_ints ast =
       `Abort loc
   in 
   let ast = names_to_ints StringMap.empty ast in
+  assert (!cur_tag < 4_000_000_000);
   ast, !cur_label + 1

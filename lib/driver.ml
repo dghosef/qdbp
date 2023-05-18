@@ -70,9 +70,7 @@ let compile args =
   let loc = Infer.loc_of ast in
 
   let _, ast = FreeVariablesStr.free_variables ast in
-  let ast = Inline.inline ast in
-  let _, ast = FreeVariablesStr.free_variables ast in
-  let ast = Inline.inline ast in
+  let ast = Inline.inline 1 ast in
 
   let ast, max_label = NamesToInts.names_to_ints ast in
   let fvs, ast = FreeVariables.free_variables ast in

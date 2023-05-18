@@ -36,7 +36,11 @@ let invoke_fns methods =
   let arities =
     IntSet.of_list (
       List.map (fun (_, (args, _, _, _, _)) -> List.length args) (IntMap.bindings methods)) in
+  (* Arities 0 and 1 are hardcoded because of int objects *)
+  let arities = IntSet.remove 0 arities in
+  let arities = IntSet.remove 1 arities in
   let invoke_fn arity =
+    (* MUST keep up to date w/ invoke fns in proto.c *)
     let args = List.init arity (fun a -> "qdbp_object_ptr arg" ^ (string_of_int a)) in
     let args = "qdbp_object_ptr receiver" :: "label_t label" :: args in 
     let fn_name = invoke_fn_name arity in
