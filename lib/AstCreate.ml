@@ -82,8 +82,9 @@ let make_import filename (loc: Lexing.position * Lexing.position) : ast =
 let make_literal literal_template_filename literal_value loc =
   let import = make_import literal_template_filename loc in
   make_method_invocation import ("!", loc) (Some literal_value) [] loc
-let make_int_literal i loc : ast = make_literal "int" (`IntLiteral (i, loc)) loc
-let make_float_literal f loc : ast = make_literal "float" (`FloatLiteral (f, loc)) loc
+let make_int_literal i loc : ast = `IntProto (i, loc)
+let make_float_literal _ _ : ast =
+  Error.internal_error "Float literals not implemented"
 let make_string_literal s loc : ast = make_literal "string" (`StringLiteral (s, loc)) loc
 let make_external_call fn_name args loc : ast = 
   `ExternalCall (fn_name, args, loc)

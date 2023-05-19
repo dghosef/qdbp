@@ -70,6 +70,7 @@ let codegen_ml ast =
       let args = List.map (codegen_ml) args in
       let args = String.concat " " args in
       paren (name ^ " " ^ args)
+    | `IntProto _ -> Error.internal_error "IntProto"
     | `IntLiteral (i, _) -> paren (
         "__qdbp_int_literal " ^ (paren (string_of_int i))
       )

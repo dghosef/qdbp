@@ -20,6 +20,7 @@ type ast =
   | `FloatLiteral of float * parser_pos
   | `StringLiteral of string * parser_pos
   | `Abort of parser_pos
+  | `IntProto of (int * parser_pos)
   ]
 and field = id * meth * parser_pos
 and meth = (id list) * ast * parser_pos

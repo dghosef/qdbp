@@ -59,6 +59,8 @@ let rec free_variables ast =
     FvSet.empty, `IntLiteral (i, loc)
   | `FloatLiteral (f, loc) -> 
     FvSet.empty, `FloatLiteral (f, loc)
+  | `IntProto _ as i ->
+    FvSet.empty, i
   | `StringLiteral (s, loc) ->
     FvSet.empty, `StringLiteral (s, loc)
   | `Abort loc ->

@@ -66,7 +66,7 @@ let compile args =
       full_input_file in
   let (imports, files) = ResolveImports.build_import_map files ast in
   let ast = ResolveImports.resolve_imports imports ast in
-  let tvars, ty, ast = Infer.infer files ast in
+  let _, _, ast = Infer.infer files ast in
   let loc = Infer.loc_of ast in
 
   let _, ast = FreeVariablesStr.free_variables ast in
@@ -74,7 +74,6 @@ let compile args =
 
   let ast, max_label = NamesToInts.names_to_ints ast in
   let fvs, ast = FreeVariables.free_variables ast in
-  let ml = CodegenML.codegen_ml ast in
   let ast = Refcount.refcount Refcount.FvSet.empty Refcount.FvSet.empty ast in
   let ast = Anf.anf ast (fun x -> x) in
   let ast = Refcount.fusion ast in
@@ -88,28 +87,4 @@ let compile args =
   let main_method = ([], ast, loc, fvs, bvs) in
   let main_method_id = (Oo.id (object end)) in
   let methods = CollectMethods.IntMap.add main_method_id main_method methods in
-  print_endline (CodegenC.codegen_c methods main_method_id max_label);
-  let ml_output_file = match args.ml_output_file with
-    | Some f -> f
-    | None -> args.input_file ^ ".ml"
-  in
-  let bin_output_file = match args.bin_output_file with
-    | Some f -> f
-    | None -> args.input_file ^ ".bin"
-  in
-  let bin_output_file = 
-    if Filename.is_relative bin_output_file then
-      Filename.concat (Filename.current_dir_name) bin_output_file
-    else
-      bin_output_file
-  in
-  let oc = open_out ml_output_file in
-  output_string oc ml;
-  close_out oc;
-  let compile_cmd = "ocamlc -o " ^ bin_output_file ^ " " ^ ml_output_file in
-  let _ = Sys.command compile_cmd in
-  if args.print_ty then
-    print_endline (Type.str_of_ty tvars ty);
-  if args.execute then
-    let _ = Sys.command (bin_output_file) in
-    ()
+  print_endline (CodegenC.codegen_c methods main_method_id max_label)

@@ -37,8 +37,8 @@ let invoke_fns methods =
     IntSet.of_list (
       List.map (fun (_, (args, _, _, _, _)) -> List.length args) (IntMap.bindings methods)) in
   (* Arities 0 and 1 are hardcoded because of int objects *)
-  let arities = IntSet.remove 0 arities in
   let arities = IntSet.remove 1 arities in
+  let arities = IntSet.remove 2 arities in
   let invoke_fn arity =
     (* MUST keep up to date w/ invoke fns in proto.c *)
     let args = List.init arity (fun a -> "qdbp_object_ptr arg" ^ (string_of_int a)) in
@@ -77,6 +77,7 @@ let rec expr_to_c level expr =
   | `Dup (v, e, cnt) ->
     c_call "DUP" [(varname v); string_of_int cnt; (expr_to_c (level + 1) e);]
   | `EmptyPrototype _ -> "empty_prototype()"
+  | `IntProto (i, _) -> c_call "make_unboxed_int" [string_of_int i]
   | `ExternalCall (fn, args, _, _) ->
     c_call (fst fn) (List.map (expr_to_c (level + 1)) args)
 

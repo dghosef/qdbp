@@ -10,8 +10,8 @@ let varname varnames name =
 let names_to_ints ast =
   (* FIXME: Make functional *)
   let label_map = Hashtbl.create 10 in
-  (* Save the first 100 labels for reserved labels*)
-  let cur_label = ref 100 in
+  (* Save the first 1000 labels for reserved labels*)
+  let cur_label = ref 1000 in
   let get_label name =
     match Hashtbl.find_opt label_map name with
     | Some label -> label
@@ -20,21 +20,21 @@ let names_to_ints ast =
       cur_label := label + 1;
       Hashtbl.add label_map name label;
       label in
-    (* MUST keep in sync with int_proto.h *)
-  Hashtbl.add label_map "+" 0;
-  Hashtbl.add label_map "-" 1;
-  Hashtbl.add label_map "*" 2;
-  Hashtbl.add label_map "/" 3;
-  Hashtbl.add label_map "%" 4;
-  Hashtbl.add label_map "=" 5;
-  Hashtbl.add label_map "!=" 6;
-  Hashtbl.add label_map "<" 7;
-  Hashtbl.add label_map ">" 8;
-  Hashtbl.add label_map "<=" 9;
-  Hashtbl.add label_map ">=" 10;
-  Hashtbl.add label_map "Val" 11;
-  Hashtbl.add label_map "AsString" 12;
-  Hashtbl.add label_map "Print" 13;
+    (* MUST keep in sync with int_proto.h and infer.ml *)
+    (* Must be less than 1000 *)
+  Hashtbl.add label_map "Val:this" 0;
+  Hashtbl.add label_map "Print:this" 1;
+  Hashtbl.add label_map "+:this:that" 2;
+  Hashtbl.add label_map "-:this:that" 3;
+  Hashtbl.add label_map "*:this:that" 4;
+  Hashtbl.add label_map "/:this:that" 5;
+  Hashtbl.add label_map "%:this:that" 6;
+  Hashtbl.add label_map "=:this:that" 7;
+  Hashtbl.add label_map "!=:this:that" 8;
+  Hashtbl.add label_map "<:this:that" 9;
+  Hashtbl.add label_map ">:this:that" 10;
+  Hashtbl.add label_map "<=:this:that" 11;
+  Hashtbl.add label_map ">=:this:that" 12;
 
   let tag_map = Hashtbl.create 10 in
   (* Save the first 100 for reserved tags *)
@@ -99,6 +99,7 @@ let names_to_ints ast =
       `ExternalCall ((name, nameLoc), args, loc)
     | `IntLiteral (i, loc) ->
       `IntLiteral (i, loc)
+    | `IntProto (i, loc) -> `IntProto (i, loc)
     | `FloatLiteral (f, loc) -> 
       `FloatLiteral (f, loc)
     | `StringLiteral (s, loc) ->

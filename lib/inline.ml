@@ -51,6 +51,7 @@ let rename_args arg_ids fvs body =
     | `FloatLiteral _ as f -> f
     | `IntLiteral _ as i -> i
     | `EmptyPrototype _ as e -> e
+    | `IntProto _ as e -> e
   in
   let arg_ids = List.map (fun (id, loc) -> (varname argmap id, loc)) arg_ids in
   arg_ids, rename argmap body
@@ -155,6 +156,8 @@ let inline depth expr =
 
     | `EmptyPrototype _ as e ->
       `Proto StringMap.empty, e
+    | `IntProto _ as e ->
+      `Unit, e
     | `IntLiteral _ as i ->
       `Unit, i
     | `FloatLiteral _ as f -> 

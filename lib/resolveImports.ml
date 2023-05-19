@@ -34,6 +34,8 @@ let build_import_map files ast =
       state
     | `StringLiteral _ ->
       state
+    | `IntProto _ ->
+      state
     | `Abort _ ->
       state
     | `Import (filename, loc) -> 
@@ -98,5 +100,7 @@ let resolve_imports imports ast =
       `StringLiteral (s, loc)
     | `Abort loc ->
       `Abort loc
+    | `IntProto i ->
+      `IntProto i
   in 
   resolve_imports ast

@@ -17,6 +17,7 @@ let fv expr =
   | `Abort _ -> FvSet.empty
   | `Method (_, _, _, fvs) -> fvs
   | `Dispatch -> FvSet.empty
+  | `IntProto _ -> FvSet.empty
 
 
 let rec get_args = function
@@ -193,6 +194,8 @@ let rec refcount delta gamma ast =
 
       | _ -> Error.internal_error "refcount: prototype copy"
     end
+  | `IntProto (loc, fvs) ->
+    `IntProto (loc, fvs)
 
 
 
@@ -265,6 +268,7 @@ let rec fusion expr =
   | `EmptyPrototype _ as e -> e
   | `StringLiteral _ as s -> s
   | `Abort _ as a-> a
+  | `IntProto _ as i -> i
 
   (*
     The one rule is that you cannot move any drops before dups

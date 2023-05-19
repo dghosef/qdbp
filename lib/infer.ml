@@ -378,6 +378,7 @@ let loc_of expr =
   | `StringLiteral (_, loc) -> loc
   | `Abort loc -> loc
   | `Method (_, _, loc) -> loc
+  | `IntProto (_, loc) -> loc
 
 let infer files expr =
 
@@ -560,6 +561,10 @@ let infer files expr =
       let tvars, already_unified =
         try_unify tvars already_unified (loc_of expr) expr_ty (`TVariant cases_row) in
       (tvars, already_unified), return_ty, `PatternMatch (expr, cases, loc)
+    | `IntProto _ as i ->
+      let (tvars, already_unified) = state in
+      let tvars, typ = Type.int_proto_type tvars level in
+      (tvars, already_unified), typ, i
 
   and infer_cases tvars already_unified env level return_ty rest_row_ty cases =
     match cases with

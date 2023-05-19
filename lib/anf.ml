@@ -27,6 +27,8 @@ let rec anf e k  =
     k a
   | `EmptyPrototype _ as e ->
     k e
+  | `IntProto _ as i ->
+    k i
   | `FloatLiteral _ as f ->
     k f
   | `IntLiteral _ as i ->

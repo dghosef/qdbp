@@ -27,6 +27,77 @@ let make_new_unbound_var tvars level =
 let update_tvars tvars var_id new_var =
   (fst tvars, TyVarMap.add var_id new_var (snd tvars))
 
+let bool_ty =
+  `TVariant (
+    `TRowExtend (
+      "True", `TRecord (`TRowEmpty),
+      `TRowExtend (
+        "False", `TRecord (`TRowEmpty),
+        `TRowEmpty
+      )
+    )
+  )
+let int_proto_type tvars level =
+  let add_arith_binop tvars level binop row =
+    let tvars, v1 = make_new_unbound_var tvars level in
+    let tvars, v2 = make_new_unbound_var tvars level in
+    let tvars, v3 = make_new_unbound_var tvars level in
+    let that_ty = `TRecord (
+      `TRowExtend (
+        "Val:this", `TArrow ([v2], `TConst `Int),
+        v3
+      )
+    ) in
+    tvars,
+    `TRowExtend (
+      binop ^ ":this" ^ ":that", 
+      `TArrow ([ v1;  that_ty], v1)
+      , row
+    ) in
+  let add_cmp_binop tvars level binop row =
+    let tvars, v1 = make_new_unbound_var tvars level in
+    let tvars, v2 = make_new_unbound_var tvars level in
+    let tvars, v3 = make_new_unbound_var tvars level in
+    let that_ty = `TRecord (
+      `TRowExtend (
+        "Val:this", `TArrow ([v2], `TConst `Int),
+        v3
+      )
+    ) in
+    tvars,
+    `TRowExtend (
+      binop ^ ":this" ^ ":that", 
+      `TArrow ([ v1;  that_ty], bool_ty)
+      , row
+    ) in
+  let tvars, v1 = make_new_unbound_var tvars level in
+  (* MUST Keep in sync with int_proto.h and namesToInts.ml *)
+  let row = 
+    `TRowExtend (
+      "Print:this", `TArrow ([v1],
+                             `TRecord (`TRowEmpty)),
+      `TRowEmpty)
+  in
+  let tvars, v1 = make_new_unbound_var tvars level in
+  let row = 
+    `TRowExtend (
+      "Val:this", `TArrow ([v1],
+                           (`TConst `Int)),
+      row)
+  in
+  let tvars, row = add_arith_binop tvars level "+" row in
+  let tvars, row = add_arith_binop tvars level "-" row in
+  let tvars, row = add_arith_binop tvars level "*" row in
+  let tvars, row = add_arith_binop tvars level "/" row in
+  let tvars, row = add_arith_binop tvars level "%" row in
+  let tvars, row = add_cmp_binop tvars level "=" row in
+  let tvars, row = add_cmp_binop tvars level "!=" row in
+  let tvars, row = add_cmp_binop tvars level "<" row in
+  let tvars, row = add_cmp_binop tvars level ">" row in
+  let tvars, row = add_cmp_binop tvars level "<=" row in
+  let tvars, row = add_cmp_binop tvars level ">=" row in
+  tvars, `TRecord row
+
 let paren s = "(" ^ s ^ ")"
 let bracket s = "{" ^ s ^ "}"
 let brace s = "[" ^ s ^ "]"

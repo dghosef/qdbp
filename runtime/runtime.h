@@ -1,5 +1,4 @@
 // This file gets included first in every qdbp progrram
-// FIXME: Track mallocs and frees of JUDY arrays
 
 #ifndef QDBP_RUNTIME_H
 #define QDBP_RUNTIME_H
@@ -76,8 +75,6 @@ enum qdbp_object_kind {
   QDBP_FLOAT,
   QDBP_STRING,
   QDBP_PROTOTYPE,
-  // Specialized for integer objects
-  QDBP_INT_PROTO,
   QDBP_VARIANT // Must be last
 };
 
@@ -109,6 +106,7 @@ void set_refcount(qdbp_object_ptr obj, refcount_t refcount);
 refcount_t get_refcount(qdbp_object_ptr obj);
 
 #define assert_refcount(obj)                                                   \
+  assert(!is_unboxed_int(obj));                                                \
   do {                                                                         \
     if (VERIFY_REFCOUNTS) {                                                    \
       assert((obj));                                                           \
@@ -118,7 +116,7 @@ refcount_t get_refcount(qdbp_object_ptr obj);
       };                                                                       \
     }                                                                          \
   } while (0);
-bool drop(qdbp_object_ptr obj, refcount_t cnt);
+void drop(qdbp_object_ptr obj, refcount_t cnt);
 void obj_dup(qdbp_object_ptr obj, refcount_t cnt);
 void dup_captures(qdbp_method_ptr method);
 void dup_prototype_captures(qdbp_prototype_ptr proto);
@@ -146,6 +144,7 @@ qdbp_object_ptr qdbp_true();
 qdbp_object_ptr qdbp_false();
 
 // Prototypes
+
 size_t proto_size(qdbp_prototype_ptr proto);
 void label_add(qdbp_prototype_ptr proto, label_t label, qdbp_field_ptr field);
 void label_replace(qdbp_prototype_ptr proto, label_t label,
@@ -159,12 +158,37 @@ __attribute__((always_inline)) qdbp_object_ptr extend(qdbp_object_ptr obj,
                                                       label_t label, void *code,
                                                       qdbp_object_arr captures,
                                                       size_t captures_size);
-qdbp_object_ptr invoke_1(qdbp_object_ptr receiver, label_t label, qdbp_object_ptr arg0);
-qdbp_object_ptr invoke_0(qdbp_object_ptr receiver, label_t label);
+qdbp_object_ptr invoke_1(qdbp_object_ptr receiver, label_t label,
+                         qdbp_object_ptr arg0);
+qdbp_object_ptr invoke_2(qdbp_object_ptr receiver, label_t label,
+                         qdbp_object_ptr arg0, qdbp_object_ptr arg1);
 __attribute__((always_inline)) qdbp_object_ptr
 replace(qdbp_object_ptr obj, label_t label, void *code,
         qdbp_object_arr captures, size_t captures_size);
 
+// MUST KEEP IN SYNC WITH namesToInts.ml
+enum NUMBER_LABELS {
+  VAL = 0,
+  PRINT = 1,
+  ADD = 2,
+  SUB = 3,
+  MUL = 4,
+  DIV = 5,
+  MOD = 6,
+  EQ = 7,
+  NEQ = 8,
+  LT = 9,
+  GT = 10,
+  LEQ = 11,
+  GEQ = 12,
+};
+
+// Unboxed ints
+bool is_unboxed_int(qdbp_object_ptr obj);
+qdbp_object_ptr make_unboxed_int(int64_t value);
+int64_t get_unboxed_int(qdbp_object_ptr obj);
+qdbp_object_ptr unboxed_unary_op(qdbp_object_ptr obj, label_t op);
+qdbp_object_ptr unboxed_binary_op(qdbp_object_ptr a, qdbp_object_ptr b, label_t op);
 // Tags and Variants
 enum qdbp_object_kind get_kind(qdbp_object_ptr obj);
 void set_tag(qdbp_object_ptr o, tag_t t);
@@ -174,8 +198,8 @@ void decompose_variant(qdbp_object_ptr obj, tag_t *tag,
                        qdbp_object_ptr *payload);
 #define assert_obj_kind(obj, k)                                                \
   do {                                                                         \
-    assert_refcount(obj);                                                      \
     if (DYNAMIC_TYPECHECK) {                                                   \
+      assert_refcount(obj);                                                    \
       assert(get_kind(obj) == k);                                              \
     }                                                                          \
   } while (0);

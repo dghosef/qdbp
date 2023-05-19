@@ -11,6 +11,8 @@ let rec let_bound_variables ast =
     bvs'', `Declaration (lhs, rhs, body, loc, bvs'')
   | `VariableLookup v ->
     VarSet.empty, `VariableLookup v
+  | `IntProto i ->
+    VarSet.empty, `IntProto i
   | `EmptyPrototype e ->
     VarSet.empty, `EmptyPrototype e
   | `StringLiteral s ->

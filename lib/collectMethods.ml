@@ -9,6 +9,7 @@ let collect_methods ast =
 
     | `Abort a -> methods, `Abort a
     | `VariableLookup v -> methods,  `VariableLookup v
+    | `IntProto i -> methods, `IntProto i
     | `EmptyPrototype e -> methods, `EmptyPrototype e
     | `StringLiteral s -> methods, `StringLiteral s
     | `FloatLiteral f -> methods, `FloatLiteral f

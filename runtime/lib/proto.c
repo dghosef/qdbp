@@ -63,11 +63,11 @@ void copy_captures_except(qdbp_prototype_ptr new_prototype, label_t except) {
   }
 }
 
-static struct qdbp_prototype raw_prototype_replace(const qdbp_prototype_ptr src,
-                                            const qdbp_field_ptr new_field,
-                                            label_t new_label) {
+static struct qdbp_prototype
+raw_prototype_replace(const qdbp_prototype_ptr src,
+                      const qdbp_field_ptr new_field, label_t new_label) {
   size_t src_size = proto_size(src);
-  if(DYNAMIC_TYPECHECK) {
+  if (DYNAMIC_TYPECHECK) {
     assert(src_size);
   }
   struct qdbp_prototype new_prototype = {.labels = NULL};
@@ -88,9 +88,9 @@ static struct qdbp_prototype raw_prototype_replace(const qdbp_prototype_ptr src,
   return new_prototype;
 }
 
-static struct qdbp_prototype raw_prototype_extend(const qdbp_prototype_ptr src,
-                                           const qdbp_field_ptr new_field,
-                                           size_t new_label) {
+static struct qdbp_prototype
+raw_prototype_extend(const qdbp_prototype_ptr src,
+                     const qdbp_field_ptr new_field, size_t new_label) {
   // copy src
   size_t src_size = proto_size(src);
   struct qdbp_prototype new_prototype = {.labels = NULL};
@@ -111,23 +111,6 @@ static struct qdbp_prototype raw_prototype_extend(const qdbp_prototype_ptr src,
   return new_prototype;
 }
 
-/*
-    ==========================================================
-    Object Utilities. See Fig 7 of the perceus refcount paper
-    ==========================================================
-    The basic theory is that every function "owns" each of its args
-    When the function returns, either the arg is returned(or an object that
-   points to it is returned) or the arg is dropped.
-*/
-
-/* Prototype Invoke
-`invoke prototype label args`
-  - lookup the required method
-  - dup the captures
-  - get the code ptr
-  - drop the prototype
-  - call the code ptr
-*/
 qdbp_object_arr get_method(qdbp_object_ptr obj, label_t label,
                            void **code_ptr /*output param*/) {
   assert_obj_kind(obj, QDBP_PROTOTYPE);
@@ -138,13 +121,6 @@ qdbp_object_arr get_method(qdbp_object_ptr obj, label_t label,
   return ret;
 }
 
-/* Prototype Extension
-`extend prototype label method`
-  - Do the prototype extension
-  - Set the refcount to 1
-  - Dup all the captures
-  - Drop the old prototype
-*/
 qdbp_object_arr make_captures(qdbp_object_arr captures, size_t size) {
   if (size == 0) {
     return NULL;
@@ -161,9 +137,9 @@ __attribute__((always_inline)) qdbp_object_ptr extend(qdbp_object_ptr obj,
                                                       qdbp_object_arr captures,
                                                       size_t captures_size) {
 
-  if(obj->metadata.tag == QDBP_INT_PROTO) {
-    while(1)
-        printf("Cannot replace int proto yet");
+  if (is_unboxed_int(obj)) {
+    printf("Haven't implemented replace for unboxed int\n");
+    assert(false);
   }
   struct qdbp_field f = {
       .method = {.captures = make_captures(captures, captures_size),
@@ -186,19 +162,12 @@ __attribute__((always_inline)) qdbp_object_ptr extend(qdbp_object_ptr obj,
     return obj;
   }
 }
-/* Prototype Replacement
-Identical to above except we don't dup captures of new method
-`replace prototype label method`
-  - Duplicate and replace the prototype
-  - dup all the shared captures between the old and new prototype
-  - drop prototype
-*/
 __attribute__((always_inline)) qdbp_object_ptr
 replace(qdbp_object_ptr obj, label_t label, void *code,
         qdbp_object_arr captures, size_t captures_size) {
-  if(obj->metadata.tag == QDBP_INT_PROTO) {
-    while(1)
-        printf("Cannot replace int proto yet");
+  if (is_unboxed_int(obj)) {
+    printf("Haven't implemented replace for unboxed int\n");
+    assert(false);
   }
   assert_obj_kind(obj, QDBP_PROTOTYPE);
   struct qdbp_field f = {
@@ -230,13 +199,25 @@ size_t proto_size(qdbp_prototype_ptr proto) {
   JLC(ret, proto->labels, 0, -1);
   return ret;
 }
-qdbp_object_ptr invoke_0(qdbp_object_ptr receiver, label_t label) {
-  void* code;
-  qdbp_object_arr captures = get_method(receiver, label, &code);
-  return ((qdbp_object_ptr(*)(qdbp_object_arr))code)(captures);
+qdbp_object_ptr invoke_1(qdbp_object_ptr receiver, label_t label,
+                         qdbp_object_ptr arg0) {
+  if (is_unboxed_int(arg0)) {
+    return unboxed_unary_op(arg0, label);
+  } else {
+    void *code;
+    qdbp_object_arr captures = get_method(receiver, label, &code);
+    return ((qdbp_object_ptr(*)(qdbp_object_arr, qdbp_object_ptr))code)(
+        captures, arg0);
+  }
 }
-qdbp_object_ptr invoke_1(qdbp_object_ptr receiver, label_t label, qdbp_object_ptr arg0) {
-  void* code;
+
+qdbp_object_ptr invoke_2(qdbp_object_ptr receiver, label_t label,
+                         qdbp_object_ptr arg0, qdbp_object_ptr arg1) {
+  if(is_unboxed_int(arg0)) {
+    return unboxed_binary_op(arg0, arg1, label);
+  }
+  void *code;
   qdbp_object_arr captures = get_method(receiver, label, &code);
-  return ((qdbp_object_ptr(*)(qdbp_object_arr, qdbp_object_ptr))code)(captures, arg0);
+  return ((qdbp_object_ptr(*)(qdbp_object_arr, qdbp_object_ptr,
+                              qdbp_object_ptr))code)(captures, arg0, arg1);
 }

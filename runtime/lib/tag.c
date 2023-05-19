@@ -1,7 +1,7 @@
 #include "runtime.h"
-// The kind is the upper 32 bits and the tag is the bottom 32 bits
 enum qdbp_object_kind get_kind(qdbp_object_ptr obj) {
   if (DYNAMIC_TYPECHECK) {
+    assert(!is_unboxed_int(obj));
     assert(obj->metadata.tag != QDBP_VARIANT);
   }
   if (obj->metadata.tag > QDBP_VARIANT) {

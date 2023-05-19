@@ -18,6 +18,7 @@ let rec is_pure ast = match ast with
   | `StringLiteral _ -> true
   | `Abort _ -> true
   | `EmptyPrototype _ -> true
+  | `IntProto _ -> true
 
 let rec free_variables ast =
   match ast with
@@ -90,3 +91,5 @@ let rec free_variables ast =
     FvSet.empty, `Abort loc
   | `EmptyPrototype loc ->
     FvSet.empty, `EmptyPrototype loc
+  | `IntProto _ as i ->
+    FvSet.empty, i
