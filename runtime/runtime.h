@@ -2,6 +2,7 @@
 
 #ifndef QDBP_RUNTIME_H
 #define QDBP_RUNTIME_H
+#include "hashmap.h"
 #include <Judy.h>
 #include <assert.h>
 #include <stdbool.h>
@@ -12,6 +13,7 @@
 // config
 // You could also add fsanitize=undefined
 // Also could adjust inlining
+static const bool REFCOUNT = true;
 static const bool REUSE_ANALYSIS = true;
 static const bool OBJ_FREELIST = true;
 static const bool FIELD_FREELIST = true;
@@ -19,9 +21,9 @@ static const bool BOX_FREELIST = true;
 #define FREELIST_SIZE 1000
 
 // Dynamic checks
-static const bool CHECK_MALLOC_FREE = true; // very slow
-static const bool VERIFY_REFCOUNTS = true;
-static const bool DYNAMIC_TYPECHECK = true;
+static const bool CHECK_MALLOC_FREE = false; // very slow
+static const bool VERIFY_REFCOUNTS = false;
+static const bool DYNAMIC_TYPECHECK = false;
 #define SAFE
 
 #ifndef SAFE
@@ -115,7 +117,7 @@ refcount_t get_refcount(qdbp_object_ptr obj);
 
 #define assert_refcount(obj)                                                   \
   do {                                                                         \
-    if (obj && VERIFY_REFCOUNTS) {                                                    \
+    if (VERIFY_REFCOUNTS && obj) {                                                    \
       assert(!is_unboxed_int(obj));                                            \
       assert((obj));                                                           \
       if (get_refcount(obj) <= 0) {                                            \
@@ -124,7 +126,9 @@ refcount_t get_refcount(qdbp_object_ptr obj);
       };                                                                       \
     }                                                                          \
   } while (0);
+__attribute__((always_inline))
 void drop(qdbp_object_ptr obj, refcount_t cnt);
+__attribute__((always_inline))
 void obj_dup(qdbp_object_ptr obj, refcount_t cnt);
 void dup_captures(qdbp_method_ptr method);
 void dup_prototype_captures(qdbp_prototype_ptr proto);
@@ -160,6 +164,7 @@ size_t proto_size(qdbp_prototype_ptr proto);
 void label_add(qdbp_prototype_ptr proto, label_t label, qdbp_field_ptr field);
 qdbp_field_ptr label_get(qdbp_prototype_ptr proto, label_t label);
 void copy_captures_except(qdbp_prototype_ptr new_prototype, label_t except);
+__attribute__((always_inline))
 qdbp_object_arr get_method(qdbp_object_ptr obj, label_t label,
                            void **code_ptr /*output param*/);
 qdbp_object_arr make_captures(qdbp_object_arr captures, size_t size);
@@ -194,6 +199,7 @@ enum NUMBER_LABELS {
 };
 
 // ints
+__attribute__((always_inline))
 bool is_unboxed_int(qdbp_object_ptr obj);
 qdbp_object_ptr make_unboxed_int(int64_t value);
 int64_t get_unboxed_int(qdbp_object_ptr obj);

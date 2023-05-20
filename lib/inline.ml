@@ -83,12 +83,21 @@ let inline depth expr =
           let pevalbody, body = inline depth env body in
           pevalbody, `PatternMatch (receiver, [(tag, ((argname, argloc), body, patternLoc), caseLoc)], loc) 
         | `Unit | `Variant _ -> 
-          let cases = List.map (fun ((tag, tagLoc), ((arg, argLoc), body, patternLoc), caseLoc) ->
-              let env = StringMap.add arg `Unit env in
-              let _, body = inline depth env body in
-              ((tag, tagLoc), ((arg, argLoc), body, patternLoc), caseLoc)
-            ) cases in
-          `Unit, `PatternMatch (receiver, cases, loc)
+          if List.length cases != 1 then
+            let cases = List.map (fun ((tag, tagLoc), ((arg, argLoc), body, patternLoc), caseLoc) ->
+                let env = StringMap.add arg `Unit env in
+                let _, body = inline depth env body in
+                ((tag, tagLoc), ((arg, argLoc), body, patternLoc), caseLoc)
+              ) cases in
+            `Unit, `PatternMatch (receiver, cases, loc)
+          else
+            let case = List.hd cases in
+            let ((tag, tagLoc), ((arg, argLoc), body, patternLoc), caseLoc) = case in
+            let env = StringMap.add arg `Unit env in
+            let peval, body = inline depth env body in
+            let case = ((tag, tagLoc), ((arg, argLoc), body, patternLoc), caseLoc) in
+            peval, `PatternMatch (receiver, [case], loc)
+
         | `Proto _ -> Error.internal_error "Shouldn't have proto here"
       end
     | `MethodInvocation (receiver, (name, labelLoc), args, loc) ->
@@ -108,8 +117,7 @@ let inline depth expr =
             ) args body in
           if depth > 0 then
             let _, inlined = FreeVariablesStr.free_variables inlined in
-            let peval, inlined = inline (depth - 1) env inlined in
-            peval, inlined
+            `Unit, inlined
           else
             `Unit, inlined
         | `Unit | `Proto _ ->
@@ -127,8 +135,8 @@ let inline depth expr =
       let _, body = inline depth env body in
       let meth_fvs, body = FreeVariablesStr.free_variables body in
       let meth_fvs = List.fold_left (
-        fun meth_fvs (id, _) -> FvSet.remove id meth_fvs
-      ) meth_fvs args in
+          fun meth_fvs (id, _) -> FvSet.remove id meth_fvs
+        ) meth_fvs args in
       let peval =
         match peval_ext with
         | `Proto proto ->
