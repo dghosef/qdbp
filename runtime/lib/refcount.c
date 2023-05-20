@@ -1,27 +1,35 @@
 #include "runtime.h"
 void incref(qdbp_object_ptr obj, refcount_t amount) {
-  if(!REFCOUNT) {return;}
+  if (!REFCOUNT) {
+    return;
+  }
   if (DYNAMIC_TYPECHECK && is_unboxed_int(obj)) {
     assert(false);
   }
   obj->metadata.rc += amount;
 }
 void decref(qdbp_object_ptr obj, refcount_t amount) {
-  if(!REFCOUNT) {return;}
+  if (!REFCOUNT) {
+    return;
+  }
   if (DYNAMIC_TYPECHECK && is_unboxed_int(obj)) {
     assert(false);
   }
   obj->metadata.rc -= amount;
 }
 void set_refcount(qdbp_object_ptr obj, refcount_t refcount) {
-  if(!REFCOUNT) {return;}
+  if (!REFCOUNT) {
+    return;
+  }
   if (DYNAMIC_TYPECHECK && is_unboxed_int(obj)) {
     assert(false);
   }
   obj->metadata.rc = refcount;
 }
 refcount_t get_refcount(qdbp_object_ptr obj) {
-  if(!REFCOUNT) {return 100;}
+  if (!REFCOUNT) {
+    return 100;
+  }
   if (DYNAMIC_TYPECHECK && is_unboxed_int(obj)) {
     assert(false);
   }
@@ -29,7 +37,9 @@ refcount_t get_refcount(qdbp_object_ptr obj) {
 }
 
 void drop(qdbp_object_ptr obj, refcount_t cnt) {
-  if(!REFCOUNT) {return;}
+  if (!REFCOUNT) {
+    return;
+  }
   if (!obj || is_unboxed_int(obj)) {
     return;
   } else {
@@ -47,7 +57,9 @@ void drop(qdbp_object_ptr obj, refcount_t cnt) {
 }
 
 void obj_dup(qdbp_object_ptr obj, refcount_t cnt) {
-  if(!REFCOUNT) {return;}
+  if (!REFCOUNT) {
+    return;
+  }
   if (!obj || is_unboxed_int(obj)) {
     return;
   } else {
@@ -57,37 +69,39 @@ void obj_dup(qdbp_object_ptr obj, refcount_t cnt) {
 }
 
 void dup_captures(qdbp_method_ptr method) {
-  if(!REFCOUNT) {return;}
+  if (!REFCOUNT) {
+    return;
+  }
   for (size_t i = 0; i < method->captures_size; i++) {
     obj_dup((method->captures[i]), 1);
   }
 }
 
 void dup_prototype_captures(qdbp_prototype_ptr proto) {
-  if(!REFCOUNT) {return;}
-  Word_t label = 0;
-  qdbp_field_ptr *PValue;
-  JLF(PValue, proto->labels, label);
-  while (PValue != NULL) {
-    dup_captures(&((*PValue)->method));
-    JLN(PValue, proto->labels, label);
+  if (!REFCOUNT) {
+    return;
+  }
+  qdbp_field_ptr field;
+  for (field = proto->labels; field != NULL; field = field->hh.next) {
+    dup_captures(&(field->method));
   }
 }
 void dup_prototype_captures_except(qdbp_prototype_ptr proto, label_t except) {
-  if(!REFCOUNT) {return;}
-  Word_t label = 0;
-  qdbp_field_ptr *PValue;
-  JLF(PValue, proto->labels, label);
-  while (PValue != NULL) {
-    if (label != except) {
-      dup_captures(&((*PValue)->method));
+  if (!REFCOUNT) {
+    return;
+  }
+  qdbp_field_ptr field;
+  for(field = proto->labels; field != NULL; field = field->hh.next) {
+    if (field->label != except) {
+      dup_captures(&(field->method));
     }
-    JLN(PValue, proto->labels, label);
   }
 }
 
 bool is_unique(qdbp_object_ptr obj) {
-  if(!REFCOUNT) {return false;}
+  if (!REFCOUNT) {
+    return false;
+  }
   if (is_unboxed_int(obj)) {
     return true;
   } else {

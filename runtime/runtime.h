@@ -2,7 +2,7 @@
 
 #ifndef QDBP_RUNTIME_H
 #define QDBP_RUNTIME_H
-#include "hashmap.h"
+#include "uthash.h"
 #include <Judy.h>
 #include <assert.h>
 #include <stdbool.h>
@@ -21,9 +21,9 @@ static const bool BOX_FREELIST = true;
 #define FREELIST_SIZE 1000
 
 // Dynamic checks
-static const bool CHECK_MALLOC_FREE = false; // very slow
-static const bool VERIFY_REFCOUNTS = false;
-static const bool DYNAMIC_TYPECHECK = false;
+static const bool CHECK_MALLOC_FREE = true; // very slow
+static const bool VERIFY_REFCOUNTS = true;
+static const bool DYNAMIC_TYPECHECK = true;
 #define SAFE
 
 #ifndef SAFE
@@ -55,11 +55,13 @@ struct qdbp_method {
   void *code;
 };
 struct qdbp_field {
+  label_t label;
   struct qdbp_method method;
+  UT_hash_handle hh;
 };
 
 struct qdbp_prototype {
-  Pvoid_t labels;
+  struct qdbp_field* labels;
 };
 
 struct qdbp_variant {
@@ -134,6 +136,7 @@ void dup_captures(qdbp_method_ptr method);
 void dup_prototype_captures(qdbp_prototype_ptr proto);
 void dup_prototype_captures_except(qdbp_prototype_ptr proto, label_t except);
 // Memory
+void duplicate_labels(qdbp_prototype_ptr src, qdbp_prototype_ptr dest);
 void *qdbp_malloc(size_t size, const char* message);
 void qdbp_free(void *ptr);
 void qdbp_memcpy(void *dest, const void *src, size_t n);

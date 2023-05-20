@@ -113,13 +113,8 @@ static qdbp_object_ptr boxed_binary_arith_op(qdbp_object_ptr a,
     ret->data.boxed_int->other_labels.labels = NULL;
     Word_t label = 0;
     qdbp_field_ptr *PValue;
-    JLF(PValue, a->data.boxed_int->other_labels.labels, label);
-    while (PValue != NULL) {
-      qdbp_field_ptr new_field_ptr = qdbp_malloc_field();
-      label_add(&(ret->data.boxed_int->other_labels), label, new_field_ptr);
-      *new_field_ptr = **PValue;
-      JLN(PValue, a->data.boxed_int->other_labels.labels, label);
-    }
+    duplicate_labels(&a->data.boxed_int->other_labels,
+                     &ret->data.boxed_int->other_labels);
     drop(a, 1);
   }
 #define MK_ARITH_CASE(n, op)                                                   \
@@ -150,10 +145,10 @@ static qdbp_object_ptr boxed_binary_cmp_op(qdbp_object_ptr a, qdbp_object_ptr b,
   int64_t b_int;
   if (is_unboxed_int(b)) {
     b_int = get_unboxed_int(b);
-  drop(b, 1);
+    drop(b, 1);
   } else if (is_boxed_int(b)) {
     b_int = b->data.boxed_int->value;
-  drop(b, 1);
+    drop(b, 1);
   } else {
     qdbp_object_ptr b_val = invoke_1(b, VAL, b);
     if (DYNAMIC_TYPECHECK) {
@@ -202,6 +197,7 @@ qdbp_object_ptr box(qdbp_object_ptr obj, label_t label, void *code,
   field->method.code = code;
   field->method.captures = make_captures(captures, captures_size);
   field->method.captures_size = captures_size;
+  field->label = label;
   label_add(&(ret->data.boxed_int->other_labels), label, field);
   return ret;
 }
@@ -216,7 +212,8 @@ qdbp_object_ptr box_extend(qdbp_object_ptr obj, label_t label, void *code,
     field->method.code = code;
     field->method.captures = make_captures(captures, captures_size);
     field->method.captures_size = captures_size;
-    label_add(obj->data.boxed_int->other_labels.labels, label, field);
+    field->label = label;
+    label_add(&obj->data.boxed_int->other_labels, label, field);
     return obj;
   } else {
     qdbp_object_ptr ret = qdbp_malloc_obj();
@@ -225,20 +222,14 @@ qdbp_object_ptr box_extend(qdbp_object_ptr obj, label_t label, void *code,
     ret->data.boxed_int = qdbp_malloc_boxed_int();
     ret->data.boxed_int->value = obj->data.boxed_int->value;
     ret->data.boxed_int->other_labels.labels = NULL;
-    Word_t idx = 0;
-    qdbp_field_ptr *PValue;
-    JLF(PValue, obj->data.boxed_int->other_labels.labels, idx);
-    while (PValue != NULL) {
-      qdbp_field_ptr new_field_ptr = qdbp_malloc_field();
-      label_add(ret->data.boxed_int->other_labels.labels, idx, new_field_ptr);
-      *new_field_ptr = **PValue;
-      JLN(PValue, obj->data.boxed_int->other_labels.labels, idx);
-    }
+    duplicate_labels(&obj->data.boxed_int->other_labels,
+                     &ret->data.boxed_int->other_labels);
     qdbp_field_ptr field = qdbp_malloc_field();
     field->method.code = code;
     field->method.captures = make_captures(captures, captures_size);
     field->method.captures_size = captures_size;
-    label_add(ret->data.boxed_int->other_labels.labels, label, field);
+    field->label = label;
+    label_add(&ret->data.boxed_int->other_labels, label, field);
     drop(obj, 1);
     return ret;
   }
@@ -263,20 +254,14 @@ qdbp_object_ptr boxed_int_replace(qdbp_object_ptr obj, label_t label,
     ret->data.boxed_int = qdbp_malloc_boxed_int();
     ret->data.boxed_int->value = obj->data.boxed_int->value;
     ret->data.boxed_int->other_labels.labels = NULL;
-    Word_t idx = 0;
-    qdbp_field_ptr *PValue;
-    JLF(PValue, obj->data.boxed_int->other_labels.labels, idx);
-    while (PValue != NULL) {
-      qdbp_field_ptr new_field_ptr = qdbp_malloc_field();
-      label_add(ret->data.boxed_int->other_labels.labels, idx, new_field_ptr);
-      *new_field_ptr = **PValue;
-      JLN(PValue, obj->data.boxed_int->other_labels.labels, idx);
-    }
+    duplicate_labels(&obj->data.boxed_int->other_labels,
+                     &ret->data.boxed_int->other_labels);
     qdbp_field_ptr field = qdbp_malloc_field();
     field->method.code = code;
     field->method.captures = captures;
     field->method.captures_size = captures_size;
-    label_add(ret->data.boxed_int->other_labels.labels, label, field);
+    field->label = label;
+    label_add(&ret->data.boxed_int->other_labels, label, field);
     drop(obj, 1);
     return ret;
   }

@@ -4,12 +4,12 @@
 struct malloc_list_node {
   void *ptr;
   struct malloc_list_node *next;
-  const char* msg;
+  const char *msg;
 };
 static struct malloc_list_node *malloc_list = NULL;
 
 bool malloc_list_contains(void *ptr) {
-  if(DYNAMIC_TYPECHECK) {
+  if (DYNAMIC_TYPECHECK) {
     assert(!is_unboxed_int((qdbp_object_ptr)ptr));
   }
   struct malloc_list_node *node = malloc_list;
@@ -21,8 +21,8 @@ bool malloc_list_contains(void *ptr) {
   }
   return false;
 }
-void add_to_malloc_list(void *ptr, const char*msg) {
-  if(DYNAMIC_TYPECHECK) {
+void add_to_malloc_list(void *ptr, const char *msg) {
+  if (DYNAMIC_TYPECHECK) {
     assert(!is_unboxed_int((qdbp_object_ptr)ptr));
   }
   assert(!malloc_list_contains(ptr));
@@ -34,7 +34,7 @@ void add_to_malloc_list(void *ptr, const char*msg) {
   malloc_list = new_node;
 }
 void remove_from_malloc_list(void *ptr) {
-  if(DYNAMIC_TYPECHECK) {
+  if (DYNAMIC_TYPECHECK) {
     assert(!is_unboxed_int((qdbp_object_ptr)ptr));
   }
   assert(malloc_list_contains(ptr));
@@ -68,7 +68,7 @@ void *qdbp_malloc(size_t size, const char *msg) {
   return ptr;
 }
 void qdbp_free(void *ptr) {
-  if(DYNAMIC_TYPECHECK) {
+  if (DYNAMIC_TYPECHECK) {
     assert(!is_unboxed_int((qdbp_object_ptr)ptr));
   }
   if (CHECK_MALLOC_FREE) {
@@ -122,19 +122,19 @@ qdbp_field_ptr qdbp_malloc_field() {
   }
 }
 void free_fields(qdbp_prototype_ptr proto) {
-  Word_t label = 0;
-  qdbp_field_ptr *PValue;
-  JLF(PValue, proto->labels, label);
-  while (PValue != NULL) {
-    qdbp_free_field(*PValue);
-    JLN(PValue, proto->labels, label);
+  struct qdbp_field *cur_field;
+  struct qdbp_field *tmp;
+
+  HASH_ITER(hh, proto->labels, cur_field, tmp) {
+    HASH_DEL(proto->labels, cur_field);
+    qdbp_free_field(cur_field);
   }
 }
 
 MK_FREELIST(qdbp_object_ptr, freelist)
 
 void qdbp_free_obj(qdbp_object_ptr obj) {
-  if(DYNAMIC_TYPECHECK) {
+  if (DYNAMIC_TYPECHECK) {
     assert(!is_unboxed_int(obj));
   }
   if (OBJ_FREELIST && push_freelist(obj)) {
@@ -151,20 +151,18 @@ qdbp_object_ptr qdbp_malloc_obj() {
     return (qdbp_object_ptr)qdbp_malloc(sizeof(struct qdbp_object), "field");
   }
 }
-MK_FREELIST(struct boxed_int*, box_freelist)
-struct boxed_int* qdbp_malloc_boxed_int() {
-  if(BOX_FREELIST && box_freelist.idx > 0) {
+MK_FREELIST(struct boxed_int *, box_freelist)
+struct boxed_int *qdbp_malloc_boxed_int() {
+  if (BOX_FREELIST && box_freelist.idx > 0) {
     return pop_box_freelist();
-  }
-  else  {
+  } else {
     return qdbp_malloc(sizeof(struct boxed_int), "box");
   }
 }
 void qdbp_free_boxed_int(struct boxed_int *i) {
-  if(BOX_FREELIST && push_box_freelist(i)) {
+  if (BOX_FREELIST && push_box_freelist(i)) {
 
-  }
-  else {
+  } else {
     qdbp_free(i);
   }
 }
@@ -188,12 +186,13 @@ void check_mem() {
     if (OBJ_FREELIST) {
       freelist_remove_all_from_malloc_list();
     }
-    if(BOX_FREELIST) {
+    if (BOX_FREELIST) {
       box_freelist_remove_all_from_malloc_list();
     }
     struct malloc_list_node *node = malloc_list;
     while (node) {
-      printf("Error: %p(%s) was malloc'd but not freed\n", node->ptr, node->msg);
+      printf("Error: %p(%s) was malloc'd but not freed\n", node->ptr,
+             node->msg);
       node = node->next;
     }
   }
@@ -206,14 +205,6 @@ void del_prototype(qdbp_prototype_ptr proto) {
   qdbp_field_ptr *PValue;
 
   free_fields(proto);
-  int rc;
-  if (proto->labels) {
-    JLFA(rc, proto->labels);
-    if (rc == 0 && DYNAMIC_TYPECHECK) {
-      printf("Failed to free labels");
-      assert(false);
-    }
-  }
 }
 
 void del_variant(qdbp_variant_ptr variant) {
@@ -223,7 +214,8 @@ void del_variant(qdbp_variant_ptr variant) {
 
 qdbp_object_arr make_capture_arr(size_t size) {
   qdbp_object_arr capture;
-  return (qdbp_object_ptr *)qdbp_malloc(sizeof(qdbp_object_ptr) * size, "captures");
+  return (qdbp_object_ptr *)qdbp_malloc(sizeof(qdbp_object_ptr) * size,
+                                        "captures");
 }
 void free_capture_arr(qdbp_object_arr arr, size_t size) {
   if (arr) {
@@ -265,4 +257,18 @@ void del_obj(qdbp_object_ptr obj) {
     break;
   }
   qdbp_free_obj(obj);
+}
+
+void duplicate_labels(qdbp_prototype_ptr src, qdbp_prototype_ptr dest) {
+  if(DYNAMIC_TYPECHECK) {
+    assert(!dest->labels);
+  }
+  qdbp_field_ptr cur_field;
+  qdbp_field_ptr tmp;
+  HASH_ITER(hh, src->labels, cur_field, tmp) {
+    qdbp_field_ptr new_field = qdbp_malloc_field();
+    new_field->label = cur_field->label;
+    new_field->method = cur_field->method;
+    HASH_ADD(hh, dest->labels, label, sizeof(Word_t), new_field);
+  }
 }
