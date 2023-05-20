@@ -2,7 +2,6 @@
 
 #ifndef QDBP_RUNTIME_H
 #define QDBP_RUNTIME_H
-#include "uthash.h"
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -44,6 +43,7 @@ while (0)
   // FIXME: Check all accesses are asserted
 
   typedef uint64_t label_t;
+#include "uthash.h"
 typedef uint32_t tag_t;
 typedef uint32_t refcount_t;
 
@@ -127,15 +127,14 @@ refcount_t get_refcount(qdbp_object_ptr obj);
       };                                                                       \
     }                                                                          \
   } while (0);
-__attribute__((always_inline))
 void drop(qdbp_object_ptr obj, refcount_t cnt);
-__attribute__((always_inline))
 void obj_dup(qdbp_object_ptr obj, refcount_t cnt);
 void dup_captures(qdbp_method_ptr method);
 void dup_prototype_captures(qdbp_prototype_ptr proto);
 void dup_prototype_captures_except(qdbp_prototype_ptr proto, label_t except);
 // Memory
 void duplicate_labels(qdbp_prototype_ptr src, qdbp_prototype_ptr dest);
+void duplicate_labels_except(qdbp_prototype_ptr src, qdbp_prototype_ptr dest, label_t except);
 void *qdbp_malloc(size_t size, const char* message);
 void qdbp_free(void *ptr);
 void qdbp_memcpy(void *dest, const void *src, size_t n);
@@ -166,11 +165,10 @@ size_t proto_size(qdbp_prototype_ptr proto);
 void label_add(qdbp_prototype_ptr proto, label_t label, qdbp_field_ptr field);
 qdbp_field_ptr label_get(qdbp_prototype_ptr proto, label_t label);
 void copy_captures_except(qdbp_prototype_ptr new_prototype, label_t except);
-__attribute__((always_inline))
 qdbp_object_arr get_method(qdbp_object_ptr obj, label_t label,
                            void **code_ptr /*output param*/);
 qdbp_object_arr make_captures(qdbp_object_arr captures, size_t size);
-__attribute__((always_inline)) qdbp_object_ptr extend(qdbp_object_ptr obj,
+ qdbp_object_ptr extend(qdbp_object_ptr obj,
                                                       label_t label, void *code,
                                                       qdbp_object_arr captures,
                                                       size_t captures_size);
@@ -178,7 +176,7 @@ qdbp_object_ptr invoke_1(qdbp_object_ptr receiver, label_t label,
                          qdbp_object_ptr arg0);
 qdbp_object_ptr invoke_2(qdbp_object_ptr receiver, label_t label,
                          qdbp_object_ptr arg0, qdbp_object_ptr arg1);
-__attribute__((always_inline)) qdbp_object_ptr
+ qdbp_object_ptr
 replace(qdbp_object_ptr obj, label_t label, void *code,
         qdbp_object_arr captures, size_t captures_size);
 
@@ -201,7 +199,6 @@ enum NUMBER_LABELS {
 };
 
 // ints
-__attribute__((always_inline))
 bool is_unboxed_int(qdbp_object_ptr obj);
 qdbp_object_ptr make_unboxed_int(int64_t value);
 int64_t get_unboxed_int(qdbp_object_ptr obj);

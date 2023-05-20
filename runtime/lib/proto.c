@@ -3,37 +3,48 @@ void label_add(qdbp_prototype_ptr proto, label_t label, qdbp_field_ptr field) {
   if (DYNAMIC_TYPECHECK) {
     assert(field->label == label);
     qdbp_field_ptr res;
-    HASH_FIND_INT(proto->labels, &label, res);
+    HASH_FIND(hh, proto->labels, &label, sizeof(label_t), res);
     if (res != NULL) {
       printf("Label %llu already exists in prototype\n", label);
       assert(false);
     }
   }
-  HASH_ADD_INT(proto->labels, label, field);
+  HASH_ADD(hh, proto->labels, label, sizeof(label_t), field);
 }
 qdbp_field_ptr label_get(qdbp_prototype_ptr proto, label_t label) {
   if (DYNAMIC_TYPECHECK) {
     assert(proto);
     assert(proto->labels);
   }
-  if(proto_size(proto) == 1) {
+  switch (proto_size(proto)) {
+  case 1:
     return proto->labels;
-  }
-  struct qdbp_field *field;
-  HASH_FIND_INT(proto->labels, &label, field);
-  if (DYNAMIC_TYPECHECK) {
-    if (field == NULL) {
-      printf("Label %llu does not exist in prototype\n", label);
-      assert(false);
+    break;
+  case 2:
+    if (proto->labels->label == label) {
+      return proto->labels;
+    } else {
+      return proto->labels->hh.next;
     }
+    break;
+  default: {
+    struct qdbp_field *field;
+    HASH_FIND(hh, proto->labels, &label, sizeof(label_t), field);
+    if (DYNAMIC_TYPECHECK) {
+      if (field == NULL) {
+        printf("Label %llu does not exist in prototype\n", label);
+        assert(false);
+      }
+    }
+    return field;
   }
-  return field;
+  }
 }
 
 void copy_captures_except(qdbp_prototype_ptr new_prototype, label_t except) {
   // Copy all the capture arrays except the new one
   qdbp_field_ptr field;
-  for(field = new_prototype->labels; field != NULL; field = field->hh.next) {
+  for (field = new_prototype->labels; field != NULL; field = field->hh.next) {
     if (field->label != except) {
       qdbp_object_arr original = field->method.captures;
       field->method.captures = make_capture_arr(field->method.captures_size);
@@ -55,17 +66,20 @@ raw_prototype_replace(const qdbp_prototype_ptr src,
 
   // FIXME: Have the overwriting done in duplicate_labels
   // to avoid extra work of inserting twice
-  if(DYNAMIC_TYPECHECK) {
+  if (DYNAMIC_TYPECHECK) {
     assert(new_prototype.labels == NULL);
   }
-  duplicate_labels(src, &new_prototype);
-  if(DYNAMIC_TYPECHECK) {
-    assert(new_prototype.labels);
-  }
+  duplicate_labels_except(src, &new_prototype, new_label);
 
   // overwrite the field
-  *label_get(&new_prototype, new_label) = *new_field;
+  qdbp_field_ptr new_field_ptr = qdbp_malloc_field();
+  new_field_ptr->label = new_label;
+  new_field_ptr->method = new_field->method;
+  label_add(&new_prototype, new_label, new_field_ptr);
   copy_captures_except(&new_prototype, new_label);
+  if (DYNAMIC_TYPECHECK) {
+    assert(new_prototype.labels);
+  }
   return new_prototype;
 }
 
@@ -78,7 +92,8 @@ raw_prototype_extend(const qdbp_prototype_ptr src,
 
   duplicate_labels(src, &new_prototype);
   qdbp_field_ptr new_field_ptr = qdbp_malloc_field();
-  *new_field_ptr = *new_field;
+  new_field_ptr->label = new_label;
+  new_field_ptr->method = new_field->method;
   label_add(&new_prototype, new_label, new_field_ptr);
   copy_captures_except(&new_prototype, new_label);
   return new_prototype;
@@ -119,7 +134,7 @@ __attribute__((always_inline)) qdbp_object_ptr extend(qdbp_object_ptr obj,
     return box_extend(obj, label, code, captures, captures_size);
   }
   struct qdbp_field f = {
-    .label = label,
+      .label = label,
       .method = {.captures = make_captures(captures, captures_size),
                  .captures_size = captures_size,
                  .code = code}};
@@ -135,7 +150,8 @@ __attribute__((always_inline)) qdbp_object_ptr extend(qdbp_object_ptr obj,
     return new_obj;
   } else {
     qdbp_field_ptr new_field = qdbp_malloc_field();
-    *new_field = f;
+    new_field->label = label;
+    new_field->method = f.method;
     label_add(&(obj->data.prototype), label, new_field);
     return obj;
   }
@@ -160,7 +176,7 @@ replace(qdbp_object_ptr obj, label_t label, void *code,
 
   assert_obj_kind(obj, QDBP_PROTOTYPE);
   struct qdbp_field f = {
-    .label = label,
+      .label = label,
       .method = {.captures = make_captures(captures, captures_size),
                  .captures_size = captures_size,
                  .code = code}};
@@ -177,17 +193,20 @@ replace(qdbp_object_ptr obj, label_t label, void *code,
   } else {
     // find the index to replace
     qdbp_field_ptr field = label_get(&(obj->data.prototype), label);
+    assert(field->label == label);
     // reuse the field
     del_method(&(field->method));
-    *field = f;
+    field->label = f.label;
+    field->method = f.method;
     return obj;
   }
 }
 
 size_t proto_size(qdbp_prototype_ptr proto) {
-  size_t ret;
+  if(DYNAMIC_TYPECHECK) {
+    assert(proto);
+  }
   return HASH_COUNT(proto->labels);
-  return ret;
 }
 qdbp_object_ptr invoke_1(qdbp_object_ptr receiver, label_t label,
                          qdbp_object_ptr arg0) {

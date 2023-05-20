@@ -67,7 +67,7 @@ let compile args =
   let (imports, files) = ResolveImports.build_import_map files ast in
   let ast = ResolveImports.resolve_imports imports ast in
   let _, _, ast = Infer.infer files ast in
-  let ast = Inline.inline 2 ast in
+  let ast = Inline.inline 1 ast in
   let loc = Infer.loc_of ast in
 
 

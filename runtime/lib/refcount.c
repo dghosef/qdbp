@@ -3,7 +3,8 @@ void incref(qdbp_object_ptr obj, refcount_t amount) {
   if (!REFCOUNT) {
     return;
   }
-  if (DYNAMIC_TYPECHECK && is_unboxed_int(obj)) {
+  if (DYNAMIC_TYPECHECK && (is_unboxed_int(obj) || obj == qdbp_true() ||
+      obj == qdbp_false() || !obj)) {
     assert(false);
   }
   obj->metadata.rc += amount;
@@ -12,7 +13,8 @@ void decref(qdbp_object_ptr obj, refcount_t amount) {
   if (!REFCOUNT) {
     return;
   }
-  if (DYNAMIC_TYPECHECK && is_unboxed_int(obj)) {
+  if (DYNAMIC_TYPECHECK && (is_unboxed_int(obj) || obj == qdbp_true() ||
+      obj == qdbp_false() || !obj)) {
     assert(false);
   }
   obj->metadata.rc -= amount;
@@ -21,7 +23,8 @@ void set_refcount(qdbp_object_ptr obj, refcount_t refcount) {
   if (!REFCOUNT) {
     return;
   }
-  if (DYNAMIC_TYPECHECK && is_unboxed_int(obj)) {
+  if (DYNAMIC_TYPECHECK && (is_unboxed_int(obj) || obj == qdbp_true() ||
+      obj == qdbp_false() || !obj)) {
     assert(false);
   }
   obj->metadata.rc = refcount;
@@ -30,7 +33,8 @@ refcount_t get_refcount(qdbp_object_ptr obj) {
   if (!REFCOUNT) {
     return 100;
   }
-  if (DYNAMIC_TYPECHECK && is_unboxed_int(obj)) {
+  if (DYNAMIC_TYPECHECK && (is_unboxed_int(obj) || obj == qdbp_true() ||
+      obj == qdbp_false() || !obj)) {
     assert(false);
   }
   return obj->metadata.rc;
@@ -40,7 +44,7 @@ void drop(qdbp_object_ptr obj, refcount_t cnt) {
   if (!REFCOUNT) {
     return;
   }
-  if (!obj || is_unboxed_int(obj)) {
+  if (!obj || is_unboxed_int(obj) || obj == qdbp_true() || obj == qdbp_false()) {
     return;
   } else {
     assert_refcount(obj);
@@ -60,7 +64,7 @@ void obj_dup(qdbp_object_ptr obj, refcount_t cnt) {
   if (!REFCOUNT) {
     return;
   }
-  if (!obj || is_unboxed_int(obj)) {
+  if (!obj || is_unboxed_int(obj) || obj == qdbp_true() || obj == qdbp_false()) {
     return;
   } else {
     assert_refcount(obj);
@@ -102,7 +106,7 @@ bool is_unique(qdbp_object_ptr obj) {
   if (!REFCOUNT) {
     return false;
   }
-  if (is_unboxed_int(obj)) {
+  if (is_unboxed_int(obj) || obj == qdbp_true() || obj == qdbp_false() || !obj) {
     return true;
   } else {
     if (VERIFY_REFCOUNTS) {

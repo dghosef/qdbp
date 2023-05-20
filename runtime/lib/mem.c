@@ -115,19 +115,24 @@ void qdbp_free_field(qdbp_field_ptr field) {
   }
 }
 qdbp_field_ptr qdbp_malloc_field() {
+  qdbp_field_ptr result;
   if (FIELD_FREELIST && field_freelist.idx > 0) {
-    return pop_field_freelist();
+    result = pop_field_freelist();
   } else {
-    return (qdbp_field_ptr)qdbp_malloc(sizeof(struct qdbp_field), "field");
+    result = (qdbp_field_ptr)qdbp_malloc(sizeof(struct qdbp_field), "field");
   }
+  result->hh = (UT_hash_handle){0};
+  return result;
 }
 void free_fields(qdbp_prototype_ptr proto) {
   struct qdbp_field *cur_field;
   struct qdbp_field *tmp;
 
-  HASH_ITER(hh, proto->labels, cur_field, tmp) {
-    HASH_DEL(proto->labels, cur_field);
-    qdbp_free_field(cur_field);
+  if(proto->labels) {
+    HASH_ITER(hh, proto->labels, cur_field, tmp) {
+      HASH_DEL(proto->labels, cur_field);
+      qdbp_free_field(cur_field);
+    }
   }
 }
 
@@ -268,6 +273,22 @@ void duplicate_labels(qdbp_prototype_ptr src, qdbp_prototype_ptr dest) {
     qdbp_field_ptr new_field = qdbp_malloc_field();
     new_field->label = cur_field->label;
     new_field->method = cur_field->method;
-    HASH_ADD(hh, dest->labels, label, sizeof(void*), new_field);
+    HASH_ADD(hh, dest->labels, label, sizeof(label_t), new_field);
+  }
+}
+
+void duplicate_labels_except(qdbp_prototype_ptr src, qdbp_prototype_ptr dest, label_t except) {
+  if(DYNAMIC_TYPECHECK) {
+    assert(!dest->labels);
+  }
+  qdbp_field_ptr cur_field;
+  qdbp_field_ptr tmp;
+  HASH_ITER(hh, src->labels, cur_field, tmp) {
+    if(cur_field->label != except) {
+      qdbp_field_ptr new_field = qdbp_malloc_field();
+      new_field->label = cur_field->label;
+      new_field->method = cur_field->method;
+      HASH_ADD(hh, dest->labels, label, sizeof(label_t), new_field);
+    }
   }
 }

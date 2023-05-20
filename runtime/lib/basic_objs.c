@@ -38,13 +38,8 @@ qdbp_object_ptr empty_prototype() {
   return NULL;
 }
 qdbp_object_ptr qdbp_true() {
-  qdbp_object_ptr o = make_object(
-      21, // MUST keep up to date w. namesToInts.ml
-      (union qdbp_object_data){.variant = {.value = empty_prototype()}});
-  return o;
+  return (qdbp_object_ptr)(0xF0);
 }
 qdbp_object_ptr qdbp_false() {
-  qdbp_object_ptr o = make_object(
-      20, (union qdbp_object_data){.variant = {.value = empty_prototype()}});
-  return o;
+  return (qdbp_object_ptr)(0xE0);
 }
