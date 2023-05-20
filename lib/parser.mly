@@ -1,5 +1,4 @@
 %token<int> INT
-%token<float> FLOAT
 %token<string> UPPER_ID LOWER_ID ARG IMPORT STRING
 %token PIPE DECLARATION PERIOD TAG QUESTION MONEY ABORT EOF
 %token LPAREN RPAREN LBRACE RBRACE LBRACKET RBRACKET
@@ -53,7 +52,6 @@ expr:
 | filename = IMPORT {AstCreate.make_import filename $loc}
 (* int, float, string literals *)
 | i = INT {AstCreate.make_int_literal i $loc}
-| f = FLOAT {AstCreate.make_float_literal f $loc}
 | s = STRING {AstCreate.make_string_literal s $loc}
 (* external call *)
 | MONEY; id = lower_id; LPAREN; args = expr*; RPAREN {AstCreate.make_external_call id args $loc}

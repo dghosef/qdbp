@@ -85,14 +85,14 @@ static qdbp_object_ptr qdbp_abort() {
     return result;                                                             \
   }
 static char *empty_string() {
-  char *s = (char *)qdbp_malloc(1);
+  char *s = (char *)qdbp_malloc(1, "empty_string");
   s[0] = '\0';
   return s;
 }
 static char *c_str_concat(const char *a, const char *b) {
   int lena = strlen(a);
   int lenb = strlen(b);
-  char *con = (char *)qdbp_malloc(lena + lenb + 1);
+  char *con = (char *)qdbp_malloc(lena + lenb + 1, "c_str_concat");
   // copy & concat (including string termination)
   memcpy(con, a, lena);
   memcpy(con + lena, b, lenb + 1);
@@ -155,7 +155,7 @@ static qdbp_object_ptr qdbp_int_to_string(qdbp_object_ptr i) {
   int64_t val = i->data.i;
   drop(i, 1);
   int bufsize = itoa_bufsize(val);
-  char *s = (char *)qdbp_malloc(bufsize);
+  char *s = (char *)qdbp_malloc(bufsize, "qdbp_int_to_string");
   assert(snprintf(s, bufsize, "%lld", val) == bufsize - 1);
   return make_object(QDBP_STRING, (union qdbp_object_data){.s = s});
 }

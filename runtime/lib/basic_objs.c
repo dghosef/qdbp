@@ -7,7 +7,7 @@ qdbp_object_ptr qdbp_int(int64_t i) {
 }
 
 qdbp_object_ptr qdbp_string(const char *src) {
-  char *dest = (char *)qdbp_malloc(strlen(src) + 1);
+  char *dest = (char *)qdbp_malloc(strlen(src) + 1, "qdbp_string");
   strcpy(dest, src);
   qdbp_object_ptr new_obj =
       make_object(QDBP_STRING, (union qdbp_object_data){.s = dest});
@@ -35,9 +35,7 @@ qdbp_object_ptr make_object(tag_t tag, union qdbp_object_data data) {
 }
 
 qdbp_object_ptr empty_prototype() {
-  qdbp_object_ptr obj = make_object(
-      QDBP_PROTOTYPE, (union qdbp_object_data){.prototype = {.labels = NULL}});
-  return obj;
+  return NULL;
 }
 qdbp_object_ptr qdbp_true() {
   qdbp_object_ptr o = make_object(

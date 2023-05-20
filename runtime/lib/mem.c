@@ -4,6 +4,7 @@
 struct malloc_list_node {
   void *ptr;
   struct malloc_list_node *next;
+  const char* msg;
 };
 static struct malloc_list_node *malloc_list = NULL;
 
@@ -20,7 +21,7 @@ bool malloc_list_contains(void *ptr) {
   }
   return false;
 }
-void add_to_malloc_list(void *ptr) {
+void add_to_malloc_list(void *ptr, const char*msg) {
   if(DYNAMIC_TYPECHECK) {
     assert(!is_unboxed_int((qdbp_object_ptr)ptr));
   }
@@ -29,6 +30,7 @@ void add_to_malloc_list(void *ptr) {
       (struct malloc_list_node *)malloc(sizeof(struct malloc_list_node));
   new_node->ptr = ptr;
   new_node->next = malloc_list;
+  new_node->msg = msg;
   malloc_list = new_node;
 }
 void remove_from_malloc_list(void *ptr) {
@@ -53,14 +55,14 @@ void remove_from_malloc_list(void *ptr) {
   }
   assert(false);
 }
-void *qdbp_malloc(size_t size) {
+void *qdbp_malloc(size_t size, const char *msg) {
   if (size == 0) {
     return NULL;
   }
   void *ptr;
   ptr = malloc(size);
   if (CHECK_MALLOC_FREE) {
-    add_to_malloc_list(ptr);
+    add_to_malloc_list(ptr, msg);
   }
   assert(ptr);
   return ptr;
@@ -105,6 +107,7 @@ void qdbp_free(void *ptr) {
 MK_FREELIST(qdbp_field_ptr, field_freelist)
 
 void qdbp_free_field(qdbp_field_ptr field) {
+  del_method(&field->method);
   if (FIELD_FREELIST && push_field_freelist(field)) {
 
   } else {
@@ -115,7 +118,7 @@ qdbp_field_ptr qdbp_malloc_field() {
   if (FIELD_FREELIST && field_freelist.idx > 0) {
     return pop_field_freelist();
   } else {
-    return (qdbp_field_ptr)qdbp_malloc(sizeof(struct qdbp_field));
+    return (qdbp_field_ptr)qdbp_malloc(sizeof(struct qdbp_field), "field");
   }
 }
 void free_fields(qdbp_prototype_ptr proto) {
@@ -145,14 +148,31 @@ qdbp_object_ptr qdbp_malloc_obj() {
   if (OBJ_FREELIST && freelist.idx > 0) {
     return pop_freelist();
   } else {
-    return (qdbp_object_ptr)qdbp_malloc(sizeof(struct qdbp_object));
+    return (qdbp_object_ptr)qdbp_malloc(sizeof(struct qdbp_object), "field");
+  }
+}
+MK_FREELIST(struct boxed_int*, box_freelist)
+struct boxed_int* qdbp_malloc_boxed_int() {
+  if(BOX_FREELIST && box_freelist.idx > 0) {
+    return pop_box_freelist();
+  }
+  else  {
+    return qdbp_malloc(sizeof(struct boxed_int), "box");
+  }
+}
+void qdbp_free_boxed_int(struct boxed_int *i) {
+  if(BOX_FREELIST && push_box_freelist(i)) {
+
+  }
+  else {
+    qdbp_free(i);
   }
 }
 void init() {
   for (int i = 0; i < FREELIST_SIZE; i++) {
     if (!CHECK_MALLOC_FREE) {
-      push_freelist(qdbp_malloc(sizeof(struct qdbp_object)));
-      push_field_freelist(qdbp_malloc(sizeof(struct qdbp_field)));
+      push_freelist(qdbp_malloc(sizeof(struct qdbp_object), "obj init"));
+      push_field_freelist(qdbp_malloc(sizeof(struct qdbp_field), "field init"));
     }
   }
 }
@@ -168,9 +188,12 @@ void check_mem() {
     if (OBJ_FREELIST) {
       freelist_remove_all_from_malloc_list();
     }
+    if(BOX_FREELIST) {
+      box_freelist_remove_all_from_malloc_list();
+    }
     struct malloc_list_node *node = malloc_list;
     while (node) {
-      printf("Error: %p was malloc'd but not freed\n", node->ptr);
+      printf("Error: %p(%s) was malloc'd but not freed\n", node->ptr, node->msg);
       node = node->next;
     }
   }
@@ -181,11 +204,6 @@ void del_prototype(qdbp_prototype_ptr proto) {
   }
   Word_t label = 0;
   qdbp_field_ptr *PValue;
-  JLF(PValue, proto->labels, label);
-  while (PValue != NULL) {
-    del_method(&((*PValue)->method));
-    JLN(PValue, proto->labels, label);
-  }
 
   free_fields(proto);
   int rc;
@@ -205,7 +223,7 @@ void del_variant(qdbp_variant_ptr variant) {
 
 qdbp_object_arr make_capture_arr(size_t size) {
   qdbp_object_arr capture;
-  return (qdbp_object_ptr *)qdbp_malloc(sizeof(qdbp_object_ptr) * size);
+  return (qdbp_object_ptr *)qdbp_malloc(sizeof(qdbp_object_ptr) * size, "captures");
 }
 void free_capture_arr(qdbp_object_arr arr, size_t size) {
   if (arr) {
@@ -231,6 +249,10 @@ void del_obj(qdbp_object_ptr obj) {
   case QDBP_INT:
     break;
   case QDBP_FLOAT:
+    break;
+  case QDBP_BOXED_INT:
+    del_prototype(&(obj->data.boxed_int->other_labels));
+    qdbp_free(obj->data.boxed_int);
     break;
   case QDBP_STRING:
     qdbp_free(obj->data.s);

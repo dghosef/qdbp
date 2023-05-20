@@ -38,6 +38,12 @@ qdbp_field_ptr label_get(qdbp_prototype_ptr proto, label_t label) {
     assert(proto->labels);
   }
   JLG(PValue, proto->labels, label);
+  if (DYNAMIC_TYPECHECK) {
+    if (PValue == NULL) {
+      printf("Label %llu does not exist in prototype\n", label);
+      assert(false);
+    }
+  }
   qdbp_field_ptr field = *(qdbp_field_ptr *)PValue;
   if (DYNAMIC_TYPECHECK) {
     assert(proto->labels);
@@ -125,8 +131,8 @@ qdbp_object_arr make_captures(qdbp_object_arr captures, size_t size) {
   if (size == 0) {
     return NULL;
   } else {
-    qdbp_object_arr out =
-        (qdbp_object_arr)qdbp_malloc(sizeof(struct qdbp_object *) * size);
+    qdbp_object_arr out = (qdbp_object_arr)qdbp_malloc(
+        sizeof(struct qdbp_object *) * size, "captures");
     qdbp_memcpy(out, captures, sizeof(struct qdbp_object *) * size);
     return out;
   }
@@ -137,9 +143,13 @@ __attribute__((always_inline)) qdbp_object_ptr extend(qdbp_object_ptr obj,
                                                       qdbp_object_arr captures,
                                                       size_t captures_size) {
 
-  if (is_unboxed_int(obj)) {
-    printf("Haven't implemented replace for unboxed int\n");
-    assert(false);
+  if (!obj) {
+    obj = make_object(QDBP_PROTOTYPE,
+                      (union qdbp_object_data){.prototype = {.labels = NULL}});
+  } else if (is_unboxed_int(obj)) {
+    return box(obj, label, code, captures, captures_size);
+  } else if (is_boxed_int(obj)) {
+    return box_extend(obj, label, code, captures, captures_size);
   }
   struct qdbp_field f = {
       .method = {.captures = make_captures(captures, captures_size),
@@ -165,10 +175,21 @@ __attribute__((always_inline)) qdbp_object_ptr extend(qdbp_object_ptr obj,
 __attribute__((always_inline)) qdbp_object_ptr
 replace(qdbp_object_ptr obj, label_t label, void *code,
         qdbp_object_arr captures, size_t captures_size) {
-  if (is_unboxed_int(obj)) {
-    printf("Haven't implemented replace for unboxed int\n");
-    assert(false);
+  if (!obj) {
+    obj = make_object(QDBP_PROTOTYPE,
+                      (union qdbp_object_data){.prototype = {.labels = NULL}});
+  } else if (is_unboxed_int(obj)) {
+    obj = make_int_proto(get_unboxed_int(obj));
+    assert_obj_kind(obj, QDBP_PROTOTYPE);
+  } else if (is_boxed_int(obj) && label < NUM_OP_CNT) {
+    int64_t i = get_boxed_int(obj);
+    drop(obj, 1);
+    obj = make_int_proto(i);
+    assert_obj_kind(obj, QDBP_PROTOTYPE);
+  } else if (is_boxed_int(obj) && label >= NUM_OP_CNT) {
+    return boxed_int_replace(obj, label, code, captures, captures_size);
   }
+
   assert_obj_kind(obj, QDBP_PROTOTYPE);
   struct qdbp_field f = {
       .method = {.captures = make_captures(captures, captures_size),
@@ -203,6 +224,16 @@ qdbp_object_ptr invoke_1(qdbp_object_ptr receiver, label_t label,
                          qdbp_object_ptr arg0) {
   if (is_unboxed_int(arg0)) {
     return unboxed_unary_op(arg0, label);
+  } else if (is_boxed_int(arg0)) {
+    if (label < ADD) {
+      return boxed_unary_op(arg0, label);
+    } else {
+      qdbp_field_ptr field =
+          label_get(&(arg0->data.boxed_int->other_labels), label);
+      dup_captures(&(field->method));
+      return ((qdbp_object_ptr(*)(qdbp_object_arr, qdbp_object_ptr))
+                  field->method.code)(field->method.captures, arg0);
+    }
   } else {
     void *code;
     qdbp_object_arr captures = get_method(receiver, label, &code);
@@ -213,11 +244,58 @@ qdbp_object_ptr invoke_1(qdbp_object_ptr receiver, label_t label,
 
 qdbp_object_ptr invoke_2(qdbp_object_ptr receiver, label_t label,
                          qdbp_object_ptr arg0, qdbp_object_ptr arg1) {
-  if(is_unboxed_int(arg0)) {
-    return unboxed_binary_op(arg0, arg1, label);
+  // UB UB
+  if (is_unboxed_int(arg0) && is_unboxed_int(arg1)) {
+    return unboxed_binary_op(get_unboxed_int(arg0), get_unboxed_int(arg1),
+                             label);
   }
-  void *code;
-  qdbp_object_arr captures = get_method(receiver, label, &code);
-  return ((qdbp_object_ptr(*)(qdbp_object_arr, qdbp_object_ptr,
-                              qdbp_object_ptr))code)(captures, arg0, arg1);
+  // UB B
+  else if (is_unboxed_int(arg0) && is_boxed_int(arg1)) {
+    qdbp_object_ptr result =
+        unboxed_binary_op(get_unboxed_int(arg0), get_boxed_int(arg1), label);
+    drop(arg1, 1);
+    return result;
+  }
+  // UB BB
+  else if (is_unboxed_int(arg0) && get_kind(arg1) == QDBP_PROTOTYPE) {
+    int64_t a = get_unboxed_int(arg0);
+    arg1 = invoke_1(arg1, VAL, arg1);
+    if (DYNAMIC_TYPECHECK) {
+      assert(get_kind(arg1) == QDBP_INT);
+    }
+    int64_t b = arg1->data.i;
+    drop(arg1, 1);
+    return unboxed_binary_op(a, b, label);
+  }
+  // B UB
+  // B B
+  // B BB
+  else if (is_boxed_int(arg0)) {
+    if (label < NUM_OP_CNT) {
+      // print label
+      return boxed_binary_op(arg0, arg1, label);
+    } else {
+      // get the method from the binary op
+      qdbp_field_ptr field =
+          label_get(&arg0->data.boxed_int->other_labels, label);
+      qdbp_object_ptr (*code)(qdbp_object_arr, qdbp_object_ptr,
+                              qdbp_object_ptr) =
+          ((qdbp_object_ptr(*)(qdbp_object_arr, qdbp_object_ptr,
+                               qdbp_object_ptr))field->method.code);
+      qdbp_object_arr captures = field->method.captures;
+      return code(captures, arg0, arg1);
+    }
+  }
+  // BB UB
+  // BB B
+
+  else {
+    if (DYNAMIC_TYPECHECK) {
+      assert(get_kind(arg0) == QDBP_PROTOTYPE);
+    }
+    void *code;
+    qdbp_object_arr captures = get_method(receiver, label, &code);
+    return ((qdbp_object_ptr(*)(qdbp_object_arr, qdbp_object_ptr,
+                                qdbp_object_ptr))code)(captures, arg0, arg1);
+  }
 }

@@ -13,9 +13,6 @@ enum qdbp_object_kind get_kind(qdbp_object_ptr obj) {
 
 void set_tag(qdbp_object_ptr o, tag_t t) { o->metadata.tag = t; }
 tag_t get_tag(qdbp_object_ptr o) {
-  if (DYNAMIC_TYPECHECK) {
-    assert(o->metadata.tag > QDBP_VARIANT);
-  }
   return o->metadata.tag;
 }
 qdbp_object_ptr variant_create(tag_t tag, qdbp_object_ptr value) {

@@ -32,10 +32,6 @@ rule token = parse
   try (INT (int_of_string (s))) with 
     | Failure _ -> raise (LexerError (("Integer too big: " ^ s), lexbuf.lex_curr_p))
 }
-| '-'? digit+ '.' digit+ as s { 
-  try (FLOAT (float_of_string (s))) with 
-    | Failure _ -> raise (LexerError ("Float too big: " ^ s, lexbuf.lex_curr_p))
-}
 | ';' [ ^'\n']* { token lexbuf }
 | "ABORT" { ABORT }
 | upper_id as s { UPPER_ID (s) }

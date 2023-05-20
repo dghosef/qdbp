@@ -25,7 +25,7 @@ refcount_t get_refcount(qdbp_object_ptr obj) {
 }
 
 void drop(qdbp_object_ptr obj, refcount_t cnt) {
-  if (is_unboxed_int(obj)) {
+  if (!obj || is_unboxed_int(obj)) {
     return;
   }
   else {
@@ -43,7 +43,7 @@ void drop(qdbp_object_ptr obj, refcount_t cnt) {
 }
 
 void obj_dup(qdbp_object_ptr obj, refcount_t cnt) {
-  if (is_unboxed_int(obj)) {
+  if (!obj || is_unboxed_int(obj)) {
     return;
   } else {
     assert_refcount(obj);

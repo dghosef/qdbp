@@ -11,9 +11,11 @@
 #include <string.h>
 // config
 // You could also add fsanitize=undefined
+// Also could adjust inlining
 static const bool REUSE_ANALYSIS = true;
 static const bool OBJ_FREELIST = true;
 static const bool FIELD_FREELIST = true;
+static const bool BOX_FREELIST = true;
 #define FREELIST_SIZE 1000
 
 // Dynamic checks
@@ -62,11 +64,16 @@ struct qdbp_variant {
   struct qdbp_object *value;
 };
 
+struct boxed_int {
+  int64_t value;
+  struct qdbp_prototype other_labels;
+};
 union qdbp_object_data {
   struct qdbp_prototype prototype;
   int64_t i;
   double f;
   char *s;
+  struct boxed_int *boxed_int;
   struct qdbp_variant variant;
 };
 
@@ -75,6 +82,7 @@ enum qdbp_object_kind {
   QDBP_FLOAT,
   QDBP_STRING,
   QDBP_PROTOTYPE,
+  QDBP_BOXED_INT,
   QDBP_VARIANT // Must be last
 };
 
@@ -106,9 +114,9 @@ void set_refcount(qdbp_object_ptr obj, refcount_t refcount);
 refcount_t get_refcount(qdbp_object_ptr obj);
 
 #define assert_refcount(obj)                                                   \
-  assert(!is_unboxed_int(obj));                                                \
   do {                                                                         \
-    if (VERIFY_REFCOUNTS) {                                                    \
+    if (obj && VERIFY_REFCOUNTS) {                                                    \
+      assert(!is_unboxed_int(obj));                                            \
       assert((obj));                                                           \
       if (get_refcount(obj) <= 0) {                                            \
         printf("refcount of %u\n", get_refcount(obj));                         \
@@ -122,10 +130,12 @@ void dup_captures(qdbp_method_ptr method);
 void dup_prototype_captures(qdbp_prototype_ptr proto);
 void dup_prototype_captures_except(qdbp_prototype_ptr proto, label_t except);
 // Memory
-void *qdbp_malloc(size_t size);
+void *qdbp_malloc(size_t size, const char* message);
 void qdbp_free(void *ptr);
 void qdbp_memcpy(void *dest, const void *src, size_t n);
 void qdbp_free_field(qdbp_field_ptr field);
+void qdbp_free_boxed_int(struct boxed_int *i);
+struct boxed_int *qdbp_malloc_boxed_int();
 qdbp_field_ptr qdbp_malloc_field();
 void free_fields(qdbp_prototype_ptr proto);
 void qdbp_free_obj(qdbp_object_ptr obj);
@@ -142,13 +152,12 @@ qdbp_object_ptr make_object(tag_t tag, union qdbp_object_data data);
 qdbp_object_ptr empty_prototype();
 qdbp_object_ptr qdbp_true();
 qdbp_object_ptr qdbp_false();
+qdbp_object_ptr int_proto(int64_t i);
 
 // Prototypes
 
 size_t proto_size(qdbp_prototype_ptr proto);
 void label_add(qdbp_prototype_ptr proto, label_t label, qdbp_field_ptr field);
-void label_replace(qdbp_prototype_ptr proto, label_t label,
-                   qdbp_field_ptr field);
 qdbp_field_ptr label_get(qdbp_prototype_ptr proto, label_t label);
 void copy_captures_except(qdbp_prototype_ptr new_prototype, label_t except);
 qdbp_object_arr get_method(qdbp_object_ptr obj, label_t label,
@@ -170,25 +179,39 @@ replace(qdbp_object_ptr obj, label_t label, void *code,
 enum NUMBER_LABELS {
   VAL = 0,
   PRINT = 1,
-  ADD = 2,
+  ADD = 2, // MUST be the first arith op after all unary ops
   SUB = 3,
   MUL = 4,
   DIV = 5,
-  MOD = 6,
-  EQ = 7,
+  MOD = 6, // MUST be the last op before all the comparison ops
+  EQ = 7,  // MUST be the first op after all the arithmetic ops
   NEQ = 8,
   LT = 9,
   GT = 10,
   LEQ = 11,
   GEQ = 12,
+  NUM_OP_CNT
 };
 
-// Unboxed ints
+// ints
 bool is_unboxed_int(qdbp_object_ptr obj);
 qdbp_object_ptr make_unboxed_int(int64_t value);
 int64_t get_unboxed_int(qdbp_object_ptr obj);
 qdbp_object_ptr unboxed_unary_op(qdbp_object_ptr obj, label_t op);
-qdbp_object_ptr unboxed_binary_op(qdbp_object_ptr a, qdbp_object_ptr b, label_t op);
+qdbp_object_ptr unboxed_binary_op(int64_t a, int64_t b, label_t op);
+bool is_boxed_int(qdbp_object_ptr obj);
+int64_t get_boxed_int(qdbp_object_ptr obj);
+qdbp_object_ptr boxed_binary_op(qdbp_object_ptr a, qdbp_object_ptr b,
+                                label_t op);
+qdbp_object_ptr make_int_proto(int64_t value);
+qdbp_object_ptr box(qdbp_object_ptr obj, label_t label, void *code,
+                    qdbp_object_arr captures, size_t captures_size);
+qdbp_object_ptr box_extend(qdbp_object_ptr obj, label_t label, void *code,
+                           qdbp_object_arr captures, size_t captures_size);
+qdbp_object_ptr boxed_int_replace(qdbp_object_ptr obj, label_t label,
+                                  void *code, qdbp_object_arr captures,
+                                  size_t captures_size);
+qdbp_object_ptr boxed_unary_op(qdbp_object_ptr arg0, label_t label);
 // Tags and Variants
 enum qdbp_object_kind get_kind(qdbp_object_ptr obj);
 void set_tag(qdbp_object_ptr o, tag_t t);
@@ -198,7 +221,7 @@ void decompose_variant(qdbp_object_ptr obj, tag_t *tag,
                        qdbp_object_ptr *payload);
 #define assert_obj_kind(obj, k)                                                \
   do {                                                                         \
-    if (DYNAMIC_TYPECHECK) {                                                   \
+    if (obj && DYNAMIC_TYPECHECK) {                                                   \
       assert_refcount(obj);                                                    \
       assert(get_kind(obj) == k);                                              \
     }                                                                          \
