@@ -1,6 +1,5 @@
 #include "runtime.h"
 void label_add(qdbp_prototype_ptr proto, label_t label, qdbp_field_ptr field) {
-  Word_t *PValue;
   if (DYNAMIC_TYPECHECK) {
     assert(field->label == label);
     qdbp_field_ptr res;
@@ -16,6 +15,9 @@ qdbp_field_ptr label_get(qdbp_prototype_ptr proto, label_t label) {
   if (DYNAMIC_TYPECHECK) {
     assert(proto);
     assert(proto->labels);
+  }
+  if(proto_size(proto) == 1) {
+    return proto->labels;
   }
   struct qdbp_field *field;
   HASH_FIND_INT(proto->labels, &label, field);

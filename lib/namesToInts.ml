@@ -10,31 +10,37 @@ let varname varnames name =
 let names_to_ints ast =
   (* FIXME: Make functional *)
   let label_map = Hashtbl.create 10 in
+  let labels_added = Hashtbl.create 10 in
+  for i = 0 to 1000 do
+    Hashtbl.add labels_added (Int64.of_int i) ()
+  done;
+  (* MUST keep in sync with int_proto.h and infer.ml *)
+  (* Must be less than 1000 *)
+  Hashtbl.add label_map "Val:this" (Int64.of_int 0);
+  Hashtbl.add label_map "Print:this" (Int64.of_int 1);
+  Hashtbl.add label_map "+:this:that" (Int64.of_int 2);
+  Hashtbl.add label_map "-:this:that" (Int64.of_int 3);
+  Hashtbl.add label_map "*:this:that" (Int64.of_int 4);
+  Hashtbl.add label_map "/:this:that" (Int64.of_int 5);
+  Hashtbl.add label_map "%:this:that" (Int64.of_int 6);
+  Hashtbl.add label_map "=:this:that" (Int64.of_int 7);
+  Hashtbl.add label_map "!=:this:that" (Int64.of_int 8);
+  Hashtbl.add label_map "<:this:that" (Int64.of_int 9);
+  Hashtbl.add label_map ">:this:that" (Int64.of_int 10);
+  Hashtbl.add label_map "<=:this:that" (Int64.of_int 11);
+  Hashtbl.add label_map ">=:this:that" (Int64.of_int 12);
   (* Save the first 1000 labels for reserved labels*)
-  let cur_label = ref 1000 in
   let get_label name =
     match Hashtbl.find_opt label_map name with
     | Some label -> label
     | None ->
-      let label = !cur_label in
-      cur_label := label + 1;
-      Hashtbl.add label_map name label;
-      label in
-    (* MUST keep in sync with int_proto.h and infer.ml *)
-    (* Must be less than 1000 *)
-  Hashtbl.add label_map "Val:this" 0;
-  Hashtbl.add label_map "Print:this" 1;
-  Hashtbl.add label_map "+:this:that" 2;
-  Hashtbl.add label_map "-:this:that" 3;
-  Hashtbl.add label_map "*:this:that" 4;
-  Hashtbl.add label_map "/:this:that" 5;
-  Hashtbl.add label_map "%:this:that" 6;
-  Hashtbl.add label_map "=:this:that" 7;
-  Hashtbl.add label_map "!=:this:that" 8;
-  Hashtbl.add label_map "<:this:that" 9;
-  Hashtbl.add label_map ">:this:that" 10;
-  Hashtbl.add label_map "<=:this:that" 11;
-  Hashtbl.add label_map ">=:this:that" 12;
+      let label = ref (Random.bits64 ()) in
+      while (Hashtbl.mem labels_added !label) do
+        label := Random.bits64 ()
+      done;
+      Hashtbl.add label_map name !label;
+      Hashtbl.add labels_added !label ();
+      !label in
 
   let tag_map = Hashtbl.create 10 in
   (* Save the first 100 for reserved tags *)
@@ -109,4 +115,5 @@ let names_to_ints ast =
   in 
   let ast = names_to_ints StringMap.empty ast in
   assert (!cur_tag < 4_000_000_000);
-  ast, !cur_label + 1
+  assert (Hashtbl.length tag_map < 4_000_000_000);
+  ast

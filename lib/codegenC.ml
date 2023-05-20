@@ -88,7 +88,7 @@ let rec expr_to_c level expr =
 
   | `MethodInvocation (receiver, label, args, _, _) ->
     let args_c = List.map (fun (_, e, _) -> expr_to_c (level + 1) e) args in
-    let label_c = string_of_int (fst label) in
+    let label_c = Int64.to_string (fst label) in
     let receiver_c = expr_to_c (level + 1) receiver in
     c_call (invoke_fn_name (List.length args))
       (receiver_c :: label_c :: args_c)
@@ -110,7 +110,7 @@ let rec expr_to_c level expr =
            cases_to_c level cases)
   | `PrototypeCopy (ext, ((label, _), (meth_id, meth_fvs), _), _, op, _) ->
     let ext_c = expr_to_c (level + 1) ext in
-    let label_c = string_of_int label in
+    let label_c = Int64.to_string label in
     let fn = match op with
       | `Extend ->
         "extend"
@@ -166,9 +166,8 @@ let fn_definitions methods =
   String.concat "\n" method_strs
 
 
-let codegen_c methods main_method_id max_label =
+let codegen_c methods main_method_id =
   let main_method = method_name main_method_id in
-  "#define LABEL_CNT " ^ (string_of_int max_label) ^
   {|
 #include "runtime.h"
 #include "basic_fns.h"

@@ -71,7 +71,7 @@ let compile args =
   let loc = Infer.loc_of ast in
 
 
-  let ast, max_label = NamesToInts.names_to_ints ast in
+  let ast = NamesToInts.names_to_ints ast in
   let fvs, ast = FreeVariables.free_variables ast in
   let ast = Refcount.refcount Refcount.FvSet.empty Refcount.FvSet.empty ast in
   let ast = Anf.anf ast (fun x -> x) in
@@ -86,4 +86,4 @@ let compile args =
   let main_method = ([], ast, loc, fvs, bvs) in
   let main_method_id = (Oo.id (object end)) in
   let methods = CollectMethods.IntMap.add main_method_id main_method methods in
-  print_endline (CodegenC.codegen_c methods main_method_id max_label)
+  print_endline (CodegenC.codegen_c methods main_method_id)

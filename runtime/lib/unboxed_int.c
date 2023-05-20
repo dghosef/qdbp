@@ -111,7 +111,6 @@ static qdbp_object_ptr boxed_binary_arith_op(qdbp_object_ptr a,
     set_tag(ret, QDBP_BOXED_INT);
     ret->data.boxed_int = qdbp_malloc_boxed_int();
     ret->data.boxed_int->other_labels.labels = NULL;
-    Word_t label = 0;
     qdbp_field_ptr *PValue;
     duplicate_labels(&a->data.boxed_int->other_labels,
                      &ret->data.boxed_int->other_labels);

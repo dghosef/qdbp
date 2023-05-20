@@ -201,7 +201,6 @@ void del_prototype(qdbp_prototype_ptr proto) {
   if (DYNAMIC_TYPECHECK) {
     assert(proto);
   }
-  Word_t label = 0;
   qdbp_field_ptr *PValue;
 
   free_fields(proto);
@@ -269,6 +268,6 @@ void duplicate_labels(qdbp_prototype_ptr src, qdbp_prototype_ptr dest) {
     qdbp_field_ptr new_field = qdbp_malloc_field();
     new_field->label = cur_field->label;
     new_field->method = cur_field->method;
-    HASH_ADD(hh, dest->labels, label, sizeof(Word_t), new_field);
+    HASH_ADD(hh, dest->labels, label, sizeof(void*), new_field);
   }
 }

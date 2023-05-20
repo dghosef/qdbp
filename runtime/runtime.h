@@ -3,7 +3,6 @@
 #ifndef QDBP_RUNTIME_H
 #define QDBP_RUNTIME_H
 #include "uthash.h"
-#include <Judy.h>
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -21,9 +20,9 @@ static const bool BOX_FREELIST = true;
 #define FREELIST_SIZE 1000
 
 // Dynamic checks
-static const bool CHECK_MALLOC_FREE = true; // very slow
-static const bool VERIFY_REFCOUNTS = true;
-static const bool DYNAMIC_TYPECHECK = true;
+static const bool CHECK_MALLOC_FREE = false; // very slow
+static const bool VERIFY_REFCOUNTS = false;
+static const bool DYNAMIC_TYPECHECK = false;
 #define SAFE
 
 #ifndef SAFE
