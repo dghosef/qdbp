@@ -45,6 +45,7 @@ qdbp_object_ptr unboxed_unary_op(qdbp_object_ptr obj, label_t op) {
   default:
     printf("unboxed_unary_op: %llu\n", op);
     assert(false);
+    __builtin_unreachable();
   }
 }
 #define MK_ARITH_SWITCH                                                        \
@@ -77,6 +78,7 @@ qdbp_object_ptr unboxed_binary_op(int64_t a, int64_t b, label_t op) {
 #undef MK_CMP_CASE
   default:
     assert(false);
+    __builtin_unreachable();
   }
 }
 
@@ -126,6 +128,7 @@ static qdbp_object_ptr boxed_binary_arith_op(qdbp_object_ptr a,
   default:
     printf("boxed_binary_arith_op: %llu\n", op);
     assert(false);
+    __builtin_unreachable();
   }
   // Ensure that all math is done in 63 bits
   ret->data.boxed_int->value <<= 1;
@@ -164,6 +167,7 @@ static qdbp_object_ptr boxed_binary_cmp_op(qdbp_object_ptr a, qdbp_object_ptr b,
     MK_CMP_SWITCH
   default:
     assert(false);
+    __builtin_unreachable();
   }
 #undef MK_CMP_CASE
 }
@@ -282,5 +286,6 @@ qdbp_object_ptr boxed_unary_op(qdbp_object_ptr arg0, label_t label) {
     break;
   default:
     assert(false);
+    __builtin_unreachable();
   }
 }

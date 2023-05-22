@@ -171,11 +171,27 @@ void qdbp_free_boxed_int(struct boxed_int *i) {
     qdbp_free(i);
   }
 }
+MK_FREELIST(UT_hash_table *, hash_table_freelist)
+UT_hash_table *qdbp_malloc_hash_table() {
+  if (HASH_TABLE_FREELIST && hash_table_freelist.idx > 0) {
+    return pop_hash_table_freelist();
+  } else {
+    return qdbp_malloc(sizeof(UT_hash_table), "hash table");
+  }
+}
+void qdbp_free_hash_table(UT_hash_table *table) {
+  if (HASH_TABLE_FREELIST && push_hash_table_freelist(table)) {
+
+  } else {
+    qdbp_free(table);
+  }
+}
 void init() {
   for (int i = 0; i < FREELIST_SIZE; i++) {
     if (!CHECK_MALLOC_FREE) {
       push_freelist(qdbp_malloc(sizeof(struct qdbp_object), "obj init"));
       push_field_freelist(qdbp_malloc(sizeof(struct qdbp_field), "field init"));
+      push_hash_table_freelist(qdbp_malloc(sizeof(UT_hash_table), "hash table init"));
     }
   }
 }
@@ -193,6 +209,9 @@ void check_mem() {
     }
     if (BOX_FREELIST) {
       box_freelist_remove_all_from_malloc_list();
+    }
+    if (HASH_TABLE_FREELIST) {
+      hash_table_freelist_remove_all_from_malloc_list();
     }
     struct malloc_list_node *node = malloc_list;
     while (node) {
@@ -268,8 +287,7 @@ void duplicate_labels(qdbp_prototype_ptr src, qdbp_prototype_ptr dest) {
     assert(!dest->labels);
   }
   qdbp_field_ptr cur_field;
-  qdbp_field_ptr tmp;
-  HASH_ITER(hh, src->labels, cur_field, tmp) {
+  for(cur_field = src->labels; cur_field != NULL; cur_field = cur_field->hh.next) {
     qdbp_field_ptr new_field = qdbp_malloc_field();
     new_field->label = cur_field->label;
     new_field->method = cur_field->method;
@@ -282,8 +300,7 @@ void duplicate_labels_except(qdbp_prototype_ptr src, qdbp_prototype_ptr dest, la
     assert(!dest->labels);
   }
   qdbp_field_ptr cur_field;
-  qdbp_field_ptr tmp;
-  HASH_ITER(hh, src->labels, cur_field, tmp) {
+  for(cur_field = src->labels; cur_field != NULL; cur_field = cur_field->hh.next) {
     if(cur_field->label != except) {
       qdbp_field_ptr new_field = qdbp_malloc_field();
       new_field->label = cur_field->label;
