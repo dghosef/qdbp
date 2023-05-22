@@ -119,8 +119,7 @@ void free_fields(qdbp_prototype_ptr proto) {
 
   qdbp_field_ptr field;
   size_t tmp;
-  HT_ITER(proto->labels, field, tmp)
-  { del_method(&field->method); }
+  HT_ITER(proto->labels, field, tmp) { del_method(&field->method); }
   del_ht(proto->labels);
 }
 
@@ -159,6 +158,51 @@ void qdbp_free_boxed_int(struct boxed_int *i) {
     qdbp_free(i);
   }
 }
+MK_FREELIST(hashtable *, hashtable_freelist)
+hashtable *qdbp_calloc_hashtable() {
+  if (HASHTABLE_FREELIST && hashtable_freelist.idx > 0) {
+    hashtable *ret = pop_hashtable_freelist();
+    memset(ret, 0, sizeof(hashtable) * (INITIAL_CAPACITY + 1));
+    return ret;
+  } else {
+    return calloc(INITIAL_CAPACITY + 1, sizeof(hashtable));
+  }
+}
+hashtable *qdbp_malloc_hashtable(hashtable *table) {
+  if (HASHTABLE_FREELIST && hashtable_freelist.idx > 0 && table->header.capacity == INITIAL_CAPACITY) {
+    hashtable *ret = pop_hashtable_freelist();
+    return ret;
+  } else {
+    return malloc((table->header.capacity + 1) * sizeof(hashtable));
+  }
+}
+
+void qdbp_free_hashtable(hashtable *ht) {
+  if (ht->header.capacity == INITIAL_CAPACITY && HASHTABLE_FREELIST &&
+      push_hashtable_freelist(ht)) {
+
+  } else {
+    qdbp_free(ht);
+  }
+}
+MK_FREELIST(size_t *, directory_freelist)
+size_t *qdbp_malloc_directory() {
+  if (DIRECTORY_FREELIST && directory_freelist.idx > 0) {
+    return pop_directory_freelist();
+  } else {
+    return qdbp_malloc(sizeof(size_t) * INITIAL_CAPACITY, "directory");
+  }
+}
+
+void qdbp_free_directory(size_t *directory, hashtable *ht) {
+  if (ht->header.capacity == INITIAL_CAPACITY && DIRECTORY_FREELIST &&
+      push_directory_freelist(directory)) {
+
+  } else {
+    qdbp_free(directory);
+  }
+}
+
 void init() {
   for (int i = 0; i < FREELIST_SIZE; i++) {
     if (!CHECK_MALLOC_FREE) {

@@ -15,6 +15,9 @@ static const bool REFCOUNT = true;
 static const bool REUSE_ANALYSIS = true;
 static const bool OBJ_FREELIST = true;
 static const bool BOX_FREELIST = true;
+static const bool HASHTABLE_FREELIST = true;
+static const bool DIRECTORY_FREELIST = true;
+
 #define FREELIST_SIZE 1000
 
 // Dynamic checks
@@ -22,6 +25,10 @@ static const bool CHECK_MALLOC_FREE = false; // very slow
 static const bool VERIFY_REFCOUNTS = false;
 static const bool DYNAMIC_TYPECHECK = false;
 
+// Hashtable settings
+static const size_t INITIAL_CAPACITY = 16;
+static const size_t INITIAL_CAPACITY_LG2 = 4;
+static const size_t MAX_LOAD_FACTOR = 2;
 
 /*
     ====================================================
@@ -155,6 +162,9 @@ hashtable *ht_insert(hashtable *table, const qdbp_field_ptr fld);
                 (fld = &((ht)[(ht)->header.directory[tmp]].field), true);         \
        tmp++)
 // Memory
+hashtable *qdbp_calloc_hashtable();
+hashtable *qdbp_malloc_hashtable();
+void qdbp_free_hashtable(hashtable *ht);
 void duplicate_labels(qdbp_prototype_ptr src,
                                                 qdbp_prototype_ptr dest);
 void *qdbp_malloc(size_t size, const char *message);
@@ -174,6 +184,8 @@ void free_capture_arr(qdbp_object_arr arr, size_t size);
 void del_method(qdbp_method_ptr method);
 void del_obj(qdbp_object_ptr obj);
 qdbp_object_ptr qdbp_malloc_obj();
+void qdbp_free_directory(size_t *directory, hashtable *ht);
+size_t *qdbp_malloc_directory();
 // Object creation
 __attribute__((always_inline)) qdbp_object_ptr
 make_object(tag_t tag, union qdbp_object_data data);
