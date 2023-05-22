@@ -55,6 +55,16 @@ void remove_from_malloc_list(void *ptr) {
   }
   assert(false);
 }
+// FIXME: Remove msg
+void *qdbp_calloc(size_t nitems, size_t elem_size, const char *msg) {
+  void *ptr;
+  ptr = calloc(nitems, elem_size);
+  if (CHECK_MALLOC_FREE) {
+    add_to_malloc_list(ptr, msg);
+  }
+  assert(ptr);
+  return ptr;
+}
 void *qdbp_malloc(size_t size, const char *msg) {
   if (size == 0) {
     return NULL;
@@ -104,36 +114,14 @@ void qdbp_free(void *ptr) {
       remove_from_malloc_list(name.objects[i]);                                \
     }                                                                          \
   }
-MK_FREELIST(qdbp_field_ptr, field_freelist)
-
-void qdbp_free_field(qdbp_field_ptr field) {
-  del_method(&field->method);
-  if (FIELD_FREELIST && push_field_freelist(field)) {
-
-  } else {
-    qdbp_free((void *)field);
-  }
-}
-qdbp_field_ptr qdbp_malloc_field() {
-  qdbp_field_ptr result;
-  if (FIELD_FREELIST && field_freelist.idx > 0) {
-    result = pop_field_freelist();
-  } else {
-    result = (qdbp_field_ptr)qdbp_malloc(sizeof(struct qdbp_field), "field");
-  }
-  result->hh = (UT_hash_handle){0};
-  return result;
-}
 void free_fields(qdbp_prototype_ptr proto) {
   struct qdbp_field *cur_field;
-  struct qdbp_field *tmp;
 
-  if(proto->labels) {
-    HASH_ITER(hh, proto->labels, cur_field, tmp) {
-      HASH_DEL(proto->labels, cur_field);
-      qdbp_free_field(cur_field);
-    }
-  }
+  qdbp_field_ptr field;
+  size_t tmp;
+  HT_ITER(proto->labels, field, tmp)
+  { del_method(&field->method); }
+  del_ht(proto->labels);
 }
 
 MK_FREELIST(qdbp_object_ptr, freelist)
@@ -171,27 +159,10 @@ void qdbp_free_boxed_int(struct boxed_int *i) {
     qdbp_free(i);
   }
 }
-MK_FREELIST(UT_hash_table *, hash_table_freelist)
-UT_hash_table *qdbp_malloc_hash_table() {
-  if (HASH_TABLE_FREELIST && hash_table_freelist.idx > 0) {
-    return pop_hash_table_freelist();
-  } else {
-    return qdbp_malloc(sizeof(UT_hash_table), "hash table");
-  }
-}
-void qdbp_free_hash_table(UT_hash_table *table) {
-  if (HASH_TABLE_FREELIST && push_hash_table_freelist(table)) {
-
-  } else {
-    qdbp_free(table);
-  }
-}
 void init() {
   for (int i = 0; i < FREELIST_SIZE; i++) {
     if (!CHECK_MALLOC_FREE) {
       push_freelist(qdbp_malloc(sizeof(struct qdbp_object), "obj init"));
-      push_field_freelist(qdbp_malloc(sizeof(struct qdbp_field), "field init"));
-      push_hash_table_freelist(qdbp_malloc(sizeof(UT_hash_table), "hash table init"));
     }
   }
 }
@@ -201,17 +172,11 @@ void qdbp_memcpy(void *dest, const void *src, size_t size) {
 void check_mem() {
   // Make sure that everything that has been malloc'd has been freed
   if (CHECK_MALLOC_FREE) {
-    if (FIELD_FREELIST) {
-      field_freelist_remove_all_from_malloc_list();
-    }
     if (OBJ_FREELIST) {
       freelist_remove_all_from_malloc_list();
     }
     if (BOX_FREELIST) {
       box_freelist_remove_all_from_malloc_list();
-    }
-    if (HASH_TABLE_FREELIST) {
-      hash_table_freelist_remove_all_from_malloc_list();
     }
     struct malloc_list_node *node = malloc_list;
     while (node) {
@@ -283,29 +248,8 @@ void del_obj(qdbp_object_ptr obj) {
 }
 
 void duplicate_labels(qdbp_prototype_ptr src, qdbp_prototype_ptr dest) {
-  if(DYNAMIC_TYPECHECK) {
+  if (DYNAMIC_TYPECHECK) {
     assert(!dest->labels);
   }
-  qdbp_field_ptr cur_field;
-  for(cur_field = src->labels; cur_field != NULL; cur_field = cur_field->hh.next) {
-    qdbp_field_ptr new_field = qdbp_malloc_field();
-    new_field->label = cur_field->label;
-    new_field->method = cur_field->method;
-    HASH_ADD(hh, dest->labels, label, sizeof(label_t), new_field);
-  }
-}
-
-void duplicate_labels_except(qdbp_prototype_ptr src, qdbp_prototype_ptr dest, label_t except) {
-  if(DYNAMIC_TYPECHECK) {
-    assert(!dest->labels);
-  }
-  qdbp_field_ptr cur_field;
-  for(cur_field = src->labels; cur_field != NULL; cur_field = cur_field->hh.next) {
-    if(cur_field->label != except) {
-      qdbp_field_ptr new_field = qdbp_malloc_field();
-      new_field->label = cur_field->label;
-      new_field->method = cur_field->method;
-      HASH_ADD(hh, dest->labels, label, sizeof(label_t), new_field);
-    }
-  }
+  dest->labels = ht_duplicate(src->labels);
 }
