@@ -15,8 +15,8 @@ static const bool REFCOUNT = true;
 static const bool REUSE_ANALYSIS = true;
 static const bool OBJ_FREELIST = true;
 static const bool BOX_FREELIST = true;
-static const bool HASHTABLE_FREELIST = true;
-static const bool DIRECTORY_FREELIST = true;
+static const bool HASHTABLE_FREELIST = false;
+static const bool DIRECTORY_FREELIST = false;
 
 #define FREELIST_SIZE 1000
 
@@ -26,9 +26,9 @@ static const bool VERIFY_REFCOUNTS = false;
 static const bool DYNAMIC_TYPECHECK = false;
 
 // Hashtable settings
-static const size_t INITIAL_CAPACITY = 16;
-static const size_t INITIAL_CAPACITY_LG2 = 4;
-static const size_t MAX_LOAD_FACTOR = 2;
+static const size_t INITIAL_CAPACITY = 1;
+static const size_t INITIAL_CAPACITY_LG2 = 0;
+static const size_t MAX_LOAD_FACTOR = 1;
 
 /*
     ====================================================
@@ -47,14 +47,14 @@ typedef uint32_t tag_t;
 typedef uint32_t refcount_t;
 
 struct qdbp_object;
-struct qdbp_method {
+struct __attribute__((packed)) qdbp_method {
   struct qdbp_object **captures;
-  size_t captures_size; // FIXME: Get rid of somehow?
   void *code;
+  size_t captures_size; // FIXME: Get rid of somehow?
 };
-struct qdbp_field {
-  label_t label;
+struct __attribute__((packed)) qdbp_field {
   struct qdbp_method method;
+  label_t label;
 };
 struct hashtable_header {
   size_t capacity;
@@ -118,14 +118,11 @@ Basic Utilities
 */
 
 // Reference counting
-__attribute__((always_inline)) bool is_unique(qdbp_object_ptr obj);
-__attribute__((always_inline)) void incref(qdbp_object_ptr obj,
-                                           refcount_t amount);
-__attribute__((always_inline)) void decref(qdbp_object_ptr obj,
-                                           refcount_t amount);
-__attribute__((always_inline)) void set_refcount(qdbp_object_ptr obj,
-                                                 refcount_t refcount);
-__attribute__((always_inline)) refcount_t get_refcount(qdbp_object_ptr obj);
+bool is_unique(qdbp_object_ptr obj);
+void incref(qdbp_object_ptr obj, refcount_t amount);
+void decref(qdbp_object_ptr obj, refcount_t amount);
+void set_refcount(qdbp_object_ptr obj, refcount_t refcount);
+refcount_t get_refcount(qdbp_object_ptr obj);
 
 #define assert_refcount(obj)                                                   \
   do {                                                                         \
@@ -139,43 +136,40 @@ __attribute__((always_inline)) refcount_t get_refcount(qdbp_object_ptr obj);
     }                                                                          \
   } while (0);
 __attribute__((always_inline)) void drop(qdbp_object_ptr obj, refcount_t cnt);
-__attribute__((always_inline)) void obj_dup(qdbp_object_ptr obj,
-                                            refcount_t cnt);
+void obj_dup(qdbp_object_ptr obj, refcount_t cnt);
 void dup_captures(qdbp_method_ptr method);
 void dup_prototype_captures(qdbp_prototype_ptr proto);
 void dup_prototype_captures_except(qdbp_prototype_ptr proto, label_t except);
 // Hash table
 size_t hashtable_size(hashtable *table);
-__attribute__((always_inline))
+__attribute__((always_inline)) 
 hashtable *new_ht();
-__attribute__((always_inline))
 void del_ht(hashtable *table);
-__attribute__((always_inline))
 hashtable *ht_duplicate(hashtable *table);
-__attribute__((always_inline))
-qdbp_field_ptr ht_find(hashtable *table, label_t label);
- __attribute__((warn_unused_result))
-__attribute__((always_inline))
-hashtable *ht_insert(hashtable *table, const qdbp_field_ptr fld);
+qdbp_field_ptr ht_find(hashtable *table,
+                                                      label_t label);
+__attribute__((always_inline)) 
+__attribute__((warn_unused_result)) hashtable *
+ht_insert(hashtable *table, const qdbp_field_ptr fld);
 #define HT_ITER(ht, fld, tmp)                                                  \
   for (tmp = 0; tmp < (ht)->header.size &&                                     \
-                (fld = &((ht)[(ht)->header.directory[tmp]].field), true);         \
+                (fld = &((ht)[(ht)->header.directory[tmp]].field), true);      \
        tmp++)
 // Memory
 hashtable *qdbp_calloc_hashtable();
 hashtable *qdbp_malloc_hashtable();
 void qdbp_free_hashtable(hashtable *ht);
-void duplicate_labels(qdbp_prototype_ptr src,
-                                                qdbp_prototype_ptr dest);
+__attribute__((always_inline))
+void duplicate_labels(qdbp_prototype_ptr src, qdbp_prototype_ptr dest);
 void *qdbp_malloc(size_t size, const char *message);
 void *qdbp_calloc(size_t nitems, size_t elem_size, const char *msg);
 void qdbp_free(void *ptr);
 void qdbp_memcpy(void *dest, const void *src, size_t n);
-__attribute__((always_inline)) void qdbp_free_field(qdbp_field_ptr field);
+void qdbp_free_field(qdbp_field_ptr field);
 void qdbp_free_boxed_int(struct boxed_int *i);
 struct boxed_int *qdbp_malloc_boxed_int();
 void free_fields(qdbp_prototype_ptr proto);
-__attribute__((always_inline)) void qdbp_free_obj(qdbp_object_ptr obj);
+void qdbp_free_obj(qdbp_object_ptr obj);
 void check_mem();
 void del_prototype(qdbp_prototype_ptr proto);
 void del_variant(qdbp_variant_ptr variant);
@@ -187,22 +181,22 @@ qdbp_object_ptr qdbp_malloc_obj();
 void qdbp_free_directory(size_t *directory, hashtable *ht);
 size_t *qdbp_malloc_directory();
 // Object creation
-__attribute__((always_inline)) qdbp_object_ptr
+qdbp_object_ptr
 make_object(tag_t tag, union qdbp_object_data data);
-__attribute__((always_inline)) qdbp_object_ptr empty_prototype();
-__attribute__((always_inline)) qdbp_object_ptr qdbp_true();
-__attribute__((always_inline)) qdbp_object_ptr qdbp_false();
-__attribute__((always_inline)) qdbp_object_ptr int_proto(int64_t i);
+qdbp_object_ptr empty_prototype();
+qdbp_object_ptr qdbp_true();
+qdbp_object_ptr qdbp_false();
+qdbp_object_ptr int_proto(int64_t i);
 
 // Prototypes
 
-__attribute__((always_inline)) size_t proto_size(qdbp_prototype_ptr proto);
-__attribute__((always_inline)) void
+size_t proto_size(qdbp_prototype_ptr proto);
+void
 label_add(qdbp_prototype_ptr proto, label_t label, qdbp_field_ptr field);
-__attribute__((always_inline)) qdbp_field_ptr
+qdbp_field_ptr
 label_get(qdbp_prototype_ptr proto, label_t label);
 void copy_captures_except(qdbp_prototype_ptr new_prototype, label_t except);
-__attribute__((always_inline)) qdbp_object_arr
+qdbp_object_arr
 get_method(qdbp_object_ptr obj, label_t label,
            void **code_ptr /*output param*/);
 qdbp_object_arr make_captures(qdbp_object_arr captures, size_t size);
@@ -215,6 +209,8 @@ invoke_1(qdbp_object_ptr receiver, label_t label, qdbp_object_ptr arg0);
 __attribute__((always_inline)) qdbp_object_ptr
 invoke_2(qdbp_object_ptr receiver, label_t label, qdbp_object_ptr arg0,
          qdbp_object_ptr arg1);
+  
+__attribute__((always_inline)) 
 qdbp_object_ptr replace(qdbp_object_ptr obj, label_t label, void *code,
                         qdbp_object_arr captures, size_t captures_size);
 
@@ -237,8 +233,8 @@ enum NUMBER_LABELS {
 };
 
 // ints
-__attribute__((always_inline)) bool is_unboxed_int(qdbp_object_ptr obj);
-__attribute__((always_inline)) qdbp_object_ptr make_unboxed_int(int64_t value);
+bool is_unboxed_int(qdbp_object_ptr obj);
+qdbp_object_ptr make_unboxed_int(int64_t value);
 int64_t get_unboxed_int(qdbp_object_ptr obj);
 qdbp_object_ptr unboxed_unary_op(qdbp_object_ptr obj, label_t op);
 qdbp_object_ptr unboxed_binary_op(int64_t a, int64_t b, label_t op);
@@ -258,11 +254,11 @@ qdbp_object_ptr boxed_unary_op(qdbp_object_ptr arg0, label_t label);
 // Tags and Variants
 __attribute__((always_inline)) enum qdbp_object_kind
 get_kind(qdbp_object_ptr obj);
-__attribute__((always_inline)) void set_tag(qdbp_object_ptr o, tag_t t);
-__attribute__((always_inline)) tag_t get_tag(qdbp_object_ptr o);
-__attribute__((always_inline)) qdbp_object_ptr
+void set_tag(qdbp_object_ptr o, tag_t t);
+tag_t get_tag(qdbp_object_ptr o);
+qdbp_object_ptr
 variant_create(tag_t tag, qdbp_object_ptr value);
-__attribute__((always_inline)) void
+void
 decompose_variant(qdbp_object_ptr obj, tag_t *tag, qdbp_object_ptr *payload);
 #define assert_obj_kind(obj, k)                                                \
   do {                                                                         \
@@ -281,9 +277,9 @@ decompose_variant(qdbp_object_ptr obj, tag_t *tag, qdbp_object_ptr *payload);
   ((tag1) == (tag2) ? (LET(arg, payload, ifmatch)) : (ifnomatch))
 
 qdbp_object_ptr match_failed();
-__attribute__((always_inline)) qdbp_object_ptr qdbp_int(int64_t i);
-__attribute__((always_inline)) qdbp_object_ptr qdbp_string(const char *src);
-__attribute__((always_inline)) qdbp_object_ptr qdbp_float(double f);
+qdbp_object_ptr qdbp_int(int64_t i);
+qdbp_object_ptr qdbp_string(const char *src);
+qdbp_object_ptr qdbp_float(double f);
 
 void init();
 #endif

@@ -159,13 +159,20 @@ void qdbp_free_boxed_int(struct boxed_int *i) {
   }
 }
 MK_FREELIST(hashtable *, hashtable_freelist)
+// FIXME: Take a size
 hashtable *qdbp_calloc_hashtable() {
   if (HASHTABLE_FREELIST && hashtable_freelist.idx > 0) {
     hashtable *ret = pop_hashtable_freelist();
-    memset(ret, 0, sizeof(hashtable) * (INITIAL_CAPACITY + 1));
+    for(size_t i = 0; i < INITIAL_CAPACITY; i++) {
+      (ret + 1)[i].field.method.code = NULL;
+    }
     return ret;
   } else {
-    return calloc(INITIAL_CAPACITY + 1, sizeof(hashtable));
+    hashtable *ret = qdbp_malloc((INITIAL_CAPACITY + 1) * sizeof(hashtable), "hashtable");
+    for(size_t i = 0; i < INITIAL_CAPACITY; i++) {
+      (ret + 1)[i].field.method.code = NULL;
+    }
+    return ret;
   }
 }
 hashtable *qdbp_malloc_hashtable(hashtable *table) {
@@ -173,7 +180,7 @@ hashtable *qdbp_malloc_hashtable(hashtable *table) {
     hashtable *ret = pop_hashtable_freelist();
     return ret;
   } else {
-    return malloc((table->header.capacity + 1) * sizeof(hashtable));
+    return qdbp_malloc((table->header.capacity + 1) * sizeof(hashtable), "hashtable");
   }
 }
 
@@ -221,6 +228,10 @@ void check_mem() {
     }
     if (BOX_FREELIST) {
       box_freelist_remove_all_from_malloc_list();
+    }
+    if (HASHTABLE_FREELIST) {
+      directory_freelist_remove_all_from_malloc_list();
+      hashtable_freelist_remove_all_from_malloc_list();
     }
     struct malloc_list_node *node = malloc_list;
     while (node) {

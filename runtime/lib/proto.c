@@ -86,7 +86,7 @@ qdbp_object_arr make_captures(qdbp_object_arr captures, size_t size) {
   }
 }
 
-__attribute__((always_inline)) qdbp_object_ptr extend(qdbp_object_ptr obj,
+qdbp_object_ptr extend(qdbp_object_ptr obj,
                                                       label_t label, void *code,
                                                       qdbp_object_arr captures,
                                                       size_t captures_size) {
@@ -119,7 +119,7 @@ __attribute__((always_inline)) qdbp_object_ptr extend(qdbp_object_ptr obj,
     return obj;
   }
 }
-__attribute__((always_inline)) qdbp_object_ptr
+qdbp_object_ptr
 replace(qdbp_object_ptr obj, label_t label, void *code,
         qdbp_object_arr captures, size_t captures_size) {
   if (!obj) {
