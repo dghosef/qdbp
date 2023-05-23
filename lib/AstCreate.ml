@@ -29,7 +29,7 @@ let make_prototype maybe_extension fields loc : ast =
   in 
   let size = List.length fields in
   (* Round up size to nearest power of 2 *)
-  let size = roundup size in
+  let size = roundup (size * 2 / 1) in
   List.fold_left (fun acc field -> `PrototypeCopy (acc, field, size, loc))
     extension
     fields

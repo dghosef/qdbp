@@ -8,7 +8,7 @@ void label_add(qdbp_prototype_ptr proto, label_t label, qdbp_field_ptr field,
     assert((defaultsize & (defaultsize - 1)) == 0);
   }
   if (!proto->labels) {
-    proto->labels = new_ht(defaultsize * MAX_LOAD_FACTOR);
+    proto->labels = new_ht(defaultsize);
   }
   proto->labels = ht_insert(proto->labels, field);
 }
@@ -99,7 +99,8 @@ qdbp_object_ptr extend(qdbp_object_ptr obj, label_t label, void *code,
 
   if (!obj) {
     obj = make_object(QDBP_PROTOTYPE,
-                      (union qdbp_object_data){.prototype = {.labels = NULL}});
+                      (union qdbp_object_data){.prototype = {.labels = 
+                      new_ht(defaultsize)}});
   } else if (is_unboxed_int(obj)) {
     return box(obj, label, code, captures, captures_size);
   } else if (is_boxed_int(obj)) {

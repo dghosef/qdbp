@@ -3,6 +3,13 @@
    But fully functional style, better error reporting, extension semantics modified to qbdp,
    and recursive types
 *)
+
+(*
+  Annotate each type with a location option
+  Have infer output a list of constraints instead of solving them right away
+  Have a separate solve function that takes a list of constraints and returns true or not
+  Upon failure, start from the offending constraint and go backwards
+*)
 open Type
 exception UnifyError of string
 

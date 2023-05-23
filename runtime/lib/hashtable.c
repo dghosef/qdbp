@@ -1,9 +1,11 @@
 #ifndef HASHTABLE_C
 #define HASHTABLE_C
 #include "runtime.h"
-// bad
 
 __attribute__((always_inline)) size_t hashtable_size(hashtable *table) {
+  if(DYNAMIC_TYPECHECK) {
+    assert(table);
+  }
   return table->header.size;
 }
 
@@ -97,7 +99,7 @@ __attribute__((always_inline)) hashtable *ht_insert(hashtable *table,
   if (DYNAMIC_TYPECHECK) {
     assert(fld->method.code != NULL);
   }
-  if (table->header.size * MAX_LOAD_FACTOR >= table->header.capacity) {
+  if (table->header.size * LOAD_FACTOR_NUM >= table->header.capacity * LOAD_FACTOR_DEN) {
     hashtable *new_table =
         qdbp_malloc((table->header.capacity * 2 + 1) * sizeof(hashtable), "ht");
     for(size_t i = 1; i < table->header.capacity * 2 + 1; i++) {

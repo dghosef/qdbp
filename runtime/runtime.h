@@ -14,17 +14,18 @@
 static const bool REFCOUNT = true;
 static const bool REUSE_ANALYSIS = true;
 static const bool OBJ_FREELIST = true;
-static const bool BOX_FREELIST = true;
+static const bool BOX_FREELIST = false;
 
 #define FREELIST_SIZE 1000
 
 // Dynamic checks
-static const bool CHECK_MALLOC_FREE = true; // very slow
-static const bool VERIFY_REFCOUNTS = true;
-static const bool DYNAMIC_TYPECHECK = true;
+static const bool CHECK_MALLOC_FREE = false; // very slow
+static const bool VERIFY_REFCOUNTS = false;
+static const bool DYNAMIC_TYPECHECK = false;
 
-// Hashtable settings
-static const size_t MAX_LOAD_FACTOR = 1;
+// Hashtable settings MUST keep up to date w/ namesToInts
+static const size_t LOAD_FACTOR_NUM = 1;
+static const size_t LOAD_FACTOR_DEN = 1;
 
 /*
     ====================================================
@@ -138,19 +139,18 @@ void dup_prototype_captures(qdbp_prototype_ptr proto);
 void dup_prototype_captures_except(qdbp_prototype_ptr proto, label_t except);
 // Hash table
 size_t hashtable_size(hashtable *table);
-__attribute__((always_inline)) hashtable *new_ht(size_t capacity);
+hashtable *new_ht(size_t capacity);
 void del_ht(hashtable *table);
 hashtable *ht_duplicate(hashtable *table);
 qdbp_field_ptr ht_find(hashtable *table, label_t label);
-__attribute__((always_inline)) __attribute__((warn_unused_result)) hashtable *
+__attribute__((warn_unused_result)) hashtable *
 ht_insert(hashtable *table, const qdbp_field_ptr fld);
 #define HT_ITER(ht, fld, tmp)                                                  \
   for (tmp = 0; tmp < (ht)->header.size &&                                     \
                 (fld = &((ht)[(ht)->header.directory[tmp]].field), true);      \
        tmp++)
 // Memory
-__attribute__((always_inline)) void duplicate_labels(qdbp_prototype_ptr src,
-                                                     qdbp_prototype_ptr dest);
+void duplicate_labels(qdbp_prototype_ptr src, qdbp_prototype_ptr dest);
 void *qdbp_malloc(size_t size, const char *message);
 void qdbp_free(void *ptr);
 void qdbp_memcpy(void *dest, const void *src, size_t n);
@@ -236,8 +236,7 @@ qdbp_object_ptr boxed_int_replace(qdbp_object_ptr obj, label_t label,
                                   size_t captures_size);
 qdbp_object_ptr boxed_unary_op(qdbp_object_ptr arg0, label_t label);
 // Tags and Variants
-__attribute__((always_inline)) enum qdbp_object_kind
-get_kind(qdbp_object_ptr obj);
+enum qdbp_object_kind get_kind(qdbp_object_ptr obj);
 void set_tag(qdbp_object_ptr o, tag_t t);
 tag_t get_tag(qdbp_object_ptr o);
 qdbp_object_ptr variant_create(tag_t tag, qdbp_object_ptr value);
