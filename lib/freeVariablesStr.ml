@@ -1,7 +1,7 @@
 module FvSet = Set.Make(String)
 (* FIXME: Make part of the free_variables function for efficiency *)
 let rec is_pure ast = match ast with
-  | `PrototypeCopy (ext, _, _, _) -> is_pure ext
+  | `PrototypeCopy (ext, _, _, _, _) -> is_pure ext
   | `TaggedObject (_, value, _) -> is_pure value
   | `MethodInvocation (receiver, _, args, _) ->
     is_pure receiver && List.for_all (fun (_, arg, _) -> is_pure arg) args
@@ -23,7 +23,7 @@ let rec is_pure ast = match ast with
 let rec free_variables ast =
   match ast with
   | `PrototypeCopy
-      (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), loc, op) -> 
+      (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), size, loc, op) -> 
     let ext_fvs, ext = free_variables ext in
     let body_fvs, body = free_variables body in
     let meth_fvs = List.fold_left (
@@ -33,7 +33,7 @@ let rec free_variables ast =
     let fvs = FvSet.union ext_fvs meth_fvs in 
     fvs, 
     `PrototypeCopy
-      (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), loc, op)
+      (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), size, loc, op)
   | `TaggedObject ((tag, tagLoc), value, loc) -> 
     let value_fvs, value = free_variables value in
     value_fvs,

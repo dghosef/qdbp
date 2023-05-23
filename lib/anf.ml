@@ -61,13 +61,13 @@ let rec anf e k  =
         cases
     in
     k (`PatternMatch (x, cases, loc))
-  | `PrototypeCopy (ext, ((name, nameLoc), meth, fieldLoc), loc, op, _) ->
+  | `PrototypeCopy (ext, ((name, nameLoc), meth, fieldLoc), size, loc, op, _) ->
     let (args, body, methLoc, methFvs) = meth in
     anf ext (fun ext ->
         let body = anf body id in
         let meth = (args, body, methLoc, methFvs) in
         anf_simple
-          (`PrototypeCopy (ext, ((name, nameLoc), meth, fieldLoc), loc, op))
+          (`PrototypeCopy (ext, ((name, nameLoc), meth, fieldLoc), size, loc, op))
           k loc
       )
   | `TaggedObject ((tag, tagLoc), payload, loc, _) ->

@@ -27,13 +27,13 @@ let rename_args arg_ids fvs body =
                            (name, a, loc)) args in
       `MethodInvocation (receiver, (name, labelLoc), args, loc)
     | `PrototypeCopy
-        (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), loc, op) ->
+        (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), size, loc, op) ->
       let ext = rename varmap ext in
       let varmap = List.fold_left (fun varmap arg -> StringMap.add (fst arg) (fst arg) varmap)
           varmap args in
       let body = rename varmap body in
       `PrototypeCopy
-        (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), loc, op)
+        (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), size, loc, op)
     | `TaggedObject (tag, value, loc) ->
       `TaggedObject (tag, rename varmap value, loc)
     | `Declaration ((name, nameLoc), rhs, body, loc) ->
@@ -127,7 +127,7 @@ let inline depth expr =
           `Unit, `MethodInvocation (receiver, (name, labelLoc), args, loc)
       end
     | `PrototypeCopy
-        (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), loc, op) ->
+        (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), size, loc, op) ->
       let peval_ext, ext = inline depth env ext in
       (* Add each arg to env *)
       let env = List.fold_left (fun env (name, _) ->
@@ -145,7 +145,7 @@ let inline depth expr =
         | `Variant _  -> Error.internal_error "Expected proto or unit"
       in
       peval, `PrototypeCopy
-        (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), loc, op)
+        (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), size, loc, op)
 
     | `TaggedObject ((tag, tagLoc), value, loc) -> 
       let peval_value, value = inline depth env value in

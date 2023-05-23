@@ -108,7 +108,7 @@ let rec expr_to_c level expr =
 
     paren ((c_call "decompose_variant" [(varname v); "&tag"; "&payload"]) ^ "," ^ (newline level)^
            cases_to_c level cases)
-  | `PrototypeCopy (ext, ((label, _), (meth_id, meth_fvs), _), _, op, _) ->
+  | `PrototypeCopy (ext, ((label, _), (meth_id, meth_fvs), _), size, _, op, _) ->
     let ext_c = expr_to_c (level + 1) ext in
     let label_c = Int64.to_string label in
     let fn = match op with
@@ -124,13 +124,19 @@ let rec expr_to_c level expr =
         (paren ("struct qdbp_object*" ^ (brace (string_of_int (List.length fv_list))))) ^bracket (String.concat ", " fv_list) 
       else "NULL"
     in
-    c_call fn [
+    let args = [
       ext_c;
       label_c;
       code_ptr;
       captures_c;
       string_of_int (List.length fv_list)
-    ]
+    ] in
+    let args = match op with
+      | `Extend ->
+        args @ [string_of_int size]
+      | `Replace ->
+        args in
+    c_call fn args
   | `TaggedObject ((tag, _), value, _, _) ->
     c_call "variant_create" [
       (string_of_int tag);

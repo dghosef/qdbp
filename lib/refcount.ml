@@ -3,7 +3,7 @@ module VarMap = Map.Make(struct type t = int let compare = compare end)
 
 let fv expr =
   match expr with
-  | `PrototypeCopy (_, _, _, _, fvs) -> fvs
+  | `PrototypeCopy (_, _, _, _, _, fvs) -> fvs
   | `TaggedObject (_, _, _, fvs) -> fvs
   | `MethodInvocation (_, _, _, _, fvs) -> fvs
   | `PatternMatch (_, _, _, fvs) -> fvs
@@ -179,7 +179,7 @@ let rec refcount delta gamma ast =
     let e' = FvSet.fold (fun v e -> `Drop (v, e)) drops e' in
     (`Method (args, e', loc, ys, delta1))
 
-  | `PrototypeCopy (ext, ((name, nameLoc), meth, fieldLoc), loc, op, fvs) ->
+  | `PrototypeCopy (ext, ((name, nameLoc), meth, fieldLoc), size, loc, op, fvs) ->
     let app = refcount_app delta gamma ext [`Method meth] `Dispatch in
     let args = get_args app in
     let ext = List.hd args in
@@ -189,7 +189,7 @@ let rec refcount delta gamma ast =
       | `Method meth ->
         let (args, body, methLoc, methFvs, dups) = meth in
         let meth = (args, body, methLoc, methFvs) in
-        let result = `PrototypeCopy (ext, ((name, nameLoc), meth, fieldLoc), loc, op, fvs) in
+        let result = `PrototypeCopy (ext, ((name, nameLoc), meth, fieldLoc), size, loc, op, fvs) in
         FvSet.fold (fun v e -> `Dup(v, e)) dups result
 
       | _ -> Error.internal_error "refcount: prototype copy"
@@ -240,11 +240,11 @@ let rec fusion expr =
       | e -> VarMap.empty, (fusion e)
     end in
   match expr with
-  | `PrototypeCopy (ext, ((name, nameLoc), meth, fieldLoc), loc, op) ->
+  | `PrototypeCopy (ext, ((name, nameLoc), meth, fieldLoc), size, loc, op) ->
     let (args, body, methLoc, methFvs) = meth in
     `PrototypeCopy ((fusion ext), ((name, nameLoc),
                                    (args, (fusion body), methLoc, methFvs),
-                                   fieldLoc), loc, op)
+                                   fieldLoc), size, loc, op)
   | `TaggedObject (tag, payload, loc) ->
     `TaggedObject (tag, (fusion payload), loc)
   | `MethodInvocation (receiver, (name, nameLoc), args, loc) ->

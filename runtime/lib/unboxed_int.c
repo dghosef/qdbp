@@ -201,7 +201,7 @@ qdbp_object_ptr box(qdbp_object_ptr obj, label_t label, void *code,
   field.method.captures = make_captures(captures, captures_size);
   field.method.captures_size = captures_size;
   field.label = label;
-  label_add(&(ret->data.boxed_int->other_labels), label, &field);
+  label_add(&(ret->data.boxed_int->other_labels), label, &field, 1);
   return ret;
 }
 
@@ -216,7 +216,7 @@ qdbp_object_ptr box_extend(qdbp_object_ptr obj, label_t label, void *code,
     field.method.captures = make_captures(captures, captures_size);
     field.method.captures_size = captures_size;
     field.label = label;
-    label_add(&obj->data.boxed_int->other_labels, label, &field);
+    label_add(&obj->data.boxed_int->other_labels, label, &field, 1);
     return obj;
   } else {
     qdbp_object_ptr ret = qdbp_malloc_obj();
@@ -232,7 +232,7 @@ qdbp_object_ptr box_extend(qdbp_object_ptr obj, label_t label, void *code,
     field.method.captures = make_captures(captures, captures_size);
     field.method.captures_size = captures_size;
     field.label = label;
-    label_add(&ret->data.boxed_int->other_labels, label, &field);
+    label_add(&ret->data.boxed_int->other_labels, label, &field, 1);
     drop(obj, 1);
     return ret;
   }
@@ -264,7 +264,7 @@ qdbp_object_ptr boxed_int_replace(qdbp_object_ptr obj, label_t label,
     field.method.captures = captures;
     field.method.captures_size = captures_size;
     field.label = label;
-    label_add(&ret->data.boxed_int->other_labels, label, &field);
+    label_add(&ret->data.boxed_int->other_labels, label, &field, 1);
     drop(obj, 1);
     return ret;
   }

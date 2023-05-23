@@ -8,7 +8,7 @@ type id = (string * parser_pos)
 type ast =
   [
     `EmptyPrototype of parser_pos
-  | `PrototypeCopy of (ast * field * parser_pos)
+  | `PrototypeCopy of (ast * field * int * parser_pos)
   | `TaggedObject of (id * ast * parser_pos)
   | `MethodInvocation of (ast * id * ((string * ast * parser_pos) list) * parser_pos)
   | `PatternMatch of (ast * (case list) * parser_pos)

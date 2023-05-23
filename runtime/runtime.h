@@ -19,12 +19,11 @@ static const bool BOX_FREELIST = true;
 #define FREELIST_SIZE 1000
 
 // Dynamic checks
-static const bool CHECK_MALLOC_FREE = false; // very slow
-static const bool VERIFY_REFCOUNTS = false;
-static const bool DYNAMIC_TYPECHECK = false;
+static const bool CHECK_MALLOC_FREE = true; // very slow
+static const bool VERIFY_REFCOUNTS = true;
+static const bool DYNAMIC_TYPECHECK = true;
 
 // Hashtable settings
-static const size_t INITIAL_CAPACITY = 1;
 static const size_t MAX_LOAD_FACTOR = 1;
 
 /*
@@ -50,7 +49,8 @@ struct __attribute__((packed)) qdbp_method {
   void *code;
   uint32_t captures_size; // FIXME: Get rid of somehow?
 };
-struct __attribute__((packed)) qdbp_field {
+struct __attribute__((packed)) __attribute__((aligned(sizeof(void *))))
+qdbp_field {
   struct qdbp_method method;
   uint32_t label;
 };
@@ -178,16 +178,16 @@ qdbp_object_ptr int_proto(int64_t i);
 // Prototypes
 
 size_t proto_size(qdbp_prototype_ptr proto);
-void label_add(qdbp_prototype_ptr proto, label_t label, qdbp_field_ptr field);
+void label_add(qdbp_prototype_ptr proto, label_t label, qdbp_field_ptr field,
+               size_t defaultsize);
 qdbp_field_ptr label_get(qdbp_prototype_ptr proto, label_t label);
 void copy_captures_except(qdbp_prototype_ptr new_prototype, label_t except);
 qdbp_object_arr get_method(qdbp_object_ptr obj, label_t label,
                            void **code_ptr /*output param*/);
 qdbp_object_arr make_captures(qdbp_object_arr captures, size_t size);
-__attribute__((always_inline)) qdbp_object_ptr extend(qdbp_object_ptr obj,
-                                                      label_t label, void *code,
-                                                      qdbp_object_arr captures,
-                                                      size_t captures_size);
+__attribute__((always_inline)) qdbp_object_ptr
+extend(qdbp_object_ptr obj, label_t label, void *code, qdbp_object_arr captures,
+       size_t captures_size, size_t defaultsize);
 __attribute__((always_inline)) qdbp_object_ptr
 invoke_1(qdbp_object_ptr receiver, label_t label, qdbp_object_ptr arg0);
 __attribute__((always_inline)) qdbp_object_ptr

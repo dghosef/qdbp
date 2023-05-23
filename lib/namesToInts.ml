@@ -66,14 +66,14 @@ let names_to_ints ast =
     | `EmptyPrototype loc ->
       `EmptyPrototype loc
     | `PrototypeCopy
-        (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), loc, op) -> 
+        (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), size, loc, op) -> 
       let ext = names_to_ints varnames ext in
       let arg_names = List.map (fun (name, _) -> name) args in
       let varnames = List.fold_left add_variable varnames arg_names in
       let body = names_to_ints varnames body in
       let args = List.map (fun (name, loc) -> (varname varnames name, loc)) args in
       `PrototypeCopy
-        (ext, (((get_label name), labelLoc), (args, body, methLoc), fieldLoc), loc, op)
+        (ext, (((get_label name), labelLoc), (args, body, methLoc), fieldLoc), size, loc, op)
     | `TaggedObject ((tag, tagLoc), value, loc) -> 
       let value = names_to_ints varnames value in
       `TaggedObject (((get_tag tag), tagLoc), value, loc)

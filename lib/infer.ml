@@ -366,7 +366,7 @@ let unify_error_msg (err, (tvars, _)) =
 let loc_of expr =
   match expr with
   | `EmptyPrototype loc -> loc
-  | `PrototypeCopy (_, _, loc, _) -> loc
+  | `PrototypeCopy (_, _, _, loc, _) -> loc
   | `TaggedObject (_, _, loc) -> loc
   | `MethodInvocation (_, _, _, loc) -> loc
   | `PatternMatch (_, _, loc) -> loc
@@ -496,7 +496,7 @@ let infer files expr =
             name_loc
       in
       (tvars, already_unified), ty, `ExternalCall ((name, name_loc), args, loc)
-    | `PrototypeCopy (extension, ((name, nameLoc), meth, fieldLoc), loc) ->
+    | `PrototypeCopy (extension, ((name, nameLoc), meth, fieldLoc), size, loc) ->
       let tvars, already_unified = state in
       let tvars, rest_row_ty = make_new_unbound_var tvars level in
       let tvars, field_ty = make_new_unbound_var tvars level in
@@ -510,7 +510,7 @@ let infer files expr =
         try_unify tvars already_unified (loc_of extension) extension_ty extension_ty' in
       if row_is_complete tvars rest_row_ty && get_row tvars rest_row_ty name = None then
         (tvars, already_unified), `TRecord (`TRowExtend(name, field_ty, rest_row_ty)),
-        `PrototypeCopy (extension, ((name, nameLoc), meth, fieldLoc), loc, `Extend)
+        `PrototypeCopy (extension, ((name, nameLoc), meth, fieldLoc), size, loc, `Extend)
       else
         let tvars, field_ty' = make_new_unbound_var tvars level in 
         let tvars, rest_row_ty' = make_new_unbound_var tvars level in
@@ -520,7 +520,7 @@ let infer files expr =
         let (tvars, already_unified) =
           try_unify tvars already_unified (loc_of (`Method meth)) field_ty field_ty' in
         (tvars, already_unified), extension_ty,
-        `PrototypeCopy (extension, ((name, nameLoc), meth, fieldLoc), loc, `Replace)
+        `PrototypeCopy (extension, ((name, nameLoc), meth, fieldLoc), size, loc, `Replace)
 
     | `TaggedObject ((tag, tagLoc), value, loc) ->
       let tvars, already_unified = state in

@@ -11,6 +11,11 @@ let full_field_name field_name arg_names =
   let result = (fst field_name) ^ ":" ^ (String.concat ":" arg_names), (snd field_name) in
   result
 
+let roundup x =
+  let rec loop y =
+    if y >= x then y else loop (y * 2)
+  in
+  loop 1
 let make_prototype_field name meth loc =
   let args, _, _ = meth in
   let arg_names = List.map (fun (name, _) -> name) args in
@@ -22,7 +27,10 @@ let make_prototype maybe_extension fields loc : ast =
     | Some extension -> extension
     | None -> make_empty_prototype loc
   in 
-  List.fold_left (fun acc field -> `PrototypeCopy (acc, field, loc))
+  let size = List.length fields in
+  (* Round up size to nearest power of 2 *)
+  let size = roundup size in
+  List.fold_left (fun acc field -> `PrototypeCopy (acc, field, size, loc))
     extension
     fields
 let make_prototype_invoke_arg name value loc =

@@ -1,7 +1,14 @@
 #include "runtime.h"
-void label_add(qdbp_prototype_ptr proto, label_t label, qdbp_field_ptr field) {
+void label_add(qdbp_prototype_ptr proto, label_t label, qdbp_field_ptr field,
+               size_t defaultsize) {
+  if(DYNAMIC_TYPECHECK) {
+    assert(proto);
+    assert(field);
+    // check that defaultsize is a pwr of 2
+    assert((defaultsize & (defaultsize - 1)) == 0);
+  }
   if (!proto->labels) {
-    proto->labels = new_ht(INITIAL_CAPACITY);
+    proto->labels = new_ht(defaultsize * MAX_LOAD_FACTOR);
   }
   proto->labels = ht_insert(proto->labels, field);
 }
@@ -54,13 +61,13 @@ raw_prototype_replace(const qdbp_prototype_ptr src,
 
 static struct qdbp_prototype
 raw_prototype_extend(const qdbp_prototype_ptr src,
-                     const qdbp_field_ptr new_field, size_t new_label) {
+                     const qdbp_field_ptr new_field, size_t new_label, size_t defaultsize) {
   // copy src
   size_t src_size = proto_size(src);
   struct qdbp_prototype new_prototype = {.labels = NULL};
 
   duplicate_labels(src, &new_prototype);
-  label_add(&new_prototype, new_label, new_field);
+  label_add(&new_prototype, new_label, new_field, defaultsize);
   copy_captures_except(&new_prototype, new_label);
   return new_prototype;
 }
@@ -86,10 +93,9 @@ qdbp_object_arr make_captures(qdbp_object_arr captures, size_t size) {
   }
 }
 
-qdbp_object_ptr extend(qdbp_object_ptr obj,
-                                                      label_t label, void *code,
-                                                      qdbp_object_arr captures,
-                                                      size_t captures_size) {
+qdbp_object_ptr extend(qdbp_object_ptr obj, label_t label, void *code,
+                       qdbp_object_arr captures, size_t captures_size,
+                       size_t defaultsize) {
 
   if (!obj) {
     obj = make_object(QDBP_PROTOTYPE,
@@ -108,20 +114,19 @@ qdbp_object_ptr extend(qdbp_object_ptr obj,
   if (!REUSE_ANALYSIS || !is_unique(obj)) {
     qdbp_prototype_ptr prototype = &(obj->data.prototype);
     struct qdbp_prototype new_prototype =
-        raw_prototype_extend(prototype, &f, label);
+        raw_prototype_extend(prototype, &f, label, defaultsize);
     qdbp_object_ptr new_obj = make_object(
         QDBP_PROTOTYPE, (union qdbp_object_data){.prototype = new_prototype});
     dup_prototype_captures(prototype);
     drop(obj, 1);
     return new_obj;
   } else {
-    label_add(&(obj->data.prototype), label, &f);
+    label_add(&(obj->data.prototype), label, &f, defaultsize);
     return obj;
   }
 }
-qdbp_object_ptr
-replace(qdbp_object_ptr obj, label_t label, void *code,
-        qdbp_object_arr captures, size_t captures_size) {
+qdbp_object_ptr replace(qdbp_object_ptr obj, label_t label, void *code,
+                        qdbp_object_arr captures, size_t captures_size) {
   if (!obj) {
     obj = make_object(QDBP_PROTOTYPE,
                       (union qdbp_object_data){.prototype = {.labels = NULL}});

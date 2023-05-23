@@ -1,8 +1,6 @@
 #ifndef HASHTABLE_C
 #define HASHTABLE_C
 #include "runtime.h"
-// FIXME: Replace multiplication/division of capacity with bitshifts
-// FIXME: Make operator labels more spread out otherwise collisions are really
 // bad
 
 __attribute__((always_inline)) size_t hashtable_size(hashtable *table) {
@@ -11,30 +9,30 @@ __attribute__((always_inline)) size_t hashtable_size(hashtable *table) {
 
 __attribute__((always_inline)) hashtable *new_ht(size_t capacity) {
   // FIXME: Put into freelist
-  hashtable *table = (hashtable *)malloc((capacity + 1) *
-                                                        sizeof(hashtable));
+  hashtable *table = (hashtable *)qdbp_malloc((capacity + 1) *
+                                                        sizeof(hashtable), "ht");
   for(size_t i = 1; i <= capacity; i++) {
     table[i].field.method.code = NULL;
   }
   table->header.size = 0;
   table->header.capacity = capacity;
-  table->header.directory = malloc(capacity * sizeof(size_t));
+  table->header.directory = qdbp_malloc(capacity * sizeof(size_t), "ht");
   return table;
 }
 
 __attribute__((always_inline)) void del_ht(hashtable *table) {
-  free(table->header.directory);
-  free(table);
+  qdbp_free(table->header.directory);
+  qdbp_free(table);
 }
 
 __attribute__((always_inline)) hashtable *ht_duplicate(hashtable *table) {
-  hashtable *new_table = malloc(
-      sizeof(hashtable) + (sizeof(hashtable) * table->header.capacity));
+  hashtable *new_table = qdbp_malloc(
+      sizeof(hashtable) + (sizeof(hashtable) * table->header.capacity), "ht");
   memcpy(new_table, table,
          sizeof(hashtable) +
              (sizeof(hashtable) * (table->header.capacity)));
   new_table->header.directory =
-      malloc(sizeof(size_t) * (table->header.capacity));
+      qdbp_malloc(sizeof(size_t) * (table->header.capacity), "ht");
   // FIXME: Only memcpy the table->header.size components
   memcpy(new_table->header.directory, table->header.directory,
          sizeof(size_t) * table->header.size);
@@ -101,21 +99,21 @@ __attribute__((always_inline)) hashtable *ht_insert(hashtable *table,
   }
   if (table->header.size * MAX_LOAD_FACTOR >= table->header.capacity) {
     hashtable *new_table =
-        malloc((table->header.capacity * 2 + 1) * sizeof(hashtable));
+        qdbp_malloc((table->header.capacity * 2 + 1) * sizeof(hashtable), "ht");
     for(size_t i = 1; i < table->header.capacity * 2 + 1; i++) {
       new_table[i].field.method.code = NULL;
     }
     new_table->header.size = 0;
     new_table->header.capacity = table->header.capacity * 2;
     new_table->header.directory =
-        malloc(sizeof(size_t) * (new_table->header.capacity));
+        qdbp_malloc(sizeof(size_t) * (new_table->header.capacity), "ht");
     size_t tmp;
     qdbp_field_ptr f;
     HT_ITER(table, f, tmp) {
         ht_insert_raw(new_table, f);
     }
-    free(table->header.directory);
-    free(table);
+    qdbp_free(table->header.directory);
+    qdbp_free(table);
     table = new_table;
   }
   ht_insert_raw(table, fld);

@@ -59,18 +59,18 @@ qdbp_object_ptr make_int_proto(int64_t value) {
   qdbp_object_ptr capture =
       make_object(QDBP_INT, (union qdbp_object_data){.i = value});
   proto =
-      extend(proto, VAL, (void *)get_capture, (qdbp_object_ptr[1]){capture}, 1);
-  proto = extend(proto, ADD, (void *)qdbp_add, NULL, 0);
-  proto = extend(proto, SUB, (void *)qdbp_sub, NULL, 0);
-  proto = extend(proto, MUL, (void *)qdbp_mul, NULL, 0);
-  proto = extend(proto, DIV, (void *)qdbp_div, NULL, 0);
-  proto = extend(proto, MOD, (void *)qdbp_mod, NULL, 0);
-  proto = extend(proto, EQ, (void *)qdbp_eq, NULL, 0);
-  proto = extend(proto, NEQ, (void *)qdbp_neq, NULL, 0);
-  proto = extend(proto, LT, (void *)qdbp_lt, NULL, 0);
-  proto = extend(proto, GT, (void *)qdbp_gt, NULL, 0);
-  proto = extend(proto, GEQ, (void *)qdbp_gte, NULL, 0);
-  proto = extend(proto, LEQ, (void *)qdbp_lte, NULL, 0);
-  proto = extend(proto, PRINT, (void *)print_intproto, NULL, 0);
+      extend(proto, VAL, (void *)get_capture, (qdbp_object_ptr[1]){capture}, 1, 16);
+  proto = extend(proto, ADD, (void *)qdbp_add, NULL, 0, 16);
+  proto = extend(proto, SUB, (void *)qdbp_sub, NULL, 0, 16);
+  proto = extend(proto, MUL, (void *)qdbp_mul, NULL, 0, 16);
+  proto = extend(proto, DIV, (void *)qdbp_div, NULL, 0, 16);
+  proto = extend(proto, MOD, (void *)qdbp_mod, NULL, 0, 16);
+  proto = extend(proto, EQ, (void *)qdbp_eq, NULL, 0, 16);
+  proto = extend(proto, NEQ, (void *)qdbp_neq, NULL, 0, 16);
+  proto = extend(proto, LT, (void *)qdbp_lt, NULL, 0, 16);
+  proto = extend(proto, GT, (void *)qdbp_gt, NULL, 0, 16);
+  proto = extend(proto, GEQ, (void *)qdbp_gte, NULL, 0, 16);
+  proto = extend(proto, LEQ, (void *)qdbp_lte, NULL, 0, 16);
+  proto = extend(proto, PRINT, (void *)print_intproto, NULL, 0, 16);
   return proto;
 }

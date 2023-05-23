@@ -45,9 +45,9 @@ let rec let_bound_variables ast =
         bvs'', (tag, (arg, body, patternLoc), loc)
     ) VarSet.empty cases in
     bvs, `PatternMatch (v, cases, loc, bvs)
-  | `PrototypeCopy (ext, (tag, meth, fieldLoc), loc, op) ->
+  | `PrototypeCopy (ext, (tag, meth, fieldLoc), size, loc, op) ->
     let bvs, ext = let_bound_variables ext in
-    bvs, `PrototypeCopy (ext, (tag, meth, fieldLoc), loc, op, bvs)
+    bvs, `PrototypeCopy (ext, (tag, meth, fieldLoc), size, loc, op, bvs)
   | `TaggedObject (tag, value, loc) ->
     let bvs, value = let_bound_variables value in
     bvs, `TaggedObject (tag, value, loc, bvs)
