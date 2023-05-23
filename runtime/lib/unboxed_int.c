@@ -31,7 +31,7 @@ int64_t unbox_int(qdbp_object_ptr obj) {
 qdbp_object_ptr unboxed_unary_op(qdbp_object_ptr obj, label_t op) {
   if (DYNAMIC_TYPECHECK) {
     assert(is_unboxed_int(obj));
-    assert(op < NUM_OP_CNT);
+    assert(op < MAX_OP);
   }
   int64_t i = get_unboxed_int(obj);
   switch (op) {
@@ -43,7 +43,7 @@ qdbp_object_ptr unboxed_unary_op(qdbp_object_ptr obj, label_t op) {
     return empty_prototype();
     break;
   default:
-    printf("unboxed_unary_op: %llu\n", op);
+    printf("unboxed_unary_op: %u\n", op);
     assert(false);
     __builtin_unreachable();
   }
@@ -126,7 +126,7 @@ static qdbp_object_ptr boxed_binary_arith_op(qdbp_object_ptr a,
   switch (op) {
     MK_ARITH_SWITCH
   default:
-    printf("boxed_binary_arith_op: %llu\n", op);
+    printf("boxed_binary_arith_op: %u\n", op);
     assert(false);
     __builtin_unreachable();
   }
@@ -141,7 +141,7 @@ static qdbp_object_ptr boxed_binary_cmp_op(qdbp_object_ptr a, qdbp_object_ptr b,
                                            label_t op) {
   if (DYNAMIC_TYPECHECK) {
     assert(is_boxed_int(a));
-    assert(op >= EQ && op < NUM_OP_CNT);
+    assert(op >= EQ && op < MAX_OP);
   }
   int64_t a_int = get_boxed_int(a);
   int64_t b_int;
@@ -175,7 +175,7 @@ qdbp_object_ptr boxed_binary_op(qdbp_object_ptr a, qdbp_object_ptr b,
                                 label_t op) {
   if (DYNAMIC_TYPECHECK) {
     assert(is_boxed_int(a));
-    assert(op < NUM_OP_CNT);
+    assert(op < MAX_OP);
   }
   if (op < EQ) {
     return boxed_binary_arith_op(a, b, op);

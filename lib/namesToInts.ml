@@ -16,27 +16,27 @@ let names_to_ints ast =
   done;
   (* MUST keep in sync with int_proto.h and infer.ml *)
   (* Must be less than 1000 *)
-  Hashtbl.add label_map "Val:this" (Int64.of_int 0);
-  Hashtbl.add label_map "Print:this" (Int64.of_int 1);
-  Hashtbl.add label_map "+:this:that" (Int64.of_int 2);
-  Hashtbl.add label_map "-:this:that" (Int64.of_int 3);
-  Hashtbl.add label_map "*:this:that" (Int64.of_int 4);
-  Hashtbl.add label_map "/:this:that" (Int64.of_int 5);
-  Hashtbl.add label_map "%:this:that" (Int64.of_int 6);
-  Hashtbl.add label_map "=:this:that" (Int64.of_int 7);
-  Hashtbl.add label_map "!=:this:that" (Int64.of_int 8);
-  Hashtbl.add label_map "<:this:that" (Int64.of_int 9);
-  Hashtbl.add label_map ">:this:that" (Int64.of_int 10);
-  Hashtbl.add label_map "<=:this:that" (Int64.of_int 11);
-  Hashtbl.add label_map ">=:this:that" (Int64.of_int 12);
+  Hashtbl.add label_map "Val:this" (Int64.of_int 64);
+  Hashtbl.add label_map "Print:this" (Int64.of_int 69);
+  Hashtbl.add label_map "+:this:that" (Int64.of_int 84);
+  Hashtbl.add label_map "-:this:that" (Int64.of_int 139);
+  Hashtbl.add label_map "*:this:that" (Int64.of_int 140);
+  Hashtbl.add label_map "/:this:that" (Int64.of_int 193);
+  Hashtbl.add label_map "%:this:that" (Int64.of_int 254);
+  Hashtbl.add label_map "=:this:that" (Int64.of_int 306);
+  Hashtbl.add label_map "!=:this:that" (Int64.of_int 355);
+  Hashtbl.add label_map "<:this:that" (Int64.of_int 362);
+  Hashtbl.add label_map ">:this:that" (Int64.of_int 447);
+  Hashtbl.add label_map "<=:this:that" (Int64.of_int 455);
+  Hashtbl.add label_map ">=:this:that" (Int64.of_int 461);
   (* Save the first 1000 labels for reserved labels*)
   let get_label name =
     match Hashtbl.find_opt label_map name with
     | Some label -> label
     | None ->
-      let label = ref (Random.bits64 ()) in
+      let label = ref (Int64.of_int32( Random.bits32 ())) in
       while (Hashtbl.mem labels_added !label) do
-        label := Random.bits64 ()
+        label := (Int64.of_int32( Random.bits32 ()))
       done;
       Hashtbl.add label_map name !label;
       Hashtbl.add labels_added !label ();

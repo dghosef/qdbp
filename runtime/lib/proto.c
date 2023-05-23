@@ -1,7 +1,7 @@
 #include "runtime.h"
 void label_add(qdbp_prototype_ptr proto, label_t label, qdbp_field_ptr field) {
   if (!proto->labels) {
-    proto->labels = new_ht();
+    proto->labels = new_ht(INITIAL_CAPACITY);
   }
   proto->labels = ht_insert(proto->labels, field);
 }
@@ -128,12 +128,12 @@ replace(qdbp_object_ptr obj, label_t label, void *code,
   } else if (is_unboxed_int(obj)) {
     obj = make_int_proto(get_unboxed_int(obj));
     assert_obj_kind(obj, QDBP_PROTOTYPE);
-  } else if (is_boxed_int(obj) && label < NUM_OP_CNT) {
+  } else if (is_boxed_int(obj) && label < MAX_OP) {
     int64_t i = get_boxed_int(obj);
     drop(obj, 1);
     obj = make_int_proto(i);
     assert_obj_kind(obj, QDBP_PROTOTYPE);
-  } else if (is_boxed_int(obj) && label >= NUM_OP_CNT) {
+  } else if (is_boxed_int(obj) && label >= MAX_OP) {
     return boxed_int_replace(obj, label, code, captures, captures_size);
   }
 
@@ -222,7 +222,7 @@ qdbp_object_ptr invoke_2(qdbp_object_ptr receiver, label_t label,
   // B B
   // B BB
   else if (is_boxed_int(arg0)) {
-    if (label < NUM_OP_CNT) {
+    if (label < MAX_OP) {
       // print label
       return boxed_binary_op(arg0, arg1, label);
     } else {
