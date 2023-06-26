@@ -23,9 +23,15 @@ static const bool CHECK_MALLOC_FREE = false; // very slow
 static const bool VERIFY_REFCOUNTS = false;
 static const bool DYNAMIC_TYPECHECK = false;
 
-// Hashtable settings MUST keep up to date w/ namesToInts
+// Hashtable settings
+/*
+  Currently, the strategy is to initialize the hashtable to be 1/2 full and
+  let it grow till it is full. Then, we resize. This is because extension is
+  relatively rare
+*/
 static const size_t LOAD_FACTOR_NUM = 1;
 static const size_t LOAD_FACTOR_DEN = 1;
+
 
 /*
     ====================================================

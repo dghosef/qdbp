@@ -61,3 +61,13 @@ let compile_error msg (locs: Lexing.position * Lexing.position) files =
     ((fst locs).pos_fname) ^ ":\n" ^
     (str_of_locs locs files)
   )
+
+let unify_error files msg loc1 loc2 =
+  abort (
+    "Unify Error:" ^ "\n" ^
+    msg ^ "\n" ^
+    "while unifying:\n" ^
+    (str_of_locs loc1 files) ^
+    "\nwith:\n" ^
+    (str_of_locs loc2 files)
+  )

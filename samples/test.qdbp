@@ -1,1 +1,7 @@
-@math Factorial 50000.
+a := 
+#True{}
+b :=
+  a
+    True? [{}]
+    False? [{}].
+3 Print.

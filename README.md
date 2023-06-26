@@ -37,9 +37,11 @@ That qdbp's core feature set can be so naturally wielded to express complex abst
 
 ## Quick Start
 
-qdbp requires ocaml, dune, ocamllex, [Judy](https://sourceforge.net/projects/judy/) in 64-bit mode and menhir. To use the compiler, write your program in your text editor or IDE of your choice, clone this repo and, run
+qdbp requires ocaml, dune, ocamllex, and menhir. To use the compiler, write your program in your text editor or IDE of your choice, clone this repo and, run
 ```bash
-dune exec ../bin/main.exe -- <filename> --execute
+dune exec ../bin/main.exe -- <filename> --runtime-dir ./runtime
 ```
-from the `samples` directory. Note that your program *must* be located in the `samples` directory.
 
+Note that `runtime-dir` is a mandatory argument and must be set to the runtime directory in this repo.
+
+A copy of [samples/string.qdbp](samples/string.qdbp) must be in the same directory as the program in question

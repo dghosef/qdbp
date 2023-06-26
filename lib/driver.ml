@@ -12,6 +12,7 @@ let execute = ref false
 let ml_output_file = ref None
 let bin_output_file = ref None
 let input_file = ref ""
+let runtime_dir = ref ""
 
 let speclist = [
   ("--print-type", Arg.Set print_ty,
@@ -22,6 +23,8 @@ let speclist = [
    "Specify the output file for the generated ML code");
   ("--bin-output-file", Arg.String (fun s -> bin_output_file := Some s),
    "Specify the output file for the generated binary");
+  ("--runtime-dir", Arg.String (fun s -> runtime_dir := s),
+   " Specify the directory containing the `runtime` directory of the repo")
 ]
 
 let string_of_speclist speclist =
@@ -66,6 +69,7 @@ let compile args =
       full_input_file in
   let (imports, files) = ResolveImports.build_import_map files ast in
   let ast = ResolveImports.resolve_imports imports ast in
+  let _ = Infer2.infer files ast in
   let _, _, ast = Infer.infer files ast in
   let ast = Inline.inline 3 ast in
   let ast = Inline.inline 0 ast in
@@ -87,4 +91,22 @@ let compile args =
   let main_method = ([], ast, loc, fvs, bvs) in
   let main_method_id = (Oo.id (object end)) in
   let methods = CollectMethods.IntMap.add main_method_id main_method methods in
-  print_endline (CodegenC.codegen_c methods main_method_id)
+  let c_src = (CodegenC.codegen_c methods main_method_id) in
+  let oc = open_out "out.c" in
+  output_string oc c_src;
+  close_out oc;
+  ignore (Sys.command
+            begin
+              " cc out.c " ^
+              !runtime_dir ^ "/lib/*.c" ^
+              " -I" ^ !runtime_dir ^
+              " -fbracket-depth=1024 " ^
+              " -Wno-strict-prototypes" ^ 
+              " -Wno-unused-parameter" ^
+              " -Wno-unused-variable" ^
+              " -fbracket-depth=2048" ^
+              " -Wno-unused-function" ^
+              " -O2" ^
+              " -Wno-language-extension-token" ^
+              " && ./a.out "
+            end)
