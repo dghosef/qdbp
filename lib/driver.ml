@@ -97,7 +97,7 @@ let compile args =
   close_out oc;
   ignore (Sys.command
             begin
-              " cc out.c " ^
+              " clang out.c " ^
               !runtime_dir ^ "/lib/*.c" ^
               " -I" ^ !runtime_dir ^
               " -fbracket-depth=1024 " ^
