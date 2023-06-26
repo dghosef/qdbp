@@ -104,6 +104,7 @@ let compile args =
               " -Wno-strict-prototypes" ^ 
               " -Wno-unused-parameter" ^
               " -Wno-unused-variable" ^
+              " -Wno-format" ^ 
               " -fbracket-depth=2048" ^
               " -Wno-unused-function" ^
               " -O2" ^
