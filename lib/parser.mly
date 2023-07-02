@@ -61,6 +61,7 @@ expr:
 meth:
 | LBRACE; a = arg_list; e = expr; RBRACE {AstCreate.make_meth a e $loc}
 | LBRACE; e = expr; RBRACE {AstCreate.make_meth [] e $loc}
+
 pattern_match_meth:
 | LBRACE; a = lower_id; PIPE; e = expr; RBRACE {AstCreate.make_pattern_match_meth a e $loc}
 | LBRACE; e = expr; RBRACE {AstCreate.make_pattern_match_meth ("", $loc) e $loc}
