@@ -1,180 +1,188 @@
+#include <stdio.h>
+
 #include "runtime.h"
-bool is_unboxed_int(qdbp_object_ptr obj) { return ((uintptr_t)obj & 1) == 1; }
-
-bool is_boxed_int(qdbp_object_ptr obj) {
-  return !is_unboxed_int(obj) && get_kind(obj) == QDBP_BOXED_INT;
-}
-qdbp_object_ptr make_unboxed_int(int64_t value) {
-  return (qdbp_object_ptr)((intptr_t)(value << 1) | 1);
+bool _qdbp_is_unboxed_int(_qdbp_object_ptr obj) {
+  return ((uintptr_t)obj & 1) == 1;
 }
 
-int64_t get_unboxed_int(qdbp_object_ptr obj) {
-  if (DYNAMIC_TYPECHECK) {
-    assert(is_unboxed_int(obj));
+bool _qdbp_is_boxed_int(_qdbp_object_ptr obj) {
+  return !_qdbp_is_unboxed_int(obj) && _qdbp_get_kind(obj) == QDBP_BOXED_INT;
+}
+_qdbp_object_ptr _qdbp_make_unboxed_int(int64_t value) {
+  return (_qdbp_object_ptr)((intptr_t)(value << 1) | 1);
+}
+
+int64_t _qdbp_get_unboxed_int(_qdbp_object_ptr obj) {
+  if (_QDBP_DYNAMIC_TYPECHECK) {
+    assert(_qdbp_is_unboxed_int(obj));
   }
   return ((intptr_t)obj) >> 1;
 }
-int64_t get_boxed_int(qdbp_object_ptr obj) {
-  if (DYNAMIC_TYPECHECK) {
-    assert(is_boxed_int(obj));
+int64_t _qdbp_get_boxed_int(_qdbp_object_ptr obj) {
+  if (_QDBP_DYNAMIC_TYPECHECK) {
+    assert(_qdbp_is_boxed_int(obj));
   }
-  return obj->data.boxed_int->value;
+  return obj->data._qdbp_boxed_int->value;
 }
 
-int64_t unbox_int(qdbp_object_ptr obj) {
-  if (DYNAMIC_TYPECHECK) {
-    assert(is_boxed_int(obj));
+static int64_t unbox_int(_qdbp_object_ptr obj) {
+  if (_QDBP_DYNAMIC_TYPECHECK) {
+    assert(_qdbp_is_boxed_int(obj));
   }
-  return obj->data.boxed_int->value;
+  return obj->data._qdbp_boxed_int->value;
 }
 
-qdbp_object_ptr unboxed_unary_op(qdbp_object_ptr obj, label_t op) {
-  if (DYNAMIC_TYPECHECK) {
-    assert(is_unboxed_int(obj));
+_qdbp_object_ptr _qdbp_unboxed_unary_op(_qdbp_object_ptr obj,
+                                        _qdbp_label_t op) {
+  if (_QDBP_DYNAMIC_TYPECHECK) {
+    assert(_qdbp_is_unboxed_int(obj));
     assert(op < MAX_OP);
   }
-  int64_t i = get_unboxed_int(obj);
+  int64_t i = _qdbp_get_unboxed_int(obj);
   switch (op) {
-  case VAL:
-    return qdbp_int(i);
-    break;
-  case PRINT:
-    printf("%lld\n", i);
-    return empty_prototype();
-    break;
-  default:
-    printf("unboxed_unary_op: %u\n", op);
-    assert(false);
-    __builtin_unreachable();
+    case VAL:
+      return _qdbp_int(i);
+      break;
+    case PRINT:
+      printf("%lld\n", i);
+      return _qdbp_empty_prototype();
+      break;
+    default:
+      printf("_qdbp_unboxed_unary_op: %u\n", op);
+      assert(false);
+      __builtin_unreachable();
   }
 }
-#define MK_ARITH_SWITCH                                                        \
-  MK_ARITH_CASE(ADD, +)                                                        \
-  MK_ARITH_CASE(SUB, -)                                                        \
-  MK_ARITH_CASE(MUL, *)                                                        \
-  MK_ARITH_CASE(DIV, /)                                                        \
+#define MK_ARITH_SWITCH \
+  MK_ARITH_CASE(ADD, +) \
+  MK_ARITH_CASE(SUB, -) \
+  MK_ARITH_CASE(MUL, *) \
+  MK_ARITH_CASE(DIV, /) \
   MK_ARITH_CASE(MOD, %)
-#define MK_CMP_SWITCH                                                          \
-  MK_CMP_CASE(EQ, ==)                                                          \
-  MK_CMP_CASE(NEQ, !=)                                                         \
-  MK_CMP_CASE(LT, <)                                                           \
-  MK_CMP_CASE(GT, >)                                                           \
-  MK_CMP_CASE(LEQ, <=)                                                         \
+#define MK_CMP_SWITCH  \
+  MK_CMP_CASE(EQ, ==)  \
+  MK_CMP_CASE(NEQ, !=) \
+  MK_CMP_CASE(LT, <)   \
+  MK_CMP_CASE(GT, >)   \
+  MK_CMP_CASE(LEQ, <=) \
   MK_CMP_CASE(GEQ, >=)
-#define MK_SWITCH                                                              \
-  MK_ARITH_SWITCH                                                              \
+#define MK_SWITCH \
+  MK_ARITH_SWITCH \
   MK_CMP_SWITCH
 
-qdbp_object_ptr unboxed_binary_op(int64_t a, int64_t b, label_t op) {
+_qdbp_object_ptr _qdbp_unboxed_binary_op(int64_t a, int64_t b,
+                                         _qdbp_label_t op) {
   switch (op) {
-#define MK_ARITH_CASE(n, op)                                                   \
-  case n:                                                                      \
-    return make_unboxed_int(a op b);
-#define MK_CMP_CASE(n, op)                                                     \
-  case n:                                                                      \
-    return a op b ? qdbp_true() : qdbp_false();
+#define MK_ARITH_CASE(n, op) \
+  case n:                    \
+    return _qdbp_make_unboxed_int(a op b);
+#define MK_CMP_CASE(n, op) \
+  case n:                  \
+    return a op b ? _qdbp_true() : _qdbp_false();
     MK_SWITCH
 #undef MK_ARITH_CASE
 #undef MK_CMP_CASE
-  default:
-    assert(false);
-    __builtin_unreachable();
+    default:
+      assert(false);
+      __builtin_unreachable();
   }
 }
 
-static qdbp_object_ptr boxed_binary_arith_op(qdbp_object_ptr a,
-                                             qdbp_object_ptr b, label_t op) {
-  if (DYNAMIC_TYPECHECK) {
-    assert(is_boxed_int(a));
+static _qdbp_object_ptr boxed_binary_arith_op(_qdbp_object_ptr a,
+                                              _qdbp_object_ptr b,
+                                              _qdbp_label_t op) {
+  if (_QDBP_DYNAMIC_TYPECHECK) {
+    assert(_qdbp_is_boxed_int(a));
     assert(op < EQ);
   }
-  int64_t a_int = get_boxed_int(a);
+  int64_t a_int = _qdbp_get_boxed_int(a);
   int64_t b_int;
-  if (is_unboxed_int(b)) {
-    b_int = get_unboxed_int(b);
-    drop(b, 1);
-  } else if (is_boxed_int(b)) {
-    b_int = b->data.boxed_int->value;
-    drop(b, 1);
+  if (_qdbp_is_unboxed_int(b)) {
+    b_int = _qdbp_get_unboxed_int(b);
+    _qdbp_drop(b, 1);
+  } else if (_qdbp_is_boxed_int(b)) {
+    b_int = b->data._qdbp_boxed_int->value;
+    _qdbp_drop(b, 1);
   } else {
-    qdbp_object_ptr b_val = invoke_1(b, VAL, b);
-    if (DYNAMIC_TYPECHECK) {
-      assert(get_kind(b_val) == QDBP_INT);
+    _qdbp_object_ptr b_val = _qdbp_invoke_1(b, VAL, b);
+    if (_QDBP_DYNAMIC_TYPECHECK) {
+      assert(_qdbp_get_kind(b_val) == QDBP_INT);
     }
     b_int = b_val->data.i;
-    drop(b_val, 1);
+    _qdbp_drop(b_val, 1);
   }
-  qdbp_object_ptr ret;
-  if (is_unique(a) && REUSE_ANALYSIS) {
+  _qdbp_object_ptr ret;
+  if (_qdbp_is_unique(a) && _QDBP_REUSE_ANALYSIS) {
     ret = a;
   } else {
-    ret = qdbp_malloc_obj();
-    set_refcount(ret, 1);
-    set_tag(ret, QDBP_BOXED_INT);
-    ret->data.boxed_int = qdbp_malloc_boxed_int();
-    ret->data.boxed_int->other_labels.labels = NULL;
-    qdbp_field_ptr *PValue;
-    duplicate_labels(&a->data.boxed_int->other_labels,
-                     &ret->data.boxed_int->other_labels);
-    drop(a, 1);
+    ret = _qdbp_malloc_obj();
+    _qdbp_set_refcount(ret, 1);
+    _qdbp_set_tag(ret, QDBP_BOXED_INT);
+    ret->data._qdbp_boxed_int = _qdbp_malloc_boxed_int();
+    ret->data._qdbp_boxed_int->other_labels.labels = NULL;
+    _qdbp_field_ptr *PValue;
+    _qdbp_duplicate_labels(&a->data._qdbp_boxed_int->other_labels,
+                           &ret->data._qdbp_boxed_int->other_labels);
+    _qdbp_drop(a, 1);
   }
-#define MK_ARITH_CASE(n, op)                                                   \
-  case n:                                                                      \
-    ret->data.boxed_int->value = a_int op b_int;                               \
+#define MK_ARITH_CASE(n, op)                           \
+  case n:                                              \
+    ret->data._qdbp_boxed_int->value = a_int op b_int; \
     break;
 
   switch (op) {
     MK_ARITH_SWITCH
-  default:
-    printf("boxed_binary_arith_op: %u\n", op);
-    assert(false);
-    __builtin_unreachable();
+    default:
+      printf("boxed_binary_arith_op: %u\n", op);
+      assert(false);
+      __builtin_unreachable();
   }
   // Ensure that all math is done in 63 bits
-  ret->data.boxed_int->value <<= 1;
-  ret->data.boxed_int->value >>= 1;
+  ret->data._qdbp_boxed_int->value <<= 1;
+  ret->data._qdbp_boxed_int->value >>= 1;
   return ret;
 #undef MK_ARITH_CASE
 }
 
-static qdbp_object_ptr boxed_binary_cmp_op(qdbp_object_ptr a, qdbp_object_ptr b,
-                                           label_t op) {
-  if (DYNAMIC_TYPECHECK) {
-    assert(is_boxed_int(a));
+static _qdbp_object_ptr boxed_binary_cmp_op(_qdbp_object_ptr a,
+                                            _qdbp_object_ptr b,
+                                            _qdbp_label_t op) {
+  if (_QDBP_DYNAMIC_TYPECHECK) {
+    assert(_qdbp_is_boxed_int(a));
     assert(op >= EQ && op < MAX_OP);
   }
-  int64_t a_int = get_boxed_int(a);
+  int64_t a_int = _qdbp_get_boxed_int(a);
   int64_t b_int;
-  if (is_unboxed_int(b)) {
-    b_int = get_unboxed_int(b);
-    drop(b, 1);
-  } else if (is_boxed_int(b)) {
-    b_int = b->data.boxed_int->value;
-    drop(b, 1);
+  if (_qdbp_is_unboxed_int(b)) {
+    b_int = _qdbp_get_unboxed_int(b);
+    _qdbp_drop(b, 1);
+  } else if (_qdbp_is_boxed_int(b)) {
+    b_int = b->data._qdbp_boxed_int->value;
+    _qdbp_drop(b, 1);
   } else {
-    qdbp_object_ptr b_val = invoke_1(b, VAL, b);
-    if (DYNAMIC_TYPECHECK) {
-      assert(get_kind(b_val) == QDBP_INT);
+    _qdbp_object_ptr b_val = _qdbp_invoke_1(b, VAL, b);
+    if (_QDBP_DYNAMIC_TYPECHECK) {
+      assert(_qdbp_get_kind(b_val) == QDBP_INT);
     }
     b_int = b_val->data.i;
-    drop(b_val, 1);
+    _qdbp_drop(b_val, 1);
   }
-  drop(a, 1);
-#define MK_CMP_CASE(n, op)                                                     \
-  case n:                                                                      \
-    return a_int op b_int ? qdbp_true() : qdbp_false();
+  _qdbp_drop(a, 1);
+#define MK_CMP_CASE(n, op) \
+  case n:                  \
+    return a_int op b_int ? _qdbp_true() : _qdbp_false();
   switch (op) {
     MK_CMP_SWITCH
-  default:
-    assert(false);
-    __builtin_unreachable();
+    default:
+      assert(false);
+      __builtin_unreachable();
   }
 #undef MK_CMP_CASE
 }
-qdbp_object_ptr boxed_binary_op(qdbp_object_ptr a, qdbp_object_ptr b,
-                                label_t op) {
-  if (DYNAMIC_TYPECHECK) {
-    assert(is_boxed_int(a));
+_qdbp_object_ptr _qdbp_boxed_binary_op(_qdbp_object_ptr a, _qdbp_object_ptr b,
+                                       _qdbp_label_t op) {
+  if (_QDBP_DYNAMIC_TYPECHECK) {
+    assert(_qdbp_is_boxed_int(a));
     assert(op < MAX_OP);
   }
   if (op < EQ) {
@@ -184,108 +192,112 @@ qdbp_object_ptr boxed_binary_op(qdbp_object_ptr a, qdbp_object_ptr b,
   }
 }
 
-qdbp_object_ptr box(qdbp_object_ptr obj, label_t label, void *code,
-                    qdbp_object_arr captures, size_t captures_size) {
-  if (DYNAMIC_TYPECHECK) {
-    assert(is_unboxed_int(obj));
+_qdbp_object_ptr _qdbp_box(_qdbp_object_ptr obj, _qdbp_label_t label,
+                           void *code, _qdbp_object_arr captures,
+                           size_t captures_size) {
+  if (_QDBP_DYNAMIC_TYPECHECK) {
+    assert(_qdbp_is_unboxed_int(obj));
   }
-  int64_t value = get_unboxed_int(obj);
-  qdbp_object_ptr ret = qdbp_malloc_obj();
-  set_refcount(ret, 1);
-  set_tag(ret, QDBP_BOXED_INT);
-  ret->data.boxed_int = qdbp_malloc_boxed_int();
-  ret->data.boxed_int->value = value;
-  ret->data.boxed_int->other_labels.labels = NULL;
-  struct qdbp_field field = {0};
+  int64_t value = _qdbp_get_unboxed_int(obj);
+  _qdbp_object_ptr ret = _qdbp_malloc_obj();
+  _qdbp_set_refcount(ret, 1);
+  _qdbp_set_tag(ret, QDBP_BOXED_INT);
+  ret->data._qdbp_boxed_int = _qdbp_malloc_boxed_int();
+  ret->data._qdbp_boxed_int->value = value;
+  ret->data._qdbp_boxed_int->other_labels.labels = NULL;
+  struct _qdbp_field field = {0};
   field.method.code = code;
-  field.method.captures = make_captures(captures, captures_size);
+  field.method.captures = _qdbp_make_captures(captures, captures_size);
   field.method.captures_size = captures_size;
   field.label = label;
-  label_add(&(ret->data.boxed_int->other_labels), label, &field, 1);
+  _qdbp_label_add(&(ret->data._qdbp_boxed_int->other_labels), label, &field, 1);
   return ret;
 }
 
-qdbp_object_ptr box_extend(qdbp_object_ptr obj, label_t label, void *code,
-                           qdbp_object_arr captures, size_t captures_size) {
-  if (DYNAMIC_TYPECHECK) {
-    assert(is_boxed_int(obj));
+_qdbp_object_ptr _qdbp_box_extend(_qdbp_object_ptr obj, _qdbp_label_t label,
+                                  void *code, _qdbp_object_arr captures,
+                                  size_t captures_size) {
+  if (_QDBP_DYNAMIC_TYPECHECK) {
+    assert(_qdbp_is_boxed_int(obj));
   }
-  if (is_unique(obj) && REUSE_ANALYSIS) {
-    struct qdbp_field field;
+  if (_qdbp_is_unique(obj) && _QDBP_REUSE_ANALYSIS) {
+    struct _qdbp_field field;
     field.method.code = code;
-    field.method.captures = make_captures(captures, captures_size);
+    field.method.captures = _qdbp_make_captures(captures, captures_size);
     field.method.captures_size = captures_size;
     field.label = label;
-    label_add(&obj->data.boxed_int->other_labels, label, &field, 1);
+    _qdbp_label_add(&obj->data._qdbp_boxed_int->other_labels, label, &field, 1);
     return obj;
   } else {
-    qdbp_object_ptr ret = qdbp_malloc_obj();
-    set_refcount(ret, 1);
-    set_tag(ret, QDBP_BOXED_INT);
-    ret->data.boxed_int = qdbp_malloc_boxed_int();
-    ret->data.boxed_int->value = obj->data.boxed_int->value;
-    ret->data.boxed_int->other_labels.labels = NULL;
-    duplicate_labels(&obj->data.boxed_int->other_labels,
-                     &ret->data.boxed_int->other_labels);
-    struct qdbp_field field;
+    _qdbp_object_ptr ret = _qdbp_malloc_obj();
+    _qdbp_set_refcount(ret, 1);
+    _qdbp_set_tag(ret, QDBP_BOXED_INT);
+    ret->data._qdbp_boxed_int = _qdbp_malloc_boxed_int();
+    ret->data._qdbp_boxed_int->value = obj->data._qdbp_boxed_int->value;
+    ret->data._qdbp_boxed_int->other_labels.labels = NULL;
+    _qdbp_duplicate_labels(&obj->data._qdbp_boxed_int->other_labels,
+                           &ret->data._qdbp_boxed_int->other_labels);
+    struct _qdbp_field field;
     field.method.code = code;
-    field.method.captures = make_captures(captures, captures_size);
+    field.method.captures = _qdbp_make_captures(captures, captures_size);
     field.method.captures_size = captures_size;
     field.label = label;
-    label_add(&ret->data.boxed_int->other_labels, label, &field, 1);
-    drop(obj, 1);
+    _qdbp_label_add(&ret->data._qdbp_boxed_int->other_labels, label, &field, 1);
+    _qdbp_drop(obj, 1);
     return ret;
   }
 }
 
-qdbp_object_ptr boxed_int_replace(qdbp_object_ptr obj, label_t label,
-                                  void *code, qdbp_object_arr captures,
-                                  size_t captures_size) {
-  if (DYNAMIC_TYPECHECK) {
-    assert(is_boxed_int(obj));
+_qdbp_object_ptr _qdbp_boxed_int_replace(_qdbp_object_ptr obj,
+                                         _qdbp_label_t label, void *code,
+                                         _qdbp_object_arr captures,
+                                         size_t captures_size) {
+  if (_QDBP_DYNAMIC_TYPECHECK) {
+    assert(_qdbp_is_boxed_int(obj));
   }
-  if (is_unique(obj) && REUSE_ANALYSIS) {
-    qdbp_field_ptr field = label_get(&(obj->data.prototype), label);
-    del_method(&(field->method));
-    field->method = (struct qdbp_method){
+  if (_qdbp_is_unique(obj) && _QDBP_REUSE_ANALYSIS) {
+    _qdbp_field_ptr field = _qdbp_label_get(&(obj->data.prototype), label);
+    _qdbp_del_method(&(field->method));
+    field->method = (struct _qdbp_method){
         .code = code, .captures = captures, .captures_size = captures_size};
     return obj;
   } else {
-    qdbp_object_ptr ret = qdbp_malloc_obj();
-    set_refcount(ret, 1);
-    set_tag(ret, QDBP_BOXED_INT);
-    ret->data.boxed_int = qdbp_malloc_boxed_int();
-    ret->data.boxed_int->value = obj->data.boxed_int->value;
-    ret->data.boxed_int->other_labels.labels = NULL;
-    duplicate_labels(&obj->data.boxed_int->other_labels,
-                     &ret->data.boxed_int->other_labels);
-    struct qdbp_field field;
+    _qdbp_object_ptr ret = _qdbp_malloc_obj();
+    _qdbp_set_refcount(ret, 1);
+    _qdbp_set_tag(ret, QDBP_BOXED_INT);
+    ret->data._qdbp_boxed_int = _qdbp_malloc_boxed_int();
+    ret->data._qdbp_boxed_int->value = obj->data._qdbp_boxed_int->value;
+    ret->data._qdbp_boxed_int->other_labels.labels = NULL;
+    _qdbp_duplicate_labels(&obj->data._qdbp_boxed_int->other_labels,
+                           &ret->data._qdbp_boxed_int->other_labels);
+    struct _qdbp_field field;
     field.method.code = code;
     field.method.captures = captures;
     field.method.captures_size = captures_size;
     field.label = label;
-    label_add(&ret->data.boxed_int->other_labels, label, &field, 1);
-    drop(obj, 1);
+    _qdbp_label_add(&ret->data._qdbp_boxed_int->other_labels, label, &field, 1);
+    _qdbp_drop(obj, 1);
     return ret;
   }
 }
 
-qdbp_object_ptr boxed_unary_op(qdbp_object_ptr arg0, label_t label) {
-  if (DYNAMIC_TYPECHECK) {
-    assert(is_boxed_int(arg0));
+_qdbp_object_ptr _qdbp_boxed_unary_op(_qdbp_object_ptr arg0,
+                                      _qdbp_label_t label) {
+  if (_QDBP_DYNAMIC_TYPECHECK) {
+    assert(_qdbp_is_boxed_int(arg0));
   }
-  int64_t i = arg0->data.boxed_int->value;
-  drop(arg0, 1);
+  int64_t i = arg0->data._qdbp_boxed_int->value;
+  _qdbp_drop(arg0, 1);
   switch (label) {
-  case PRINT:
-    printf("%lld\n", i);
-    return empty_prototype();
-    break;
-  case VAL:
-    return qdbp_int(i);
-    break;
-  default:
-    assert(false);
-    __builtin_unreachable();
+    case PRINT:
+      printf("%lld\n", i);
+      return _qdbp_empty_prototype();
+      break;
+    case VAL:
+      return _qdbp_int(i);
+      break;
+    default:
+      assert(false);
+      __builtin_unreachable();
   }
 }
