@@ -9,17 +9,34 @@
 // config
 // You could also add fsanitize=undefined
 // Also could adjust inlining
-static const bool _QDBP_REFCOUNT = true;
-static const bool _QDBP_REUSE_ANALYSIS = true;
-static const bool _QDBP_OBJ_FREELIST = true;
-static const bool _QDBP_BOX_FREELIST = false;
+#ifdef QDBP_DEBUG
+  const bool _QDBP_REFCOUNT = true;
+  const bool _QDBP_REUSE_ANALYSIS = true;
+  const bool _QDBP_OBJ_FREELIST = true;
+  const bool _QDBP_BOX_FREELIST = true;
+  const bool _QDBP_CHECK_MALLOC_FREE = true;  // very slow
+  const bool _QDBP_VERIFY_REFCOUNTS = true;
+  const bool _QDBP_DYNAMIC_TYPECHECK = true;
+#elif defined(QDBP_RELEASE)
+  const bool _QDBP_REFCOUNT = true;
+  const bool _QDBP_REUSE_ANALYSIS = true;
+  const bool _QDBP_OBJ_FREELIST = true;
+  const bool _QDBP_BOX_FREELIST = true;
+  const bool _QDBP_CHECK_MALLOC_FREE = false;  // very slow
+  const bool _QDBP_VERIFY_REFCOUNTS = false;
+  const bool _QDBP_DYNAMIC_TYPECHECK = false;
+#else
+  extern const bool _QDBP_REFCOUNT;
+  extern const bool _QDBP_REUSE_ANALYSIS;
+  extern const bool _QDBP_OBJ_FREELIST;
+  extern const bool _QDBP_BOX_FREELIST;
+  extern const bool _QDBP_CHECK_MALLOC_FREE;  // very slow
+  extern const bool _QDBP_VERIFY_REFCOUNTS;
+  extern const bool _QDBP_DYNAMIC_TYPECHECK;
+#endif
+
 
 #define _QDBP_FREELIST_SIZE 1000
-
-// Dynamic checks
-static const bool _QDBP_CHECK_MALLOC_FREE = false;  // very slow
-static const bool _QDBP_VERIFY_REFCOUNTS = false;
-static const bool _QDBP_DYNAMIC_TYPECHECK = false;
 
 // Hashtable settings
 /*

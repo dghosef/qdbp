@@ -58,6 +58,7 @@ static void remove_from_malloc_list(void *ptr) {
   }
   assert(false);
 }
+// TODO: Macroify?
 void *_qdbp_malloc(size_t size, const char *msg) {
   if (size == 0) {
     return NULL;

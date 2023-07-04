@@ -30,3 +30,15 @@ _opam/
 
 # Menhir debug output
 parser.conflicts
+
+# qdbp build files
+*.qdbp.bin
+*.qdbp.ml
+a.out*
+
+# Mac OS X
+.DS_Store
+.swp
+
+# VSCode
+.vscode/
