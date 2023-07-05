@@ -26,7 +26,7 @@ static _qdbp_object_ptr print_intproto(_qdbp_object_arr captures,
     _qdbp_object_ptr b_val = _qdbp_invoke_1(b, VAL, b);                       \
     _qdbp_assert_obj_kind(a_val, QDBP_INT);                                   \
     _qdbp_assert_obj_kind(b_val, QDBP_INT);                                   \
-    int64_t result = ((a_val->data.i op b_val->data.i) << 1) >> 1;            \
+    uint64_t result = op(a_val->data.i, b_val->data.i);                       \
     _qdbp_object_arr capture = (_qdbp_object_ptr[1]){0};                      \
     capture[0] =                                                              \
         _qdbp_make_object(QDBP_INT, (union _qdbp_object_data){.i = result});  \
@@ -42,17 +42,17 @@ static _qdbp_object_ptr print_intproto(_qdbp_object_arr captures,
     _qdbp_object_ptr b_val = _qdbp_invoke_1(b, VAL, b);                       \
     _qdbp_assert_obj_kind(a_val, QDBP_INT);                                   \
     _qdbp_assert_obj_kind(b_val, QDBP_INT);                                   \
-    bool result = a_val->data.i op b_val->data.i;                             \
+    bool result = _QDBP_COMPARE(op, a_val->data.i, b_val->data.i);            \
     _qdbp_drop(a_val, 1);                                                     \
     _qdbp_drop(b_val, 1);                                                     \
     return result ? _qdbp_true() : _qdbp_false();                             \
   }
 
-MK_PROTO_ARITH_OP(_qdbp_add, +)
-MK_PROTO_ARITH_OP(_qdbp_sub, -)
-MK_PROTO_ARITH_OP(_qdbp_mul, *)
-MK_PROTO_ARITH_OP(_qdbp_div, /)
-MK_PROTO_ARITH_OP(_qdbp_mod, %)
+MK_PROTO_ARITH_OP(_qdbp_add, _qdbp_checked_add)
+MK_PROTO_ARITH_OP(_qdbp_sub, _qdbp_checked_sub)
+MK_PROTO_ARITH_OP(_qdbp_mul, _qdbp_checked_mul)
+MK_PROTO_ARITH_OP(_qdbp_div, _qdbp_checked_div)
+MK_PROTO_ARITH_OP(_qdbp_mod, _qdbp_checked_mod)
 MK_PROTO_CMP_OP(_qdbp_eq, ==)
 MK_PROTO_CMP_OP(_qdbp_neq, !=)
 MK_PROTO_CMP_OP(_qdbp_lt, <)
@@ -60,7 +60,7 @@ MK_PROTO_CMP_OP(_qdbp_gt, >)
 MK_PROTO_CMP_OP(_qdbp_gte, >=)
 MK_PROTO_CMP_OP(_qdbp_lte, <=)
 
-_qdbp_object_ptr _qdbp_make_int_proto(int64_t value) {
+_qdbp_object_ptr _qdbp_make_int_proto(uint64_t value) {
   _qdbp_object_ptr proto = _qdbp_empty_prototype();
   _qdbp_object_ptr capture =
       _qdbp_make_object(QDBP_INT, (union _qdbp_object_data){.i = value});

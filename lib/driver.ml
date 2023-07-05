@@ -100,15 +100,8 @@ let compile args =
               " clang out.c " ^
               !runtime_dir ^ "/lib/*.c" ^
               " -I" ^ !runtime_dir ^
-              " -fbracket-depth=1024 " ^
-              " -Wno-strict-prototypes" ^ 
-              " -Wno-unused-parameter" ^
-              " -Wno-unused-variable" ^
-              " -Wno-format" ^ 
-              " -lgmp" ^
-              " -fbracket-depth=2048" ^
-              " -Wno-unused-function" ^
+              " -fbracket-depth=10000000" ^
               " -O2" ^
-              " -Wno-language-extension-token" ^
-              " && ./a.out "
+              " && ./a.out;" ^
+              " rm -rf a.out out.c "
             end)

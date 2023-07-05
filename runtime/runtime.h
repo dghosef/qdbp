@@ -42,11 +42,6 @@ extern const bool _QDBP_ASSERTS_ENABLED;
 #define _QDBP_FREELIST_SIZE 1000
 
 // Hashtable settings
-/*
-  Currently, the strategy is to initialize the hashtable to be 1/2 full and
-  let it grow till it is full. Then, we resize. This is because extension is
-  relatively rare
-*/
 static const size_t _QDBP_LOAD_FACTOR_NUM = 1;
 static const size_t _QDBP_LOAD_FACTOR_DEN = 1;
 
@@ -101,13 +96,13 @@ struct _qdbp_variant {
 };
 
 struct _qdbp_boxed_int {
-  int64_t value;
+  uint64_t value;
   struct _qdbp_prototype other_labels;
 };
 
 union _qdbp_object_data {
   struct _qdbp_prototype prototype;
-  int64_t i;
+  uint64_t i;
   double f;
   char *s;
   struct _qdbp_boxed_int *_qdbp_boxed_int;
@@ -154,11 +149,11 @@ _qdbp_refcount_t _qdbp_get_refcount(_qdbp_object_ptr obj);
 #define _qdbp_assert_refcount(obj)                           \
   do {                                                       \
     if (_QDBP_ASSERTS_ENABLED && obj) {                      \
-      _qdbp_assert(!_qdbp_is_unboxed_int(obj));                    \
-      _qdbp_assert((obj));                                         \
+      _qdbp_assert(!_qdbp_is_unboxed_int(obj));              \
+      _qdbp_assert((obj));                                   \
       if (_qdbp_get_refcount(obj) <= 0) {                    \
         printf("refcount of %u\n", _qdbp_get_refcount(obj)); \
-        _qdbp_assert(false);                                       \
+        _qdbp_assert(false);                                 \
       };                                                     \
     }                                                        \
   } while (0);
@@ -181,6 +176,14 @@ __attribute__((warn_unused_result)) _qdbp_hashtable *_qdbp_ht_insert(
   for (tmp = 0; tmp < (ht)->header.size &&                                \
                 (fld = &((ht)[(ht)->header.directory[tmp]].field), true); \
        tmp++)
+// checked math
+uint64_t _qdbp_checked_add(uint64_t a, uint64_t b);
+uint64_t _qdbp_checked_sub(uint64_t a, uint64_t b);
+uint64_t _qdbp_checked_mul(uint64_t a, uint64_t b);
+uint64_t _qdbp_checked_div(uint64_t a, uint64_t b);
+uint64_t _qdbp_checked_mod(uint64_t a, uint64_t b);
+int64_t _qdbp_sign_extend(uint64_t a);
+#define _QDBP_COMPARE(op, a, b) ((_qdbp_sign_extend(a))op(_qdbp_sign_extend(b)))
 // Memory
 #define _QDBP_STR_INTERNAL(x) #x
 #define _QDBP_STR(x) _QDBP_STR_INTERNAL(x)
@@ -210,7 +213,7 @@ _qdbp_object_ptr _qdbp_make_object(_qdbp_tag_t tag,
 _qdbp_object_ptr _qdbp_empty_prototype();
 _qdbp_object_ptr _qdbp_true();
 _qdbp_object_ptr _qdbp_false();
-_qdbp_object_ptr _qdbp_int_proto(int64_t i);
+_qdbp_object_ptr _qdbp_int_proto(uint64_t i);
 // math
 // Prototypes
 
@@ -256,16 +259,16 @@ enum NUMBER_LABELS {
 
 // ints
 bool _qdbp_is_unboxed_int(_qdbp_object_ptr obj);
-_qdbp_object_ptr _qdbp_make_unboxed_int(int64_t value);
-int64_t _qdbp_get_unboxed_int(_qdbp_object_ptr obj);
+_qdbp_object_ptr _qdbp_make_unboxed_int(uint64_t value);
+uint64_t _qdbp_get_unboxed_int(_qdbp_object_ptr obj);
 _qdbp_object_ptr _qdbp_unboxed_unary_op(_qdbp_object_ptr obj, _qdbp_label_t op);
-_qdbp_object_ptr _qdbp_unboxed_binary_op(int64_t a, int64_t b,
+_qdbp_object_ptr _qdbp_unboxed_binary_op(uint64_t a, uint64_t b,
                                          _qdbp_label_t op);
 bool _qdbp_is_boxed_int(_qdbp_object_ptr obj);
-int64_t _qdbp_get_boxed_int(_qdbp_object_ptr obj);
+uint64_t _qdbp_get_boxed_int(_qdbp_object_ptr obj);
 _qdbp_object_ptr _qdbp_boxed_binary_op(_qdbp_object_ptr a, _qdbp_object_ptr b,
                                        _qdbp_label_t op);
-_qdbp_object_ptr _qdbp_make_int_proto(int64_t value);
+_qdbp_object_ptr _qdbp_make_int_proto(uint64_t value);
 _qdbp_object_ptr _qdbp_box(_qdbp_object_ptr obj, _qdbp_label_t label,
                            void *code, _qdbp_object_arr captures,
                            size_t captures_size);
@@ -285,12 +288,12 @@ _qdbp_tag_t _qdbp_get_tag(_qdbp_object_ptr o);
 _qdbp_object_ptr _qdbp_variant_create(_qdbp_tag_t tag, _qdbp_object_ptr value);
 void _qdbp_decompose_variant(_qdbp_object_ptr obj, _qdbp_tag_t *tag,
                              _qdbp_object_ptr *payload);
-#define _qdbp_assert_obj_kind(obj, k)   \
-  do {                                  \
-    if (obj && _QDBP_ASSERTS_ENABLED) { \
-      _qdbp_assert_refcount(obj);       \
+#define _qdbp_assert_obj_kind(obj, k)         \
+  do {                                        \
+    if (obj && _QDBP_ASSERTS_ENABLED) {       \
+      _qdbp_assert_refcount(obj);             \
       _qdbp_assert(_qdbp_get_kind(obj) == k); \
-    }                                   \
+    }                                         \
   } while (0);
 
 // Macros/Fns for the various kinds of expressions
@@ -302,7 +305,7 @@ void _qdbp_decompose_variant(_qdbp_object_ptr obj, _qdbp_tag_t *tag,
   ((tag1) == (tag2) ? (_QDBP_LET(arg, payload, ifmatch)) : (ifnomatch))
 
 _qdbp_object_ptr _qdbp_match_failed();
-_qdbp_object_ptr _qdbp_int(int64_t i);
+_qdbp_object_ptr _qdbp_int(uint64_t i);
 _qdbp_object_ptr _qdbp_string(const char *src);
 _qdbp_object_ptr _qdbp_float(double f);
 

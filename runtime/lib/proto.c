@@ -135,7 +135,7 @@ _qdbp_object_ptr _qdbp_replace(_qdbp_object_ptr obj, _qdbp_label_t label,
     obj = _qdbp_make_int_proto(_qdbp_get_unboxed_int(obj));
     _qdbp_assert_obj_kind(obj, QDBP_PROTOTYPE);
   } else if (_qdbp_is_boxed_int(obj) && label < MAX_OP) {
-    int64_t i = _qdbp_get_boxed_int(obj);
+    uint64_t i = _qdbp_get_boxed_int(obj);
     _qdbp_drop(obj, 1);
     obj = _qdbp_make_int_proto(i);
     _qdbp_assert_obj_kind(obj, QDBP_PROTOTYPE);
@@ -216,10 +216,10 @@ _qdbp_object_ptr _qdbp_invoke_2(_qdbp_object_ptr receiver, _qdbp_label_t label,
   // UB BB
   else if (_qdbp_is_unboxed_int(arg0) &&
            _qdbp_get_kind(arg1) == QDBP_PROTOTYPE) {
-    int64_t a = _qdbp_get_unboxed_int(arg0);
+    uint64_t a = _qdbp_get_unboxed_int(arg0);
     arg1 = _qdbp_invoke_1(arg1, VAL, arg1);
     _qdbp_assert(_qdbp_get_kind(arg1) == QDBP_INT);
-    int64_t b = arg1->data.i;
+    uint64_t b = arg1->data.i;
     _qdbp_drop(arg1, 1);
     return _qdbp_unboxed_binary_op(a, b, label);
   }

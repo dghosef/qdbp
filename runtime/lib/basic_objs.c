@@ -2,7 +2,7 @@
 
 #include "runtime.h"
 
-_qdbp_object_ptr _qdbp_int(int64_t i) {
+_qdbp_object_ptr _qdbp_int(uint64_t i) {
   _qdbp_object_ptr new_obj =
       _qdbp_make_object(QDBP_INT, (union _qdbp_object_data){.i = i});
   return new_obj;

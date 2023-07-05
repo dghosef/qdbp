@@ -69,8 +69,9 @@ static _qdbp_object_ptr _qdbp_abort() {
   static _qdbp_object_ptr name(_qdbp_object_ptr a, _qdbp_object_ptr b) { \
     _qdbp_assert_obj_kind(a, QDBP_INT);                                  \
     _qdbp_assert_obj_kind(b, QDBP_INT);                                  \
-    _qdbp_object_ptr result =                                            \
-        a->data.i op b->data.i ? _qdbp_true() : _qdbp_false();           \
+    _qdbp_object_ptr result = _QDBP_COMPARE(op, a->data.i, b->data.i)    \
+                                  ? _qdbp_true()                         \
+                                  : _qdbp_false();                       \
     _qdbp_drop(a, 1);                                                    \
     _qdbp_drop(b, 1);                                                    \
     return result;                                                       \
@@ -164,7 +165,7 @@ static size_t _qdbp_itoa_bufsize(int64_t i) {
 
 static _qdbp_object_ptr _qdbp_int_to_string(_qdbp_object_ptr i) {
   _qdbp_assert_obj_kind(i, QDBP_INT);
-  int64_t val = i->data.i;
+  int64_t val = (int64_t)i->data.i;
   _qdbp_drop(i, 1);
   int bufsize = _qdbp_itoa_bufsize(val);
   char *s = (char *)_qdbp_malloc(bufsize);

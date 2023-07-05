@@ -1,6 +1,4 @@
 #include <stdio.h>
-#include <gmp.h>
-
 #include "runtime.h"
 
 bool _qdbp_is_unboxed_int(_qdbp_object_ptr obj) {
@@ -11,21 +9,21 @@ bool _qdbp_is_boxed_int(_qdbp_object_ptr obj) {
   return !_qdbp_is_unboxed_int(obj) && _qdbp_get_kind(obj) == QDBP_BOXED_INT;
 }
 
-_qdbp_object_ptr _qdbp_make_unboxed_int(int64_t value) {
+_qdbp_object_ptr _qdbp_make_unboxed_int(uint64_t value) {
   return (_qdbp_object_ptr)((intptr_t)(value << 1) | 1);
 }
 
-int64_t _qdbp_get_unboxed_int(_qdbp_object_ptr obj) {
+uint64_t _qdbp_get_unboxed_int(_qdbp_object_ptr obj) {
   _qdbp_assert(_qdbp_is_unboxed_int(obj));
   return ((intptr_t)obj) >> 1;
 }
 
-int64_t _qdbp_get_boxed_int(_qdbp_object_ptr obj) {
+uint64_t _qdbp_get_boxed_int(_qdbp_object_ptr obj) {
   _qdbp_assert(_qdbp_is_boxed_int(obj));
   return obj->data._qdbp_boxed_int->value;
 }
 
-static int64_t unbox_int(_qdbp_object_ptr obj) {
+static uint64_t unbox_int(_qdbp_object_ptr obj) {
   _qdbp_assert(_qdbp_is_boxed_int(obj));
   return obj->data._qdbp_boxed_int->value;
 }
@@ -34,7 +32,7 @@ _qdbp_object_ptr _qdbp_unboxed_unary_op(_qdbp_object_ptr obj,
                                         _qdbp_label_t op) {
   _qdbp_assert(_qdbp_is_unboxed_int(obj));
   _qdbp_assert(op < MAX_OP);
-  int64_t i = _qdbp_get_unboxed_int(obj);
+  uint64_t i = _qdbp_get_unboxed_int(obj);
   switch (op) {
     case VAL:
       return _qdbp_int(i);
@@ -51,11 +49,11 @@ _qdbp_object_ptr _qdbp_unboxed_unary_op(_qdbp_object_ptr obj,
 }
 
 #define MK_ARITH_SWITCH \
-  MK_ARITH_CASE(ADD, +) \
-  MK_ARITH_CASE(SUB, -) \
-  MK_ARITH_CASE(MUL, *) \
-  MK_ARITH_CASE(DIV, /) \
-  MK_ARITH_CASE(MOD, %)
+  MK_ARITH_CASE(ADD, _qdbp_checked_add) \
+  MK_ARITH_CASE(SUB, _qdbp_checked_sub) \
+  MK_ARITH_CASE(MUL, _qdbp_checked_mul) \
+  MK_ARITH_CASE(DIV, _qdbp_checked_div) \
+  MK_ARITH_CASE(MOD, _qdbp_checked_mod)
 #define MK_CMP_SWITCH  \
   MK_CMP_CASE(EQ, ==)  \
   MK_CMP_CASE(NEQ, !=) \
@@ -67,15 +65,15 @@ _qdbp_object_ptr _qdbp_unboxed_unary_op(_qdbp_object_ptr obj,
   MK_ARITH_SWITCH \
   MK_CMP_SWITCH
 
-_qdbp_object_ptr _qdbp_unboxed_binary_op(int64_t a, int64_t b,
+_qdbp_object_ptr _qdbp_unboxed_binary_op(uint64_t a, uint64_t b,
                                          _qdbp_label_t op) {
   switch (op) {
 #define MK_ARITH_CASE(n, op) \
   case n:                    \
-    return _qdbp_make_unboxed_int(a op b);
+    return _qdbp_make_unboxed_int(op(a, b));
 #define MK_CMP_CASE(n, op) \
   case n:                  \
-    return a op b ? _qdbp_true() : _qdbp_false();
+    return _QDBP_COMPARE(op, a, b) ? _qdbp_true() : _qdbp_false();
     MK_SWITCH
 #undef MK_ARITH_CASE
 #undef MK_CMP_CASE
@@ -90,8 +88,8 @@ static _qdbp_object_ptr boxed_binary_arith_op(_qdbp_object_ptr a,
                                               _qdbp_label_t op) {
   _qdbp_assert(_qdbp_is_boxed_int(a));
   _qdbp_assert(op < EQ);
-  int64_t a_int = _qdbp_get_boxed_int(a);
-  int64_t b_int;
+  uint64_t a_int = _qdbp_get_boxed_int(a);
+  uint64_t b_int;
   if (_qdbp_is_unboxed_int(b)) {
     b_int = _qdbp_get_unboxed_int(b);
     _qdbp_drop(b, 1);
@@ -120,7 +118,7 @@ static _qdbp_object_ptr boxed_binary_arith_op(_qdbp_object_ptr a,
   }
 #define MK_ARITH_CASE(n, op)                           \
   case n:                                              \
-    ret->data._qdbp_boxed_int->value = a_int op b_int; \
+    ret->data._qdbp_boxed_int->value = op(a_int, b_int); \
     break;
 
   switch (op) {
@@ -142,8 +140,8 @@ static _qdbp_object_ptr boxed_binary_cmp_op(_qdbp_object_ptr a,
                                             _qdbp_label_t op) {
   _qdbp_assert(_qdbp_is_boxed_int(a));
   _qdbp_assert(op >= EQ && op < MAX_OP);
-  int64_t a_int = _qdbp_get_boxed_int(a);
-  int64_t b_int;
+  uint64_t a_int = _qdbp_get_boxed_int(a);
+  uint64_t b_int;
   if (_qdbp_is_unboxed_int(b)) {
     b_int = _qdbp_get_unboxed_int(b);
     _qdbp_drop(b, 1);
@@ -159,7 +157,7 @@ static _qdbp_object_ptr boxed_binary_cmp_op(_qdbp_object_ptr a,
   _qdbp_drop(a, 1);
 #define MK_CMP_CASE(n, op) \
   case n:                  \
-    return a_int op b_int ? _qdbp_true() : _qdbp_false();
+    return _QDBP_COMPARE(op, a_int, b_int) ? _qdbp_true() : _qdbp_false();
   switch (op) {
     MK_CMP_SWITCH
     default:
@@ -184,7 +182,7 @@ _qdbp_object_ptr _qdbp_box(_qdbp_object_ptr obj, _qdbp_label_t label,
                            void *code, _qdbp_object_arr captures,
                            size_t captures_size) {
   _qdbp_assert(_qdbp_is_unboxed_int(obj));
-  int64_t value = _qdbp_get_unboxed_int(obj);
+  uint64_t value = _qdbp_get_unboxed_int(obj);
   _qdbp_object_ptr ret = _qdbp_malloc_obj();
   _qdbp_set_refcount(ret, 1);
   _qdbp_set_tag(ret, QDBP_BOXED_INT);
@@ -266,7 +264,7 @@ _qdbp_object_ptr _qdbp_boxed_int_replace(_qdbp_object_ptr obj,
 _qdbp_object_ptr _qdbp_boxed_unary_op(_qdbp_object_ptr arg0,
                                       _qdbp_label_t label) {
   _qdbp_assert(_qdbp_is_boxed_int(arg0));
-  int64_t i = arg0->data._qdbp_boxed_int->value;
+  uint64_t i = arg0->data._qdbp_boxed_int->value;
   _qdbp_drop(arg0, 1);
   switch (label) {
     case PRINT:
