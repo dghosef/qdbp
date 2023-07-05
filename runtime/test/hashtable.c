@@ -1,10 +1,10 @@
-#define QDBP_DEBUG
 #include "runtime.h"
 #include "test.h"
+
 static void code() {}
 TEST_SUITE(hashtable)
 
-TEST_CASE(sequential_insert) {
+TEST_CASE_NOLEAK(sequential_insert) {
   for (size_t initial_capacity = 1; initial_capacity < 1000;
        initial_capacity *= 2) {
     _qdbp_hashtable *ht = _qdbp_new_ht(initial_capacity);
@@ -12,7 +12,7 @@ TEST_CASE(sequential_insert) {
       struct _qdbp_field fld;
       fld.label = elem;
       fld.method.captures = NULL;
-      fld.method.code = (void*)code;
+      fld.method.code = (void *)code;
       fld.method.captures_size = elem + 3;
       ht = _qdbp_ht_insert(ht, &fld);
       _qdbp_hashtable *ht2 = _qdbp_ht_duplicate(ht);
@@ -25,12 +25,11 @@ TEST_CASE(sequential_insert) {
         CHECK_INT_CMP(==, found2->label, i);
         CHECK_INT_CMP(==, found2->method.captures_size, i + 3);
       }
-    _qdbp_del_ht(ht2);
+      _qdbp_del_ht(ht2);
     }
     _qdbp_del_ht(ht);
   }
 }
-
 
 TEST_CASE(random_insert) {
   for (size_t initial_capacity = 1; initial_capacity < 1000;
@@ -41,7 +40,7 @@ TEST_CASE(random_insert) {
       _qdbp_label_t label = randomU32();
       fld.label = label;
       fld.method.captures = NULL;
-      fld.method.code = (void*)code;
+      fld.method.code = (void *)code;
       fld.method.captures_size = label + 3;
       ht = _qdbp_ht_insert(ht, &fld);
 

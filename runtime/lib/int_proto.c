@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "runtime.h"
+
 static _qdbp_object_ptr get_capture(_qdbp_object_arr captures,
                                     _qdbp_object_ptr o) {
   _qdbp_drop(o, 1);
@@ -23,8 +24,8 @@ static _qdbp_object_ptr print_intproto(_qdbp_object_arr captures,
     _qdbp_obj_dup(a, 1);                                                      \
     _qdbp_object_ptr a_val = _qdbp_invoke_1(a, VAL, a);                       \
     _qdbp_object_ptr b_val = _qdbp_invoke_1(b, VAL, b);                       \
-    _qdbp_assert_obj_kind(a_val, QDBP_INT);                                         \
-    _qdbp_assert_obj_kind(b_val, QDBP_INT);                                         \
+    _qdbp_assert_obj_kind(a_val, QDBP_INT);                                   \
+    _qdbp_assert_obj_kind(b_val, QDBP_INT);                                   \
     int64_t result = ((a_val->data.i op b_val->data.i) << 1) >> 1;            \
     _qdbp_object_arr capture = (_qdbp_object_ptr[1]){0};                      \
     capture[0] =                                                              \
@@ -39,8 +40,8 @@ static _qdbp_object_ptr print_intproto(_qdbp_object_arr captures,
                                _qdbp_object_ptr b) {                          \
     _qdbp_object_ptr a_val = _qdbp_invoke_1(a, VAL, a);                       \
     _qdbp_object_ptr b_val = _qdbp_invoke_1(b, VAL, b);                       \
-    _qdbp_assert_obj_kind(a_val, QDBP_INT);                                         \
-    _qdbp_assert_obj_kind(b_val, QDBP_INT);                                         \
+    _qdbp_assert_obj_kind(a_val, QDBP_INT);                                   \
+    _qdbp_assert_obj_kind(b_val, QDBP_INT);                                   \
     bool result = a_val->data.i op b_val->data.i;                             \
     _qdbp_drop(a_val, 1);                                                     \
     _qdbp_drop(b_val, 1);                                                     \

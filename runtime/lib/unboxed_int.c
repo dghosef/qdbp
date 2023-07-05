@@ -1,6 +1,8 @@
 #include <stdio.h>
+#include <gmp.h>
 
 #include "runtime.h"
+
 bool _qdbp_is_unboxed_int(_qdbp_object_ptr obj) {
   return ((uintptr_t)obj & 1) == 1;
 }
@@ -8,36 +10,30 @@ bool _qdbp_is_unboxed_int(_qdbp_object_ptr obj) {
 bool _qdbp_is_boxed_int(_qdbp_object_ptr obj) {
   return !_qdbp_is_unboxed_int(obj) && _qdbp_get_kind(obj) == QDBP_BOXED_INT;
 }
+
 _qdbp_object_ptr _qdbp_make_unboxed_int(int64_t value) {
   return (_qdbp_object_ptr)((intptr_t)(value << 1) | 1);
 }
 
 int64_t _qdbp_get_unboxed_int(_qdbp_object_ptr obj) {
-  if (_QDBP_DYNAMIC_TYPECHECK) {
-    assert(_qdbp_is_unboxed_int(obj));
-  }
+  _qdbp_assert(_qdbp_is_unboxed_int(obj));
   return ((intptr_t)obj) >> 1;
 }
+
 int64_t _qdbp_get_boxed_int(_qdbp_object_ptr obj) {
-  if (_QDBP_DYNAMIC_TYPECHECK) {
-    assert(_qdbp_is_boxed_int(obj));
-  }
+  _qdbp_assert(_qdbp_is_boxed_int(obj));
   return obj->data._qdbp_boxed_int->value;
 }
 
 static int64_t unbox_int(_qdbp_object_ptr obj) {
-  if (_QDBP_DYNAMIC_TYPECHECK) {
-    assert(_qdbp_is_boxed_int(obj));
-  }
+  _qdbp_assert(_qdbp_is_boxed_int(obj));
   return obj->data._qdbp_boxed_int->value;
 }
 
 _qdbp_object_ptr _qdbp_unboxed_unary_op(_qdbp_object_ptr obj,
                                         _qdbp_label_t op) {
-  if (_QDBP_DYNAMIC_TYPECHECK) {
-    assert(_qdbp_is_unboxed_int(obj));
-    assert(op < MAX_OP);
-  }
+  _qdbp_assert(_qdbp_is_unboxed_int(obj));
+  _qdbp_assert(op < MAX_OP);
   int64_t i = _qdbp_get_unboxed_int(obj);
   switch (op) {
     case VAL:
@@ -49,10 +45,11 @@ _qdbp_object_ptr _qdbp_unboxed_unary_op(_qdbp_object_ptr obj,
       break;
     default:
       printf("_qdbp_unboxed_unary_op: %u\n", op);
-      assert(false);
+      _qdbp_assert(false);
       __builtin_unreachable();
   }
 }
+
 #define MK_ARITH_SWITCH \
   MK_ARITH_CASE(ADD, +) \
   MK_ARITH_CASE(SUB, -) \
@@ -83,7 +80,7 @@ _qdbp_object_ptr _qdbp_unboxed_binary_op(int64_t a, int64_t b,
 #undef MK_ARITH_CASE
 #undef MK_CMP_CASE
     default:
-      assert(false);
+      _qdbp_assert(false);
       __builtin_unreachable();
   }
 }
@@ -91,10 +88,8 @@ _qdbp_object_ptr _qdbp_unboxed_binary_op(int64_t a, int64_t b,
 static _qdbp_object_ptr boxed_binary_arith_op(_qdbp_object_ptr a,
                                               _qdbp_object_ptr b,
                                               _qdbp_label_t op) {
-  if (_QDBP_DYNAMIC_TYPECHECK) {
-    assert(_qdbp_is_boxed_int(a));
-    assert(op < EQ);
-  }
+  _qdbp_assert(_qdbp_is_boxed_int(a));
+  _qdbp_assert(op < EQ);
   int64_t a_int = _qdbp_get_boxed_int(a);
   int64_t b_int;
   if (_qdbp_is_unboxed_int(b)) {
@@ -105,9 +100,7 @@ static _qdbp_object_ptr boxed_binary_arith_op(_qdbp_object_ptr a,
     _qdbp_drop(b, 1);
   } else {
     _qdbp_object_ptr b_val = _qdbp_invoke_1(b, VAL, b);
-    if (_QDBP_DYNAMIC_TYPECHECK) {
-      assert(_qdbp_get_kind(b_val) == QDBP_INT);
-    }
+    _qdbp_assert(_qdbp_get_kind(b_val) == QDBP_INT);
     b_int = b_val->data.i;
     _qdbp_drop(b_val, 1);
   }
@@ -134,7 +127,7 @@ static _qdbp_object_ptr boxed_binary_arith_op(_qdbp_object_ptr a,
     MK_ARITH_SWITCH
     default:
       printf("boxed_binary_arith_op: %u\n", op);
-      assert(false);
+      _qdbp_assert(false);
       __builtin_unreachable();
   }
   // Ensure that all math is done in 63 bits
@@ -147,10 +140,8 @@ static _qdbp_object_ptr boxed_binary_arith_op(_qdbp_object_ptr a,
 static _qdbp_object_ptr boxed_binary_cmp_op(_qdbp_object_ptr a,
                                             _qdbp_object_ptr b,
                                             _qdbp_label_t op) {
-  if (_QDBP_DYNAMIC_TYPECHECK) {
-    assert(_qdbp_is_boxed_int(a));
-    assert(op >= EQ && op < MAX_OP);
-  }
+  _qdbp_assert(_qdbp_is_boxed_int(a));
+  _qdbp_assert(op >= EQ && op < MAX_OP);
   int64_t a_int = _qdbp_get_boxed_int(a);
   int64_t b_int;
   if (_qdbp_is_unboxed_int(b)) {
@@ -161,9 +152,7 @@ static _qdbp_object_ptr boxed_binary_cmp_op(_qdbp_object_ptr a,
     _qdbp_drop(b, 1);
   } else {
     _qdbp_object_ptr b_val = _qdbp_invoke_1(b, VAL, b);
-    if (_QDBP_DYNAMIC_TYPECHECK) {
-      assert(_qdbp_get_kind(b_val) == QDBP_INT);
-    }
+    _qdbp_assert(_qdbp_get_kind(b_val) == QDBP_INT);
     b_int = b_val->data.i;
     _qdbp_drop(b_val, 1);
   }
@@ -174,17 +163,16 @@ static _qdbp_object_ptr boxed_binary_cmp_op(_qdbp_object_ptr a,
   switch (op) {
     MK_CMP_SWITCH
     default:
-      assert(false);
+      _qdbp_assert(false);
       __builtin_unreachable();
   }
 #undef MK_CMP_CASE
 }
+
 _qdbp_object_ptr _qdbp_boxed_binary_op(_qdbp_object_ptr a, _qdbp_object_ptr b,
                                        _qdbp_label_t op) {
-  if (_QDBP_DYNAMIC_TYPECHECK) {
-    assert(_qdbp_is_boxed_int(a));
-    assert(op < MAX_OP);
-  }
+  _qdbp_assert(_qdbp_is_boxed_int(a));
+  _qdbp_assert(op < MAX_OP);
   if (op < EQ) {
     return boxed_binary_arith_op(a, b, op);
   } else {
@@ -195,9 +183,7 @@ _qdbp_object_ptr _qdbp_boxed_binary_op(_qdbp_object_ptr a, _qdbp_object_ptr b,
 _qdbp_object_ptr _qdbp_box(_qdbp_object_ptr obj, _qdbp_label_t label,
                            void *code, _qdbp_object_arr captures,
                            size_t captures_size) {
-  if (_QDBP_DYNAMIC_TYPECHECK) {
-    assert(_qdbp_is_unboxed_int(obj));
-  }
+  _qdbp_assert(_qdbp_is_unboxed_int(obj));
   int64_t value = _qdbp_get_unboxed_int(obj);
   _qdbp_object_ptr ret = _qdbp_malloc_obj();
   _qdbp_set_refcount(ret, 1);
@@ -217,9 +203,7 @@ _qdbp_object_ptr _qdbp_box(_qdbp_object_ptr obj, _qdbp_label_t label,
 _qdbp_object_ptr _qdbp_box_extend(_qdbp_object_ptr obj, _qdbp_label_t label,
                                   void *code, _qdbp_object_arr captures,
                                   size_t captures_size) {
-  if (_QDBP_DYNAMIC_TYPECHECK) {
-    assert(_qdbp_is_boxed_int(obj));
-  }
+  _qdbp_assert(_qdbp_is_boxed_int(obj));
   if (_qdbp_is_unique(obj) && _QDBP_REUSE_ANALYSIS) {
     struct _qdbp_field field;
     field.method.code = code;
@@ -252,9 +236,7 @@ _qdbp_object_ptr _qdbp_boxed_int_replace(_qdbp_object_ptr obj,
                                          _qdbp_label_t label, void *code,
                                          _qdbp_object_arr captures,
                                          size_t captures_size) {
-  if (_QDBP_DYNAMIC_TYPECHECK) {
-    assert(_qdbp_is_boxed_int(obj));
-  }
+  _qdbp_assert(_qdbp_is_boxed_int(obj));
   if (_qdbp_is_unique(obj) && _QDBP_REUSE_ANALYSIS) {
     _qdbp_field_ptr field = _qdbp_label_get(&(obj->data.prototype), label);
     _qdbp_del_method(&(field->method));
@@ -283,9 +265,7 @@ _qdbp_object_ptr _qdbp_boxed_int_replace(_qdbp_object_ptr obj,
 
 _qdbp_object_ptr _qdbp_boxed_unary_op(_qdbp_object_ptr arg0,
                                       _qdbp_label_t label) {
-  if (_QDBP_DYNAMIC_TYPECHECK) {
-    assert(_qdbp_is_boxed_int(arg0));
-  }
+  _qdbp_assert(_qdbp_is_boxed_int(arg0));
   int64_t i = arg0->data._qdbp_boxed_int->value;
   _qdbp_drop(arg0, 1);
   switch (label) {
@@ -297,7 +277,7 @@ _qdbp_object_ptr _qdbp_boxed_unary_op(_qdbp_object_ptr arg0,
       return _qdbp_int(i);
       break;
     default:
-      assert(false);
+      _qdbp_assert(false);
       __builtin_unreachable();
   }
 }

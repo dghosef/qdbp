@@ -105,6 +105,7 @@ let compile args =
               " -Wno-unused-parameter" ^
               " -Wno-unused-variable" ^
               " -Wno-format" ^ 
+              " -lgmp" ^
               " -fbracket-depth=2048" ^
               " -Wno-unused-function" ^
               " -O2" ^

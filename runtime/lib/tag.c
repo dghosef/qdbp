@@ -1,13 +1,12 @@
 #include <stdio.h>
 
 #include "runtime.h"
+
 enum _qdbp_object_kind _qdbp_get_kind(_qdbp_object_ptr obj) {
-  if (_QDBP_DYNAMIC_TYPECHECK) {
-    assert(!_qdbp_is_unboxed_int(obj));
-    assert(obj != _qdbp_true());
-    assert(obj != _qdbp_false());
-    assert(obj->metadata.tag != QDBP_VARIANT);
-  }
+  _qdbp_assert(!_qdbp_is_unboxed_int(obj));
+  _qdbp_assert(obj != _qdbp_true());
+  _qdbp_assert(obj != _qdbp_false());
+  _qdbp_assert(obj->metadata.tag != QDBP_VARIANT);
   if (obj->metadata.tag > QDBP_VARIANT) {
     return QDBP_VARIANT;
   } else {
@@ -16,7 +15,9 @@ enum _qdbp_object_kind _qdbp_get_kind(_qdbp_object_ptr obj) {
 }
 
 void _qdbp_set_tag(_qdbp_object_ptr o, _qdbp_tag_t t) { o->metadata.tag = t; }
+
 _qdbp_tag_t _qdbp_get_tag(_qdbp_object_ptr o) { return o->metadata.tag; }
+
 _qdbp_object_ptr _qdbp_variant_create(_qdbp_tag_t tag, _qdbp_object_ptr value) {
   if (tag == 21 && value == NULL) {
     // must keep up to date with basic_objs and namesToInts
@@ -30,6 +31,7 @@ _qdbp_object_ptr _qdbp_variant_create(_qdbp_tag_t tag, _qdbp_object_ptr value) {
       tag, (union _qdbp_object_data){.variant = {.value = value}});
   return new_obj;
 }
+
 /* Variant Pattern Matching
   - dup the variant payload
   - _qdbp_drop the variant

@@ -175,10 +175,17 @@ let fn_definitions methods =
 let codegen_c methods main_method_id =
   let main_method = method_name main_method_id in
   {|
+#define QDBP_DEBUG
 #include "runtime.h"
 #include "basic_fns.h"
 |} ^
   invoke_fns methods ^ "\n" ^
   fn_declarations methods ^ "\n" ^
   fn_definitions methods ^ "\n" ^
-  "int main() {_qdbp_init(); _qdbp_object_ptr result = " ^ main_method ^ "(NULL); _qdbp_drop(result, 1); _qdbp_check_mem(); return 0;}"
+  "
+  int main() {
+    _qdbp_init();
+    _qdbp_object_ptr result = " ^ main_method ^ "(NULL);
+    _qdbp_drop(result, 1); _qdbp_check_mem(); return 0;
+  }
+  "

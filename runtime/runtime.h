@@ -10,31 +10,34 @@
 // You could also add fsanitize=undefined
 // Also could adjust inlining
 #ifdef QDBP_DEBUG
-  const bool _QDBP_REFCOUNT = true;
-  const bool _QDBP_REUSE_ANALYSIS = true;
-  const bool _QDBP_OBJ_FREELIST = true;
-  const bool _QDBP_BOX_FREELIST = true;
-  const bool _QDBP_CHECK_MALLOC_FREE = true;  // very slow
-  const bool _QDBP_VERIFY_REFCOUNTS = true;
-  const bool _QDBP_DYNAMIC_TYPECHECK = true;
+const bool _QDBP_REFCOUNT = true;
+const bool _QDBP_REUSE_ANALYSIS = true;
+const bool _QDBP_OBJ_FREELIST = true;
+const bool _QDBP_BOX_FREELIST = true;
+const bool _QDBP_MEMORY_SANITIZE = true;
+const bool _QDBP_ASSERTS_ENABLED = true;
 #elif defined(QDBP_RELEASE)
-  const bool _QDBP_REFCOUNT = true;
-  const bool _QDBP_REUSE_ANALYSIS = true;
-  const bool _QDBP_OBJ_FREELIST = true;
-  const bool _QDBP_BOX_FREELIST = true;
-  const bool _QDBP_CHECK_MALLOC_FREE = false;  // very slow
-  const bool _QDBP_VERIFY_REFCOUNTS = false;
-  const bool _QDBP_DYNAMIC_TYPECHECK = false;
+const bool _QDBP_REFCOUNT = true;
+const bool _QDBP_REUSE_ANALYSIS = true;
+const bool _QDBP_OBJ_FREELIST = true;
+const bool _QDBP_BOX_FREELIST = true;
+const bool _QDBP_MEMORY_SANITIZE = false;
+const bool _QDBP_ASSERTS_ENABLED = false;
 #else
-  extern const bool _QDBP_REFCOUNT;
-  extern const bool _QDBP_REUSE_ANALYSIS;
-  extern const bool _QDBP_OBJ_FREELIST;
-  extern const bool _QDBP_BOX_FREELIST;
-  extern const bool _QDBP_CHECK_MALLOC_FREE;  // very slow
-  extern const bool _QDBP_VERIFY_REFCOUNTS;
-  extern const bool _QDBP_DYNAMIC_TYPECHECK;
+extern const bool _QDBP_REFCOUNT;
+extern const bool _QDBP_REUSE_ANALYSIS;
+extern const bool _QDBP_OBJ_FREELIST;
+extern const bool _QDBP_BOX_FREELIST;
+extern const bool _QDBP_MEMORY_SANITIZE;
+extern const bool _QDBP_ASSERTS_ENABLED;
 #endif
 
+#define _qdbp_assert(x)          \
+  do {                           \
+    if (_QDBP_ASSERTS_ENABLED) { \
+      assert(x);                 \
+    }                            \
+  } while (0)
 
 #define _QDBP_FREELIST_SIZE 1000
 
@@ -65,25 +68,30 @@ typedef uint32_t _qdbp_refcount_t;
 
 // FIXME: At some point check that we don't have too many captures
 struct _qdbp_object;
+
 struct __attribute__((packed)) _qdbp_method {
   struct _qdbp_object **captures;
   void *code;
   uint32_t captures_size;  // FIXME: Get rid of somehow?
 };
+
 struct __attribute__((packed)) __attribute__((aligned(sizeof(void *))))
 _qdbp_field {
   struct _qdbp_method method;
   uint32_t label;
 };
+
 struct _qdbp_hashtable_header {
   size_t capacity;
   size_t size;
   size_t *directory;
 };
+
 typedef union {
   struct _qdbp_hashtable_header header;
   struct _qdbp_field field;
 } _qdbp_hashtable;
+
 struct _qdbp_prototype {
   _qdbp_hashtable *labels;
 };
@@ -96,6 +104,7 @@ struct _qdbp_boxed_int {
   int64_t value;
   struct _qdbp_prototype other_labels;
 };
+
 union _qdbp_object_data {
   struct _qdbp_prototype prototype;
   int64_t i;
@@ -118,6 +127,7 @@ struct __attribute__((packed)) _qdbp_object_metadata {
   _qdbp_refcount_t rc;
   _qdbp_tag_t tag;
 };
+
 struct _qdbp_object {
   struct _qdbp_object_metadata metadata;
   union _qdbp_object_data data;
@@ -143,12 +153,12 @@ _qdbp_refcount_t _qdbp_get_refcount(_qdbp_object_ptr obj);
 
 #define _qdbp_assert_refcount(obj)                           \
   do {                                                       \
-    if (_QDBP_VERIFY_REFCOUNTS && obj) {                     \
-      assert(!_qdbp_is_unboxed_int(obj));                    \
-      assert((obj));                                         \
+    if (_QDBP_ASSERTS_ENABLED && obj) {                      \
+      _qdbp_assert(!_qdbp_is_unboxed_int(obj));                    \
+      _qdbp_assert((obj));                                         \
       if (_qdbp_get_refcount(obj) <= 0) {                    \
         printf("refcount of %u\n", _qdbp_get_refcount(obj)); \
-        assert(false);                                       \
+        _qdbp_assert(false);                                       \
       };                                                     \
     }                                                        \
   } while (0);
@@ -172,8 +182,12 @@ __attribute__((warn_unused_result)) _qdbp_hashtable *_qdbp_ht_insert(
                 (fld = &((ht)[(ht)->header.directory[tmp]].field), true); \
        tmp++)
 // Memory
+#define _QDBP_STR_INTERNAL(x) #x
+#define _QDBP_STR(x) _QDBP_STR_INTERNAL(x)
 void _qdbp_duplicate_labels(_qdbp_prototype_ptr src, _qdbp_prototype_ptr dest);
-void *_qdbp_malloc(size_t size, const char *message);
+void *_qdbp_malloc_internal(size_t size, const char *message);
+#define _qdbp_malloc(size) \
+  _qdbp_malloc_internal(size, __FILE__ ":" _QDBP_STR(__LINE__))
 void _qdbp_free(void *ptr);
 void _qdbp_memcpy(void *dest, const void *src, size_t n);
 void _qdbp_free_field(_qdbp_field_ptr field);
@@ -181,7 +195,7 @@ void _qdbp_free_boxed_int(struct _qdbp_boxed_int *i);
 struct _qdbp_boxed_int *_qdbp_malloc_boxed_int();
 void _qdbp_free_fields(_qdbp_prototype_ptr proto);
 void _qdbp_free_obj(_qdbp_object_ptr obj);
-void _qdbp_check_mem();
+bool _qdbp_check_mem();
 void _qdbp_del_prototype(_qdbp_prototype_ptr proto);
 void _qdbp_del_variant(_qdbp_variant_ptr variant);
 _qdbp_object_arr _qdbp_make_capture_arr(size_t size);
@@ -197,7 +211,7 @@ _qdbp_object_ptr _qdbp_empty_prototype();
 _qdbp_object_ptr _qdbp_true();
 _qdbp_object_ptr _qdbp_false();
 _qdbp_object_ptr _qdbp_int_proto(int64_t i);
-
+// math
 // Prototypes
 
 size_t _qdbp_proto_size(_qdbp_prototype_ptr proto);
@@ -271,12 +285,12 @@ _qdbp_tag_t _qdbp_get_tag(_qdbp_object_ptr o);
 _qdbp_object_ptr _qdbp_variant_create(_qdbp_tag_t tag, _qdbp_object_ptr value);
 void _qdbp_decompose_variant(_qdbp_object_ptr obj, _qdbp_tag_t *tag,
                              _qdbp_object_ptr *payload);
-#define _qdbp_assert_obj_kind(obj, k)           \
-  do {                                    \
-    if (obj && _QDBP_DYNAMIC_TYPECHECK) { \
-      _qdbp_assert_refcount(obj);         \
-      assert(_qdbp_get_kind(obj) == k);   \
-    }                                     \
+#define _qdbp_assert_obj_kind(obj, k)   \
+  do {                                  \
+    if (obj && _QDBP_ASSERTS_ENABLED) { \
+      _qdbp_assert_refcount(obj);       \
+      _qdbp_assert(_qdbp_get_kind(obj) == k); \
+    }                                   \
   } while (0);
 
 // Macros/Fns for the various kinds of expressions

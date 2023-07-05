@@ -37,14 +37,19 @@ static void _qdbptest_log(const char* fmt, ...) {
   return _qdbptest_suite_results; \
   }
 
-#define TEST_CASE(name)                                             \
+#define _QDBP_TEST_CASE_INTERNAL(name, memchk)                      \
   for (bool _qdbptest_bool = /*setup*/                              \
        (_qdbptest_success = true, _qdbptest_continue = true,        \
        _qdbptest_case_name = #name, true);                          \
-       _qdbptest_bool; /*teardown*/ _qdbptest_bool = false,         \
+       _qdbptest_bool; /*teardown*/ (memchk), _qdbptest_bool = false, \
             (_qdbptest_success ? _qdbptest_suite_results.passed++   \
                                : _qdbptest_suite_results.failed++), \
             _qdbptest_case_name = "", _qdbptest_continue = true)
+
+#define TEST_CASE(name) _QDBP_TEST_CASE_INTERNAL(name, (void)0)
+#define TEST_CASE_NOLEAK(name) \
+  _QDBP_TEST_CASE_INTERNAL(    \
+      name, (_qdbptest_success = _qdbptest_success && _qdbp_check_mem()))
 
 #define DECLARE_SUITE(name) \
   extern struct _qdbptest_suite_results _qdbptest_suite_##name(void);
@@ -122,8 +127,7 @@ static void _qdbptest_log(const char* fmt, ...) {
   } while (0)
 
 #define randomU32() (rnd_pcg_next(&_qdbptest_pcg))
-#define randomU64() \
-  (((uint64_t)randomU32() << 32) | randomU32())
+#define randomU64() (((uint64_t)randomU32() << 32) | randomU32())
 
 #define CHECK(cond) _QDBPTEST_TEST(cond, false)
 #define CHECK_STRING_EQ(a, b) QDBP_TEST_STRING_EQ(a, b, false)

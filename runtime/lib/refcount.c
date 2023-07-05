@@ -1,47 +1,51 @@
 #include <stdio.h>
 
 #include "runtime.h"
+
 void _qdbp_incref(_qdbp_object_ptr obj, _qdbp_refcount_t amount) {
   if (!_QDBP_REFCOUNT) {
     return;
   }
-  if (_QDBP_DYNAMIC_TYPECHECK &&
+  if (_QDBP_ASSERTS_ENABLED &&
       (_qdbp_is_unboxed_int(obj) || obj == _qdbp_true() ||
        obj == _qdbp_false() || !obj)) {
-    assert(false);
+    _qdbp_assert(false);
   }
   obj->metadata.rc += amount;
 }
+
 void _qdbp_decref(_qdbp_object_ptr obj, _qdbp_refcount_t amount) {
   if (!_QDBP_REFCOUNT) {
     return;
   }
-  if (_QDBP_DYNAMIC_TYPECHECK &&
+  if (_QDBP_ASSERTS_ENABLED &&
       (_qdbp_is_unboxed_int(obj) || obj == _qdbp_true() ||
        obj == _qdbp_false() || !obj)) {
-    assert(false);
+    _qdbp_assert(false);
   }
   obj->metadata.rc -= amount;
 }
+
 void _qdbp_set_refcount(_qdbp_object_ptr obj, _qdbp_refcount_t refcount) {
   if (!_QDBP_REFCOUNT) {
     return;
   }
-  if (_QDBP_DYNAMIC_TYPECHECK &&
+  if (_QDBP_ASSERTS_ENABLED &&
       (_qdbp_is_unboxed_int(obj) || obj == _qdbp_true() ||
        obj == _qdbp_false() || !obj)) {
-    assert(false);
+    _qdbp_assert(false);
   }
   obj->metadata.rc = refcount;
 }
+
 _qdbp_refcount_t _qdbp_get_refcount(_qdbp_object_ptr obj) {
   if (!_QDBP_REFCOUNT) {
     return 100;
   }
-  if (_QDBP_DYNAMIC_TYPECHECK &&
+  if (_QDBP_ASSERTS_ENABLED &&
       (_qdbp_is_unboxed_int(obj) || obj == _qdbp_true() ||
        obj == _qdbp_false() || !obj)) {
-    assert(false);
+    _qdbp_assert(false);
   }
   return obj->metadata.rc;
 }
@@ -55,9 +59,7 @@ void _qdbp_drop(_qdbp_object_ptr obj, _qdbp_refcount_t cnt) {
     return;
   } else {
     _qdbp_assert_refcount(obj);
-    if (_QDBP_VERIFY_REFCOUNTS) {
-      assert(_qdbp_get_refcount(obj) >= cnt);
-    }
+    _qdbp_assert(_qdbp_get_refcount(obj) >= cnt);
     _qdbp_decref(obj, cnt);
     if (_qdbp_get_refcount(obj) == 0) {
       _qdbp_del_obj(obj);
@@ -95,8 +97,11 @@ void _qdbp_dup_prototype_captures(_qdbp_prototype_ptr proto) {
   }
   _qdbp_field_ptr field;
   size_t tmp;
-  _QDBP_HT_ITER(proto->labels, field, tmp) { _qdbp_dup_captures(&(field->method)); }
+  _QDBP_HT_ITER(proto->labels, field, tmp) {
+    _qdbp_dup_captures(&(field->method));
+  }
 }
+
 void _qdbp_dup_prototype_captures_except(_qdbp_prototype_ptr proto,
                                          _qdbp_label_t except) {
   if (!_QDBP_REFCOUNT) {
@@ -119,10 +124,8 @@ bool _qdbp_is_unique(_qdbp_object_ptr obj) {
       obj == _qdbp_false() || !obj) {
     return true;
   } else {
-    if (_QDBP_VERIFY_REFCOUNTS) {
-      assert(obj);
-      assert(_qdbp_get_refcount(obj) >= 0);
-    }
+    _qdbp_assert(obj);
+    _qdbp_assert(_qdbp_get_refcount(obj) >= 0);
     return _qdbp_get_refcount(obj) == 1;
   }
 }

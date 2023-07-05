@@ -1,25 +1,23 @@
 #include <stdio.h>
 
 #include "runtime.h"
+
 void _qdbp_label_add(_qdbp_prototype_ptr proto, _qdbp_label_t label,
                      _qdbp_field_ptr field, size_t defaultsize) {
-  if (_QDBP_DYNAMIC_TYPECHECK) {
-    assert(proto);
-    assert(field);
-    // check that defaultsize is a pwr of 2
-    assert((defaultsize & (defaultsize - 1)) == 0);
-  }
+  _qdbp_assert(proto);
+  _qdbp_assert(field);
+  // check that defaultsize is a pwr of 2
+  _qdbp_assert((defaultsize & (defaultsize - 1)) == 0);
   if (!proto->labels) {
     proto->labels = _qdbp_new_ht(defaultsize);
   }
   proto->labels = _qdbp_ht_insert(proto->labels, field);
 }
+
 _qdbp_field_ptr _qdbp_label_get(_qdbp_prototype_ptr proto,
                                 _qdbp_label_t label) {
-  if (_QDBP_DYNAMIC_TYPECHECK) {
-    assert(proto);
-    assert(proto->labels);
-  }
+  _qdbp_assert(proto);
+  _qdbp_assert(proto->labels);
   return _qdbp_ht_find(proto->labels, label);
 }
 
@@ -43,24 +41,18 @@ static struct _qdbp_prototype raw_prototype_replace(
     const _qdbp_prototype_ptr src, const _qdbp_field_ptr new_field,
     _qdbp_label_t new_label) {
   size_t src_size = _qdbp_proto_size(src);
-  if (_QDBP_DYNAMIC_TYPECHECK) {
-    assert(src_size);
-    assert(new_field->label == new_label);
-  }
+  _qdbp_assert(src_size);
+  _qdbp_assert(new_field->label == new_label);
   struct _qdbp_prototype new_prototype = {.labels = NULL};
 
   // FIXME: Have the overwriting done in _qdbp_duplicate_labels
   // to avoid extra work of inserting twice
-  if (_QDBP_DYNAMIC_TYPECHECK) {
-    assert(new_prototype.labels == NULL);
-  }
+  _qdbp_assert(new_prototype.labels == NULL);
   _qdbp_duplicate_labels(src, &new_prototype);
 
   *(_qdbp_ht_find(new_prototype.labels, new_label)) = *new_field;
   _qdbp_copy_captures_except(&new_prototype, new_label);
-  if (_QDBP_DYNAMIC_TYPECHECK) {
-    assert(new_prototype.labels);
-  }
+  _qdbp_assert(new_prototype.labels);
   return new_prototype;
 }
 
@@ -92,8 +84,8 @@ _qdbp_object_arr _qdbp_make_captures(_qdbp_object_arr captures, size_t size) {
   if (size == 0) {
     return NULL;
   } else {
-    _qdbp_object_arr out = (_qdbp_object_arr)_qdbp_malloc(
-        sizeof(struct _qdbp_object *) * size, "captures");
+    _qdbp_object_arr out =
+        (_qdbp_object_arr)_qdbp_malloc(sizeof(struct _qdbp_object *) * size);
     _qdbp_memcpy(out, captures, sizeof(struct _qdbp_object *) * size);
     return out;
   }
@@ -132,6 +124,7 @@ _qdbp_object_ptr _qdbp_extend(_qdbp_object_ptr obj, _qdbp_label_t label,
     return obj;
   }
 }
+
 _qdbp_object_ptr _qdbp_replace(_qdbp_object_ptr obj, _qdbp_label_t label,
                                void *code, _qdbp_object_arr captures,
                                size_t captures_size) {
@@ -169,7 +162,7 @@ _qdbp_object_ptr _qdbp_replace(_qdbp_object_ptr obj, _qdbp_label_t label,
   } else {
     // find the index to replace
     _qdbp_field_ptr field = _qdbp_label_get(&(obj->data.prototype), label);
-    assert(field->label == label);
+    _qdbp_assert(field->label == label);
     // reuse the field
     _qdbp_del_method(&(field->method));
     field->label = f.label;
@@ -179,11 +172,10 @@ _qdbp_object_ptr _qdbp_replace(_qdbp_object_ptr obj, _qdbp_label_t label,
 }
 
 size_t _qdbp_proto_size(_qdbp_prototype_ptr proto) {
-  if (_QDBP_DYNAMIC_TYPECHECK) {
-    assert(proto);
-  }
+  _qdbp_assert(proto);
   return _qdbp_hashtable_size(proto->labels);
 }
+
 _qdbp_object_ptr _qdbp_invoke_1(_qdbp_object_ptr receiver, _qdbp_label_t label,
                                 _qdbp_object_ptr arg0) {
   if (_qdbp_is_unboxed_int(arg0)) {
@@ -226,9 +218,7 @@ _qdbp_object_ptr _qdbp_invoke_2(_qdbp_object_ptr receiver, _qdbp_label_t label,
            _qdbp_get_kind(arg1) == QDBP_PROTOTYPE) {
     int64_t a = _qdbp_get_unboxed_int(arg0);
     arg1 = _qdbp_invoke_1(arg1, VAL, arg1);
-    if (_QDBP_DYNAMIC_TYPECHECK) {
-      assert(_qdbp_get_kind(arg1) == QDBP_INT);
-    }
+    _qdbp_assert(_qdbp_get_kind(arg1) == QDBP_INT);
     int64_t b = arg1->data.i;
     _qdbp_drop(arg1, 1);
     return _qdbp_unboxed_binary_op(a, b, label);
@@ -256,9 +246,7 @@ _qdbp_object_ptr _qdbp_invoke_2(_qdbp_object_ptr receiver, _qdbp_label_t label,
   // BB B
 
   else {
-    if (_QDBP_DYNAMIC_TYPECHECK) {
-      assert(_qdbp_get_kind(arg0) == QDBP_PROTOTYPE);
-    }
+    _qdbp_assert(_qdbp_get_kind(arg0) == QDBP_PROTOTYPE);
     void *code;
     _qdbp_object_arr captures = _qdbp_get_method(receiver, label, &code);
     return ((_qdbp_object_ptr(*)(_qdbp_object_arr, _qdbp_object_ptr,

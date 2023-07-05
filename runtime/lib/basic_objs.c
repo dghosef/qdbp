@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include "runtime.h"
+
 _qdbp_object_ptr _qdbp_int(int64_t i) {
   _qdbp_object_ptr new_obj =
       _qdbp_make_object(QDBP_INT, (union _qdbp_object_data){.i = i});
@@ -8,7 +9,7 @@ _qdbp_object_ptr _qdbp_int(int64_t i) {
 }
 
 _qdbp_object_ptr _qdbp_string(const char *src) {
-  char *dest = (char *)_qdbp_malloc(strlen(src) + 1, "_qdbp_string");
+  char *dest = (char *)_qdbp_malloc(strlen(src) + 1);
   strcpy(dest, src);
   _qdbp_object_ptr new_obj =
       _qdbp_make_object(QDBP_STRING, (union _qdbp_object_data){.s = dest});
@@ -22,7 +23,7 @@ _qdbp_object_ptr _qdbp_float(double f) {
 }
 
 _qdbp_object_ptr _qdbp_match_failed() {
-  assert(false);
+  _qdbp_assert(false);
   __builtin_unreachable();
 }
 
@@ -37,5 +38,7 @@ _qdbp_object_ptr _qdbp_make_object(_qdbp_tag_t tag,
 }
 
 _qdbp_object_ptr _qdbp_empty_prototype() { return NULL; }
+
 _qdbp_object_ptr _qdbp_true() { return (_qdbp_object_ptr)(0xF0); }
+
 _qdbp_object_ptr _qdbp_false() { return (_qdbp_object_ptr)(0xE0); }
