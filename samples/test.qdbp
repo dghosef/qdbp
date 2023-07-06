@@ -1,12 +1,4 @@
-{
-  Data[3]
-  Method[
-    this2 := this
-    {
-      ; We lose access to the original `this` because
-      ; the new `this` from the current object overshadows it
-      ; That is why we needed to declare `this2`
-      this2 Data.
-    }
-  ]
+a := {4
+  +[that| 5]
 }
+a - 3. Print.

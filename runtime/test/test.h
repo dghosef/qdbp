@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "rnd.h"
 
@@ -37,13 +39,13 @@ static void _qdbptest_log(const char* fmt, ...) {
   return _qdbptest_suite_results; \
   }
 
-#define _QDBP_TEST_CASE_INTERNAL(name, memchk)                      \
-  for (bool _qdbptest_bool = /*setup*/                              \
-       (_qdbptest_success = true, _qdbptest_continue = true,        \
-       _qdbptest_case_name = #name, true);                          \
+#define _QDBP_TEST_CASE_INTERNAL(name, memchk)                        \
+  for (bool _qdbptest_bool = /*setup*/                                \
+       (_qdbptest_success = true, _qdbptest_continue = true,          \
+       _qdbptest_case_name = #name, true);                            \
        _qdbptest_bool; /*teardown*/ (memchk), _qdbptest_bool = false, \
-            (_qdbptest_success ? _qdbptest_suite_results.passed++   \
-                               : _qdbptest_suite_results.failed++), \
+            (_qdbptest_success ? _qdbptest_suite_results.passed++     \
+                               : _qdbptest_suite_results.failed++),   \
             _qdbptest_case_name = "", _qdbptest_continue = true)
 
 #define TEST_CASE(name) _QDBP_TEST_CASE_INTERNAL(name, (void)0)
@@ -54,7 +56,6 @@ static void _qdbptest_log(const char* fmt, ...) {
 #define DECLARE_SUITE(name) \
   extern struct _qdbptest_suite_results _qdbptest_suite_##name(void);
 
-// TODO: Report case pass/fail instead?
 #define RUN_SUITE(name)                                                \
   do {                                                                 \
     struct _qdbptest_suite_results _qdbptest_suite_results =           \
@@ -98,7 +99,6 @@ static void _qdbptest_log(const char* fmt, ...) {
     }                                                \
   } while (0)
 
-// TODO: Print more descriptive error messages
 #define QDBP_TEST_INT_CMP_OP(op, a, b, exitonfailure, cast, fmt)          \
   do {                                                                    \
     if (_qdbptest_continue) {                                             \
@@ -126,6 +126,24 @@ static void _qdbptest_log(const char* fmt, ...) {
     }                                                                    \
   } while (0)
 
+#define QDBP_TEST_ABORT(stmt, exitonfailure)                           \
+  do {                                                                 \
+    int pid = fork();                                                  \
+    if (pid == 0) {                                                    \
+      stmt;                                                            \
+      exit(0);                                                         \
+    } else {                                                           \
+      int status;                                                      \
+      waitpid(pid, &status, 0);                                        \
+      if (WEXITSTATUS(status) == 0) {                                  \
+        _QDBPTEST_LOG_FAIL();                                          \
+        _qdbptest_log(                                                 \
+            "Expected statement to abort with nonzero exit status\n"); \
+        _QDBPTEST_EXIT_SUITE(exitonfailure);                           \
+      }                                                                \
+    }                                                                  \
+  } while (0)
+
 #define randomU32() (rnd_pcg_next(&_qdbptest_pcg))
 #define randomU64() (((uint64_t)randomU32() << 32) | randomU32())
 
@@ -135,6 +153,7 @@ static void _qdbptest_log(const char* fmt, ...) {
   QDBP_TEST_INT_CMP_OP(op, a, b, false, int64_t, % ld)
 #define CHECK_UINT_CMP(op, a, b) \
   QDBP_TEST_INT_CMP_OP(op, a, b, false, uint64_t, % lu)
+#define CHECK_ABORT(stmt) QDBP_TEST_ABORT(stmt, false)
 
 #define REQUIRE(cond) _QDBPTEST_TEST(cond, true)
 #define REQUIRE_STRING_EQ(a, b) QDBP_TEST_STRING_EQ(a, b, true)
@@ -142,5 +161,6 @@ static void _qdbptest_log(const char* fmt, ...) {
   QDBP_TEST_INT_CMP_OP(op, a, b, true, int64_t, % ld)
 #define REQUIRE_UINT_CMP(op, a, b) \
   QDBP_TEST_INT_CMP_OP(op, a, b, true, uint64_t, % lu)
+#define REQUIRE_ABORT(stmt) QDBP_TEST_ABORT(stmt, true)
 
 #endif

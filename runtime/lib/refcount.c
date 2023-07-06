@@ -2,6 +2,20 @@
 
 #include "runtime.h"
 
+bool _qdbp_is_unique(_qdbp_object_ptr obj) {
+  if (!_QDBP_REFCOUNT) {
+    return false;
+  }
+  if (_qdbp_is_unboxed_int(obj) || obj == _qdbp_true() ||
+      obj == _qdbp_false() || !obj) {
+    return true;
+  } else {
+    _qdbp_assert(obj);
+    _qdbp_assert(_qdbp_get_refcount(obj) >= 0);
+    return _qdbp_get_refcount(obj) == 1;
+  }
+}
+
 void _qdbp_incref(_qdbp_object_ptr obj, _qdbp_refcount_t amount) {
   if (!_QDBP_REFCOUNT) {
     return;
@@ -58,7 +72,7 @@ void _qdbp_drop(_qdbp_object_ptr obj, _qdbp_refcount_t cnt) {
       obj == _qdbp_false()) {
     return;
   } else {
-    _qdbp_assert_refcount(obj);
+    _qdbp_check_refcount(obj);
     _qdbp_assert(_qdbp_get_refcount(obj) >= cnt);
     _qdbp_decref(obj, cnt);
     if (_qdbp_get_refcount(obj) == 0) {
@@ -69,7 +83,7 @@ void _qdbp_drop(_qdbp_object_ptr obj, _qdbp_refcount_t cnt) {
   }
 }
 
-void _qdbp_obj_dup(_qdbp_object_ptr obj, _qdbp_refcount_t cnt) {
+void _qdbp_dup(_qdbp_object_ptr obj, _qdbp_refcount_t cnt) {
   if (!_QDBP_REFCOUNT) {
     return;
   }
@@ -77,17 +91,17 @@ void _qdbp_obj_dup(_qdbp_object_ptr obj, _qdbp_refcount_t cnt) {
       obj == _qdbp_false()) {
     return;
   } else {
-    _qdbp_assert_refcount(obj);
+    _qdbp_check_refcount(obj);
     _qdbp_incref(obj, cnt);
   }
 }
 
-void _qdbp_dup_captures(_qdbp_method_ptr method) {
+void _qdbp_dup_method_captures(_qdbp_method_ptr method) {
   if (!_QDBP_REFCOUNT) {
     return;
   }
-  for (size_t i = 0; i < method->captures_size; i++) {
-    _qdbp_obj_dup((method->captures[i]), 1);
+  for (size_t i = 0; i < method->num_captures; i++) {
+    _qdbp_dup((method->captures[i]), 1);
   }
 }
 
@@ -98,7 +112,7 @@ void _qdbp_dup_prototype_captures(_qdbp_prototype_ptr proto) {
   _qdbp_field_ptr field;
   size_t tmp;
   _QDBP_HT_ITER(proto->labels, field, tmp) {
-    _qdbp_dup_captures(&(field->method));
+    _qdbp_dup_method_captures(&(field->method));
   }
 }
 
@@ -111,21 +125,7 @@ void _qdbp_dup_prototype_captures_except(_qdbp_prototype_ptr proto,
   size_t tmp;
   _QDBP_HT_ITER(proto->labels, field, tmp) {
     if (field->label != except) {
-      _qdbp_dup_captures(&(field->method));
+      _qdbp_dup_method_captures(&(field->method));
     }
-  }
-}
-
-bool _qdbp_is_unique(_qdbp_object_ptr obj) {
-  if (!_QDBP_REFCOUNT) {
-    return false;
-  }
-  if (_qdbp_is_unboxed_int(obj) || obj == _qdbp_true() ||
-      obj == _qdbp_false() || !obj) {
-    return true;
-  } else {
-    _qdbp_assert(obj);
-    _qdbp_assert(_qdbp_get_refcount(obj) >= 0);
-    return _qdbp_get_refcount(obj) == 1;
   }
 }

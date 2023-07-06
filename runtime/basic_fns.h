@@ -11,22 +11,16 @@ Every function that qdbp calls must follow the following rules:
 1` times
 */
 
-// FIXME: Safe arithmetic
-
 #include <math.h>
 #include <stdio.h>
 
 #include "runtime.h"
 
-static _qdbp_object_ptr _qdbp_abort() {
-  printf("aborting\n");
-  exit(0);
-}
 
 #define _qdbp_int_binop(name, op)                                            \
   static _qdbp_object_ptr name(_qdbp_object_ptr a, _qdbp_object_ptr b) {     \
-    _qdbp_assert_obj_kind(a, QDBP_INT);                                      \
-    _qdbp_assert_obj_kind(b, QDBP_INT);                                      \
+    _qdbp_assert_kind(a, QDBP_INT);                                      \
+    _qdbp_assert_kind(b, QDBP_INT);                                      \
     if (_qdbp_is_unique(a)) {                                                \
       a->data.i = a->data.i op b->data.i;                                    \
       _qdbp_drop(b, 1);                                                      \
@@ -46,8 +40,8 @@ static _qdbp_object_ptr _qdbp_abort() {
 
 #define _qdbp_float_binop(name, op)                                            \
   static _qdbp_object_ptr name(_qdbp_object_ptr a, _qdbp_object_ptr b) {       \
-    _qdbp_assert_obj_kind(a, QDBP_FLOAT);                                      \
-    _qdbp_assert_obj_kind(b, QDBP_FLOAT);                                      \
+    _qdbp_assert_kind(a, QDBP_FLOAT);                                      \
+    _qdbp_assert_kind(b, QDBP_FLOAT);                                      \
     if (_qdbp_is_unique(a)) {                                                  \
       a->data.f = a->data.f op b->data.f;                                      \
       _qdbp_drop(b, 1);                                                        \
@@ -67,8 +61,8 @@ static _qdbp_object_ptr _qdbp_abort() {
 
 #define _qdbp_intcmp_binop(name, op)                                     \
   static _qdbp_object_ptr name(_qdbp_object_ptr a, _qdbp_object_ptr b) { \
-    _qdbp_assert_obj_kind(a, QDBP_INT);                                  \
-    _qdbp_assert_obj_kind(b, QDBP_INT);                                  \
+    _qdbp_assert_kind(a, QDBP_INT);                                  \
+    _qdbp_assert_kind(b, QDBP_INT);                                  \
     _qdbp_object_ptr result = _QDBP_COMPARE(op, a->data.i, b->data.i)    \
                                   ? _qdbp_true()                         \
                                   : _qdbp_false();                       \
@@ -79,8 +73,8 @@ static _qdbp_object_ptr _qdbp_abort() {
 
 #define _qdbp_floatcmp_binop(name, op)                                   \
   static _qdbp_object_ptr name(_qdbp_object_ptr a, _qdbp_object_ptr b) { \
-    _qdbp_assert_obj_kind(a, QDBP_FLOAT);                                \
-    _qdbp_assert_obj_kind(b, QDBP_FLOAT);                                \
+    _qdbp_assert_kind(a, QDBP_FLOAT);                                \
+    _qdbp_assert_kind(b, QDBP_FLOAT);                                \
     _qdbp_object_ptr result =                                            \
         a->data.f op b->data.f ? _qdbp_true() : _qdbp_false();           \
     _qdbp_drop(a, 1);                                                    \
@@ -99,16 +93,16 @@ static char *_qdbp_c_str_concat(const char *a, const char *b) {
   int lenb = strlen(b);
   char *con = (char *)_qdbp_malloc(lena + lenb + 1);
   // copy & concat (including string termination)
-  memcpy(con, a, lena);
-  memcpy(con + lena, b, lenb + 1);
+  _qdbp_memcpy(con, a, lena);
+  _qdbp_memcpy(con + lena, b, lenb + 1);
   return con;
 }
 
 // concat_string
 static _qdbp_object_ptr _qdbp_concat_string(_qdbp_object_ptr a,
                                             _qdbp_object_ptr b) {
-  _qdbp_assert_obj_kind(a, QDBP_STRING);
-  _qdbp_assert_obj_kind(b, QDBP_STRING);
+  _qdbp_assert_kind(a, QDBP_STRING);
+  _qdbp_assert_kind(b, QDBP_STRING);
   const char *a_str = a->data.s;
   const char *b_str = b->data.s;
   _qdbp_drop(a, 1);
@@ -120,7 +114,7 @@ static _qdbp_object_ptr _qdbp_concat_string(_qdbp_object_ptr a,
 
 // qdbp_print_string_int
 static _qdbp_object_ptr _qdbp_print_string_int(_qdbp_object_ptr s) {
-  _qdbp_assert_obj_kind(s, QDBP_STRING);
+  _qdbp_assert_kind(s, QDBP_STRING);
   printf("%s", s->data.s);
   fflush(stdout);
   _qdbp_drop(s, 1);
@@ -164,7 +158,7 @@ static size_t _qdbp_itoa_bufsize(int64_t i) {
 }
 
 static _qdbp_object_ptr _qdbp_int_to_string(_qdbp_object_ptr i) {
-  _qdbp_assert_obj_kind(i, QDBP_INT);
+  _qdbp_assert_kind(i, QDBP_INT);
   int64_t val = (int64_t)i->data.i;
   _qdbp_drop(i, 1);
   int bufsize = _qdbp_itoa_bufsize(val);
@@ -188,8 +182,8 @@ _qdbp_floatcmp_binop(_qdbp_float_ge_bool, >=);
 
 static _qdbp_object_ptr _qdbp_float_mod_float(_qdbp_object_ptr a,
                                               _qdbp_object_ptr b) {
-  _qdbp_assert_obj_kind(a, QDBP_FLOAT);
-  _qdbp_assert_obj_kind(b, QDBP_FLOAT);
+  _qdbp_assert_kind(a, QDBP_FLOAT);
+  _qdbp_assert_kind(b, QDBP_FLOAT);
   _qdbp_object_ptr result = _qdbp_make_object(
       QDBP_FLOAT, (union _qdbp_object_data){.f = fmod(a->data.f, b->data.f)});
   _qdbp_drop(a, 1);

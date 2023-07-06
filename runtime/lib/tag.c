@@ -26,7 +26,7 @@ _qdbp_object_ptr _qdbp_variant_create(_qdbp_tag_t tag, _qdbp_object_ptr value) {
   } else if (tag == 20 && value == NULL) {
     return _qdbp_false();
   }
-  _qdbp_assert_refcount(value);
+  _qdbp_check_refcount(value);
   _qdbp_object_ptr new_obj = _qdbp_make_object(
       tag, (union _qdbp_object_data){.variant = {.value = value}});
   return new_obj;
@@ -50,7 +50,7 @@ void _qdbp_decompose_variant(_qdbp_object_ptr obj, _qdbp_tag_t *tag,
     *payload = NULL;
     return;
   }
-  _qdbp_assert_obj_kind(obj, QDBP_VARIANT);
+  _qdbp_assert_kind(obj, QDBP_VARIANT);
   _qdbp_object_ptr value = obj->data.variant.value;
   *tag = _qdbp_get_tag(obj);
   // return value, tag
