@@ -1,5 +1,7 @@
 ---
 BasedOnStyle: Google
+PointerAlignment: Left
+IndentWidth: 2
 ReflowComments: true
 SeparateDefinitionBlocks: Always
 ---

@@ -56,20 +56,20 @@ typedef uint32_t _qdbp_refcount_t;
 struct _qdbp_object;
 
 struct _qdbp_method {
-  struct _qdbp_object **captures;
-  void *code;
+  struct _qdbp_object** captures;
+  void* code;
   uint32_t num_captures;
 };
 
 struct _qdbp_field {
   struct _qdbp_method method;
-  uint32_t label;
+  _qdbp_label_t label;
 };
 
 struct _qdbp_hashtable_header {
   size_t capacity;
   size_t size;
-  size_t *directory;
+  size_t* directory;
 };
 
 typedef union {
@@ -78,11 +78,11 @@ typedef union {
 } _qdbp_hashtable;
 
 struct _qdbp_prototype {
-  _qdbp_hashtable *labels;
+  _qdbp_hashtable* labels;
 };
 
 struct _qdbp_variant {
-  struct _qdbp_object *value;
+  struct _qdbp_object* value;
 };
 
 struct _qdbp_boxed_int {
@@ -94,8 +94,8 @@ union _qdbp_object_data {
   struct _qdbp_prototype prototype;
   uint64_t i;
   double f;
-  char *s;
-  struct _qdbp_boxed_int *_qdbp_boxed_int;
+  char* s;
+  struct _qdbp_boxed_int* _qdbp_boxed_int;
   struct _qdbp_variant variant;
 };
 
@@ -117,12 +117,12 @@ struct _qdbp_object {
   struct _qdbp_object_metadata metadata;
   union _qdbp_object_data data;
 };
-typedef struct _qdbp_object *_qdbp_object_ptr;
-typedef struct _qdbp_object **_qdbp_object_arr;
-typedef struct _qdbp_variant *_qdbp_variant_ptr;
-typedef struct _qdbp_prototype *_qdbp_prototype_ptr;
-typedef struct _qdbp_method *_qdbp_method_ptr;
-typedef struct _qdbp_field *_qdbp_field_ptr;
+typedef struct _qdbp_object* _qdbp_object_ptr;
+typedef struct _qdbp_object** _qdbp_object_arr;
+typedef struct _qdbp_variant* _qdbp_variant_ptr;
+typedef struct _qdbp_prototype* _qdbp_prototype_ptr;
+typedef struct _qdbp_method* _qdbp_method_ptr;
+typedef struct _qdbp_field* _qdbp_field_ptr;
 // Reference counting
 bool _qdbp_is_unique(_qdbp_object_ptr obj);
 void _qdbp_incref(_qdbp_object_ptr obj, _qdbp_refcount_t amount);
@@ -149,13 +149,13 @@ void _qdbp_dup_prototype_captures_except(_qdbp_prototype_ptr proto,
   } while (0);
 
 // Hash table
-_qdbp_hashtable *_qdbp_ht_new(size_t capacity);
-void _qdbp_ht_del(_qdbp_hashtable *table);
-_qdbp_hashtable *_qdbp_ht_duplicate(_qdbp_hashtable *table);
-_qdbp_field_ptr _qdbp_ht_find(_qdbp_hashtable *table, _qdbp_label_t label);
-__attribute__((warn_unused_result)) _qdbp_hashtable *_qdbp_ht_insert(
-    _qdbp_hashtable *table, const _qdbp_field_ptr fld);
-size_t _qdbp_ht_size(_qdbp_hashtable *table);
+_qdbp_hashtable* _qdbp_ht_new(size_t capacity);
+void _qdbp_ht_del(_qdbp_hashtable* table);
+_qdbp_hashtable* _qdbp_ht_duplicate(_qdbp_hashtable* table);
+_qdbp_field_ptr _qdbp_ht_find(_qdbp_hashtable* table, _qdbp_label_t label);
+__attribute__((warn_unused_result)) _qdbp_hashtable* _qdbp_ht_insert(
+    _qdbp_hashtable* table, const _qdbp_field_ptr fld);
+size_t _qdbp_ht_size(_qdbp_hashtable* table);
 #define _QDBP_HT_ITER(ht, fld, tmp)                                       \
   for (tmp = 0; tmp < (ht)->header.size &&                                \
                 (fld = &((ht)[(ht)->header.directory[tmp]].field), true); \
@@ -172,23 +172,23 @@ uint64_t _qdbp_checked_mod(uint64_t a, uint64_t b);
 #define _QDBP_STR_INTERNAL(x) #x
 #define _QDBP_STR(x) _QDBP_STR_INTERNAL(x)
 
-void *_qdbp_malloc_internal(size_t size, const char *message);
+void* _qdbp_malloc_internal(size_t size, const char* message);
 #define _qdbp_malloc(size) \
   _qdbp_malloc_internal(size, __FILE__ ":" _QDBP_STR(__LINE__))
-void _qdbp_free(void *ptr);
-void _qdbp_memcpy(void *dest, const void *src, size_t n);
+void _qdbp_free(void* ptr);
+void _qdbp_memcpy(void* dest, const void* src, size_t n);
 bool _qdbp_check_mem();
 void _qdbp_init();
 
-// _qdbp_malloc_<type> allocate the physical memory for the object
-struct _qdbp_boxed_int *_qdbp_malloc_boxed_int();
+// _qdbp_malloc_<type> allocates the physical memory for the object
+struct _qdbp_boxed_int* _qdbp_malloc_boxed_int();
 _qdbp_object_ptr _qdbp_malloc_obj();
 _qdbp_object_arr _qdbp_malloc_capture_arr(size_t size);
 // _qdbp_free_<type> free the physical memory of the object
-void _qdbp_free_boxed_int(struct _qdbp_boxed_int *i);
+void _qdbp_free_boxed_int(struct _qdbp_boxed_int* i);
 void _qdbp_free_obj(_qdbp_object_ptr obj);
 void _qdbp_free_capture_arr(_qdbp_object_arr arr, size_t size);
-// _qdbp_del_<type> recursively `drop` the object's children
+// _qdbp_del_<type> recursively drops the object's children
 // then free the physical memory of the object
 void _qdbp_del_fields(_qdbp_prototype_ptr proto);
 void _qdbp_del_prototype(_qdbp_prototype_ptr proto);
@@ -201,15 +201,21 @@ void _qdbp_del_obj(_qdbp_object_ptr obj);
 // refcount to 1 and its value accordingly
 _qdbp_object_ptr _qdbp_make_object(_qdbp_tag_t tag,
                                    union _qdbp_object_data data);
+_qdbp_object_ptr _qdbp_make_boxed_int(uint64_t i);
 _qdbp_object_ptr _qdbp_empty_prototype();
 _qdbp_object_ptr _qdbp_true();
 _qdbp_object_ptr _qdbp_false();
 _qdbp_object_ptr _qdbp_int(uint64_t i);
-_qdbp_object_ptr _qdbp_string(const char *src);
+_qdbp_object_ptr _qdbp_string(const char* src);
 _qdbp_object_ptr _qdbp_float(double f);
 _qdbp_object_ptr _qdbp_abort();
 _qdbp_object_ptr _qdbp_match_failed();
 _qdbp_object_ptr _qdbp_int_prototype(uint64_t i);
+// Object initialization
+// Each of these functions initializes the object's value
+void _qdbp_init_field(_qdbp_field_ptr field, _qdbp_label_t label,
+                      struct _qdbp_object** captures, void* code,
+                      uint32_t num_captures);
 // Prototypes
 size_t _qdbp_prototype_size(_qdbp_prototype_ptr proto);
 void _qdbp_label_add(_qdbp_prototype_ptr proto, _qdbp_label_t label,
@@ -226,13 +232,13 @@ _qdbp_object_arr _qdbp_duplicate_captures(_qdbp_object_arr captures,
 // returns a pointer to the method's capture array and stores its fn pointer in
 // `code_ptr`
 _qdbp_object_arr _qdbp_get_method(_qdbp_object_ptr obj, _qdbp_label_t label,
-                                  void **code /*output param*/);
+                                  void** code /*output param*/);
 _qdbp_object_ptr _qdbp_extend(_qdbp_object_ptr obj, _qdbp_label_t label,
-                              void *code, _qdbp_object_arr captures,
+                              void* code, _qdbp_object_arr captures,
                               size_t captures_size, size_t default_capacity);
 
 _qdbp_object_ptr _qdbp_replace(_qdbp_object_ptr obj, _qdbp_label_t label,
-                               void *code, _qdbp_object_arr captures,
+                               void* code, _qdbp_object_arr captures,
                                size_t captures_size);
 
 // invoke the `label` method of `receiver` with `arg0` and `arg1` as arguments
@@ -274,16 +280,16 @@ _qdbp_object_ptr _qdbp_boxed_int_unary_op(_qdbp_object_ptr arg0,
 _qdbp_object_ptr _qdbp_boxed_int_binary_op(_qdbp_object_ptr a,
                                            _qdbp_object_ptr b,
                                            _qdbp_label_t op);
-_qdbp_object_ptr _qdbp_box_unboxed_int(_qdbp_object_ptr obj,
-                                       _qdbp_label_t label, void *code,
+_qdbp_object_ptr _qdbp_box_unboxed_int_and_extend(_qdbp_object_ptr obj,
+                                       _qdbp_label_t label, void* code,
                                        _qdbp_object_arr captures,
                                        size_t captures_size);
 _qdbp_object_ptr _qdbp_boxed_int_extend(_qdbp_object_ptr obj,
-                                        _qdbp_label_t label, void *code,
+                                        _qdbp_label_t label, void* code,
                                         _qdbp_object_arr captures,
                                         size_t captures_size);
 _qdbp_object_ptr _qdbp_boxed_int_replace(_qdbp_object_ptr obj,
-                                         _qdbp_label_t label, void *code,
+                                         _qdbp_label_t label, void* code,
                                          _qdbp_object_arr captures,
                                          size_t captures_size);
 // Tags and Variants
@@ -291,8 +297,8 @@ enum _qdbp_object_kind _qdbp_get_kind(_qdbp_object_ptr obj);
 void _qdbp_set_tag(_qdbp_object_ptr o, _qdbp_tag_t t);
 _qdbp_tag_t _qdbp_get_tag(_qdbp_object_ptr o);
 _qdbp_object_ptr _qdbp_variant_create(_qdbp_tag_t tag, _qdbp_object_ptr value);
-void _qdbp_decompose_variant(_qdbp_object_ptr obj, _qdbp_tag_t *tag,
-                             _qdbp_object_ptr *payload);
+void _qdbp_decompose_variant(_qdbp_object_ptr obj, _qdbp_tag_t* tag,
+                             _qdbp_object_ptr* payload);
 #define _qdbp_assert_kind(obj, k)             \
   do {                                        \
     if (obj && _QDBP_ASSERTS_ENABLED) {       \
