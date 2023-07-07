@@ -100,8 +100,8 @@ let compile args =
               " clang out.c " ^
               !runtime_dir ^ "/lib/*.c" ^
               " -I" ^ !runtime_dir ^
+              " -g" ^
               " -fbracket-depth=10000000" ^
-              " -O2" ^
-              " && ./a.out;" ^
-              " rm -rf a.out out.c "
+              " -fsanitize=address,undefined,pointer-compare,pointer-subtract,leak,undefined"^
+              " && ./a.out;"
             end)

@@ -4,9 +4,10 @@
 
 static _qdbp_object_ptr drop_and_get_capture(_qdbp_object_arr captures,
                                              _qdbp_object_ptr o) {
-  (void)captures;
+  _qdbp_object_ptr capture = (captures[0]);
+
   _qdbp_drop(o, 1);
-  return captures[0];
+  return capture;
 }
 
 static _qdbp_object_ptr print_intproto(_qdbp_object_arr captures,
