@@ -4,31 +4,31 @@
 
 size_t _qdbp_prototype_size(_qdbp_prototype_ptr proto) {
   _qdbp_assert(proto);
-  return _qdbp_ht_size(proto->labels);
+  return _qdbp_ht_size(proto->label_map);
 }
 
-void _qdbp_label_add(_qdbp_prototype_ptr proto, _qdbp_label_t label,
-                     _qdbp_field_ptr field, size_t default_capacity) {
+void _qdbp_label_add(_qdbp_prototype_ptr proto, _qdbp_field_ptr field,
+                     size_t default_capacity) {
   _qdbp_assert(proto);
   _qdbp_assert(field);
   // check that default_capacity is a pwr of 2
   _qdbp_assert((default_capacity & (default_capacity - 1)) == 0);
-  if (!proto->labels) {
-    proto->labels = _qdbp_ht_new(default_capacity);
+  if (!proto->label_map) {
+    proto->label_map = _qdbp_ht_new(default_capacity);
   }
-  proto->labels = _qdbp_ht_insert(proto->labels, field);
+  proto->label_map = _qdbp_ht_insert(proto->label_map, field);
 }
 
 _qdbp_field_ptr _qdbp_label_get(_qdbp_prototype_ptr proto,
                                 _qdbp_label_t label) {
   _qdbp_assert(proto);
-  _qdbp_assert(proto->labels);
-  return _qdbp_ht_find(proto->labels, label);
+  _qdbp_assert(proto->label_map);
+  return _qdbp_ht_find(proto->label_map, label);
 }
 
 void _qdbp_copy_prototype(_qdbp_prototype_ptr src, _qdbp_prototype_ptr dest) {
-  _qdbp_assert(!dest->labels);
-  dest->labels = _qdbp_ht_duplicate(src->labels);
+  _qdbp_assert(!dest->label_map);
+  dest->label_map = _qdbp_ht_duplicate(src->label_map);
 }
 
 void _qdbp_make_fresh_captures_except(_qdbp_prototype_ptr new_prototype,
@@ -36,7 +36,7 @@ void _qdbp_make_fresh_captures_except(_qdbp_prototype_ptr new_prototype,
   // Copy all the capture arrays except the new one
   _qdbp_field_ptr field;
   size_t tmp;
-  _QDBP_HT_ITER(new_prototype->labels, field, tmp) {
+  _QDBP_HT_ITER(new_prototype->label_map, field, tmp) {
     if (field->label != except) {
       _qdbp_object_arr original = field->method.captures;
       field->method.captures =
@@ -73,11 +73,10 @@ static struct _qdbp_prototype prototype_copy_and_extend(
     const _qdbp_prototype_ptr src, const _qdbp_field_ptr new_field,
     size_t new_label, size_t default_capacity) {
   // copy src
-  size_t src_size = _qdbp_prototype_size(src);
-  struct _qdbp_prototype new_prototype = {.labels = NULL};
+  struct _qdbp_prototype new_prototype = {.label_map = NULL};
 
   _qdbp_copy_prototype(src, &new_prototype);
-  _qdbp_label_add(&new_prototype, new_label, new_field, default_capacity);
+  _qdbp_label_add(&new_prototype, new_field, default_capacity);
   _qdbp_make_fresh_captures_except(&new_prototype, new_label);
   return new_prototype;
 }
@@ -90,7 +89,7 @@ _qdbp_object_ptr _qdbp_extend(_qdbp_object_ptr obj, _qdbp_label_t label,
     obj = _qdbp_make_object(
         QDBP_PROTOTYPE,
         (union _qdbp_object_data){
-            .prototype = {.labels = _qdbp_ht_new(default_capacity)}});
+            .prototype = {.label_map = _qdbp_ht_new(default_capacity)}});
     // Fallthrough to after special case handling
   } else if (_qdbp_is_unboxed_int(obj)) {
     // Special case: `obj` is an unboxed int
@@ -108,15 +107,15 @@ _qdbp_object_ptr _qdbp_extend(_qdbp_object_ptr obj, _qdbp_label_t label,
   _qdbp_assert_kind(obj, QDBP_PROTOTYPE);
   if (!_QDBP_REUSE_ANALYSIS || !_qdbp_is_unique(obj)) {
     _qdbp_prototype_ptr prototype = &(obj->data.prototype);
-    struct _qdbp_prototype new_prototype =
-        prototype_copy_and_extend(prototype, &new_field, label, default_capacity);
+    struct _qdbp_prototype new_prototype = prototype_copy_and_extend(
+        prototype, &new_field, label, default_capacity);
     _qdbp_object_ptr new_obj = _qdbp_make_object(
         QDBP_PROTOTYPE, (union _qdbp_object_data){.prototype = new_prototype});
     _qdbp_dup_prototype_captures(prototype);
     _qdbp_drop(obj, 1);
     return new_obj;
   } else {
-    _qdbp_label_add(&(obj->data.prototype), label, &new_field, default_capacity);
+    _qdbp_label_add(&(obj->data.prototype), &new_field, default_capacity);
     return obj;
   }
 }
@@ -125,16 +124,16 @@ static struct _qdbp_prototype prototype_copy_and_replace(
     const _qdbp_prototype_ptr src, const _qdbp_field_ptr new_field,
     _qdbp_label_t new_label) {
   size_t src_size = _qdbp_prototype_size(src);
-  _qdbp_assert(src_size);
+  _qdbp_assert(src_size > 0);
   _qdbp_assert(new_field->label == new_label);
-  struct _qdbp_prototype new_prototype = {.labels = NULL};
+  struct _qdbp_prototype new_prototype = {.label_map = NULL};
 
-  _qdbp_assert(new_prototype.labels == NULL);
+  _qdbp_assert(new_prototype.label_map == NULL);
   _qdbp_copy_prototype(src, &new_prototype);
 
-  *(_qdbp_ht_find(new_prototype.labels, new_label)) = *new_field;
+  *(_qdbp_ht_find(new_prototype.label_map, new_label)) = *new_field;
   _qdbp_make_fresh_captures_except(&new_prototype, new_label);
-  _qdbp_assert(new_prototype.labels);
+  _qdbp_assert(new_prototype.label_map);
   return new_prototype;
 }
 
@@ -143,8 +142,9 @@ _qdbp_object_ptr _qdbp_replace(_qdbp_object_ptr obj, _qdbp_label_t label,
                                size_t num_captures) {
   if (!obj) {
     // Special case: `obj` is the empty prototype
-    obj = _qdbp_make_object(QDBP_PROTOTYPE, (union _qdbp_object_data){
-                                                .prototype = {.labels = NULL}});
+    obj = _qdbp_make_object(
+        QDBP_PROTOTYPE,
+        (union _qdbp_object_data){.prototype = {.label_map = NULL}});
     // Fallthrough to after special case handling
   } else if (_qdbp_is_unboxed_int(obj)) {
     // Special case: `obj` is an unboxed int
@@ -154,7 +154,7 @@ _qdbp_object_ptr _qdbp_replace(_qdbp_object_ptr obj, _qdbp_label_t label,
   } else if (_qdbp_is_boxed_int(obj) && label < MAX_OP) {
     // Special case: `obj` is a boxed int and we're replacing an builtin math
     // method
-    uint64_t i = _qdbp_get_boxed_int(obj);
+    _qdbp_bigint_t i = _qdbp_get_boxed_int(obj);
     _qdbp_drop(obj, 1);
     obj = _qdbp_int_prototype(i);
     _qdbp_assert_kind(obj, QDBP_PROTOTYPE);
@@ -238,7 +238,7 @@ _qdbp_object_ptr _qdbp_invoke_2(_qdbp_object_ptr receiver, _qdbp_label_t label,
     uint64_t a = _qdbp_get_unboxed_int(arg0);
     arg1 = _qdbp_invoke_1(arg1, VAL, arg1);
     _qdbp_assert(_qdbp_get_kind(arg1) == QDBP_INT);
-    uint64_t b = arg1->data.i;
+    _qdbp_bigint_t b = *arg1->data.i;
     _qdbp_drop(arg1, 1);
     return _qdbp_unboxed_int_binary_op(a, b, label);
   }

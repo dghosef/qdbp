@@ -52,6 +52,7 @@ static const size_t _QDBP_LOAD_FACTOR_DEN = 1;
 typedef uint32_t _qdbp_label_t;
 typedef uint32_t _qdbp_tag_t;
 typedef uint32_t _qdbp_refcount_t;
+typedef uint64_t _qdbp_bigint_t;
 
 struct _qdbp_object;
 
@@ -78,7 +79,7 @@ typedef union {
 } _qdbp_hashtable;
 
 struct _qdbp_prototype {
-  _qdbp_hashtable* labels;
+  _qdbp_hashtable* label_map;
 };
 
 struct _qdbp_variant {
@@ -86,13 +87,13 @@ struct _qdbp_variant {
 };
 
 struct _qdbp_boxed_int {
-  uint64_t value;
+  _qdbp_bigint_t value;
   struct _qdbp_prototype other_labels;
 };
 
 union _qdbp_object_data {
   struct _qdbp_prototype prototype;
-  uint64_t i;
+  _qdbp_bigint_t* i;
   double f;
   char* s;
   struct _qdbp_boxed_int* _qdbp_boxed_int;
@@ -187,7 +188,7 @@ _qdbp_object_arr _qdbp_malloc_capture_arr(size_t size);
 // _qdbp_free_<type> free the physical memory of the object
 void _qdbp_free_boxed_int(struct _qdbp_boxed_int* i);
 void _qdbp_free_obj(_qdbp_object_ptr obj);
-void _qdbp_free_capture_arr(_qdbp_object_arr arr, size_t size);
+void _qdbp_free_capture_arr(_qdbp_object_arr arr);
 // _qdbp_del_<type> recursively drops the object's children
 // then free the physical memory of the object
 void _qdbp_del_fields(_qdbp_prototype_ptr proto);
@@ -201,6 +202,7 @@ void _qdbp_del_obj(_qdbp_object_ptr obj);
 // refcount to 1 and its value accordingly
 _qdbp_object_ptr _qdbp_make_object(_qdbp_tag_t tag,
                                    union _qdbp_object_data data);
+_qdbp_bigint_t* _qdbp_make_bigint(uint64_t v);
 _qdbp_object_ptr _qdbp_make_boxed_int(uint64_t i);
 _qdbp_object_ptr _qdbp_empty_prototype();
 _qdbp_object_ptr _qdbp_true();
@@ -218,8 +220,8 @@ void _qdbp_init_field(_qdbp_field_ptr field, _qdbp_label_t label,
                       uint32_t num_captures);
 // Prototypes
 size_t _qdbp_prototype_size(_qdbp_prototype_ptr proto);
-void _qdbp_label_add(_qdbp_prototype_ptr proto, _qdbp_label_t label,
-                     _qdbp_field_ptr field, size_t default_capacity);
+void _qdbp_label_add(_qdbp_prototype_ptr proto, _qdbp_field_ptr field,
+                     size_t default_capacity);
 _qdbp_field_ptr _qdbp_label_get(_qdbp_prototype_ptr proto, _qdbp_label_t label);
 void _qdbp_copy_prototype(_qdbp_prototype_ptr src, _qdbp_prototype_ptr dest);
 // For each label in `new_prototype`, re-malloc the capture array and copy the
@@ -271,7 +273,8 @@ _qdbp_object_ptr _qdbp_make_unboxed_int(uint64_t value);
 uint64_t _qdbp_get_unboxed_int(_qdbp_object_ptr obj);
 _qdbp_object_ptr _qdbp_unboxed_int_unary_op(_qdbp_object_ptr obj,
                                             _qdbp_label_t op);
-_qdbp_object_ptr _qdbp_unboxed_int_binary_op(uint64_t a, uint64_t b,
+_qdbp_object_ptr _qdbp_unboxed_int_binary_op(uint64_t a,
+                                             uint64_t b,
                                              _qdbp_label_t op);
 bool _qdbp_is_boxed_int(_qdbp_object_ptr obj);
 uint64_t _qdbp_get_boxed_int(_qdbp_object_ptr obj);
@@ -281,9 +284,10 @@ _qdbp_object_ptr _qdbp_boxed_int_binary_op(_qdbp_object_ptr a,
                                            _qdbp_object_ptr b,
                                            _qdbp_label_t op);
 _qdbp_object_ptr _qdbp_box_unboxed_int_and_extend(_qdbp_object_ptr obj,
-                                       _qdbp_label_t label, void* code,
-                                       _qdbp_object_arr captures,
-                                       size_t captures_size);
+                                                  _qdbp_label_t label,
+                                                  void* code,
+                                                  _qdbp_object_arr captures,
+                                                  size_t captures_size);
 _qdbp_object_ptr _qdbp_boxed_int_extend(_qdbp_object_ptr obj,
                                         _qdbp_label_t label, void* code,
                                         _qdbp_object_arr captures,
@@ -309,7 +313,7 @@ void _qdbp_decompose_variant(_qdbp_object_ptr obj, _qdbp_tag_t* tag,
 
 // Macros for the various kinds of expressions
 #define _QDBP_DROP(v, cnt, expr) (_qdbp_drop((v), (cnt)), (expr))
-#define _QDBP_DUP(v, cnt, expr) (obj_dup((v), (cnt)), (expr))
+#define _QDBP_DUP(v, cnt, expr) (_qdbp_dup((v), (cnt)), (expr))
 #define _QDBP_LET(lhs, rhs, in) \
   ((lhs = (rhs)), (in))  // assume lhs has been declared already
 #define _QDBP_MATCH(tag1, tag2, arg, ifmatch, ifnomatch) \

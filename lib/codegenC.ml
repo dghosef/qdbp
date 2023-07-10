@@ -138,7 +138,7 @@ let rec expr_to_c level expr =
         args in
     c_call fn args
   | `TaggedObject ((tag, _), value, _, _) ->
-    c_call "variant_create" [
+    c_call "_qdbp_variant_create" [
       (string_of_int tag);
       expr_to_c (level + 1) value
     ]

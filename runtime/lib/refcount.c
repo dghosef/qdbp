@@ -111,7 +111,7 @@ void _qdbp_dup_prototype_captures(_qdbp_prototype_ptr proto) {
   }
   _qdbp_field_ptr field;
   size_t tmp;
-  _QDBP_HT_ITER(proto->labels, field, tmp) {
+  _QDBP_HT_ITER(proto->label_map, field, tmp) {
     _qdbp_dup_method_captures(&(field->method));
   }
 }
@@ -123,7 +123,7 @@ void _qdbp_dup_prototype_captures_except(_qdbp_prototype_ptr proto,
   }
   _qdbp_field_ptr field;
   size_t tmp;
-  _QDBP_HT_ITER(proto->labels, field, tmp) {
+  _QDBP_HT_ITER(proto->label_map, field, tmp) {
     if (field->label != except) {
       _qdbp_dup_method_captures(&(field->method));
     }

@@ -57,7 +57,7 @@ static void remove_from_malloc_list(void* ptr) {
     name.idx++;                                              \
     return true;                                             \
   }                                                          \
-  static void _qdbp_##name##_free_all() { \
+  static void _qdbp_##name##_free_all() {                    \
     for (size_t i = 0; i < name.idx; i++) {                  \
       _qdbp_free(name.objects[i]);                           \
     }                                                        \
@@ -157,16 +157,15 @@ void _qdbp_free_obj(_qdbp_object_ptr obj) {
   }
 }
 
-void _qdbp_free_capture_arr(_qdbp_object_arr arr, size_t size) {
-  _qdbp_free(arr);
-}
+void _qdbp_free_capture_arr(_qdbp_object_arr arr) { _qdbp_free(arr); }
 
 void _qdbp_del_fields(_qdbp_prototype_ptr proto) {
-  struct _qdbp_field* cur_field;
   _qdbp_field_ptr field;
   size_t tmp;
-  _QDBP_HT_ITER(proto->labels, field, tmp) { _qdbp_del_method(&field->method); }
-  _qdbp_ht_del(proto->labels);
+  _QDBP_HT_ITER(proto->label_map, field, tmp) {
+    _qdbp_del_method(&field->method);
+  }
+  _qdbp_ht_del(proto->label_map);
 }
 
 void _qdbp_del_prototype(_qdbp_prototype_ptr proto) {
@@ -185,7 +184,7 @@ void _qdbp_del_method(_qdbp_method_ptr method) {
     _qdbp_drop((method->captures[i]), 1);
   }
   if (method->num_captures > 0) {
-    _qdbp_free_capture_arr(method->captures, method->num_captures);
+    _qdbp_free_capture_arr(method->captures);
   }
 }
 
@@ -193,6 +192,7 @@ void _qdbp_del_obj(_qdbp_object_ptr obj) {
   _qdbp_assert(!_qdbp_is_unboxed_int(obj));
   switch (_qdbp_get_kind(obj)) {
     case QDBP_INT:
+      _qdbp_free(obj->data.i);
       break;
     case QDBP_FLOAT:
       break;

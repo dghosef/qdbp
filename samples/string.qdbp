@@ -4,17 +4,17 @@ unify := {that with|
     False? [with!.].
 }
 is_string := {that|
-  unify! that with: {$qdbp_empty_string()}.
+  unify! that with: {$_qdbp_empty_string()}.
 }
 {that |
   {
     Val[that]
     Print[
-      _ := $qdbp_print_string_int(this Val.)
+      _ := $_qdbp_print_string_int(this Val.)
       {}
     ]
     ++[that|
-      new_val := $concat_string(this Val. is_string! (that Val).)
+      new_val := $_qdbp_concat_string(this Val. is_string! (that Val).)
       {
         this
         Val[new_val]

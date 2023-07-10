@@ -101,7 +101,11 @@ let compile args =
               !runtime_dir ^ "/lib/*.c" ^
               " -I" ^ !runtime_dir ^
               " -g" ^
+              " -Wall -Wextra" ^
+              " -Wno-unused-parameter" ^
+              " -Wno-unused-function" ^
+              " -Wno-unused-variable" ^
               " -fbracket-depth=10000000" ^
               " -fsanitize=address,undefined,pointer-compare,pointer-subtract,leak,undefined"^
-              " && ./a.out;"
+              " && LSAN_OPTIONS=detect_leaks=1 ./a.out;"
             end)

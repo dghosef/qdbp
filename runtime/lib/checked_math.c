@@ -33,7 +33,9 @@ static void math_assert(bool cond, const char* fmt, ...) {
   }
 }
 
-static uint64_t zero_highbit(int64_t x) { return (uint64_t)x & ~(1ULL << 63); }
+static uint64_t zero_highbit(int64_t x) {
+  return (uint64_t)x & ~(1ULL << 63);
+}
 
 int64_t _qdbp_sign_extend(uint64_t a) {
   if ((a >> 62) & 1) {
@@ -77,12 +79,16 @@ uint64_t _qdbp_checked_div(uint64_t a, uint64_t b) {
   math_assert(b != 0, "Division of %lli by zero",
               (int64_t)_qdbp_sign_extend(a));
   uint64_t res = DO_ARITH(/, a, b);
+  math_assert(fits_in_63_bits(res), "Overflow in division of %lli and %lli",
+              (int64_t)_qdbp_sign_extend(a), (int64_t)_qdbp_sign_extend(b));
   return res;
 }
 
 uint64_t _qdbp_checked_mod(uint64_t a, uint64_t b) {
   CHECK_ARITH_INPUT(a, b);
   math_assert(b != 0, "Modulo of %lli by zero", (int64_t)_qdbp_sign_extend(b));
+  math_assert(fits_in_63_bits(a), "Overflow in modulo of %lli and %lli",
+              (int64_t)_qdbp_sign_extend(a), (int64_t)_qdbp_sign_extend(b));
   uint64_t res = DO_ARITH(%, a, b);
   return res;
 }

@@ -16,7 +16,7 @@ static _qdbp_object_ptr print_intproto(_qdbp_object_arr captures,
   _qdbp_assert_kind(o, QDBP_PROTOTYPE);
   _qdbp_object_ptr i = _qdbp_invoke_1(o, VAL, o);
   _qdbp_assert_kind(i, QDBP_INT);
-  printf("%lld", i->data.i);
+  printf("%lld", *i->data.i);
   _qdbp_drop(i, 1);
   return _qdbp_empty_prototype();
 }
@@ -30,10 +30,10 @@ static _qdbp_object_ptr print_intproto(_qdbp_object_arr captures,
     _qdbp_object_ptr b_val = _qdbp_invoke_1(b, VAL, b);                       \
     _qdbp_assert_kind(a_val, QDBP_INT);                                       \
     _qdbp_assert_kind(b_val, QDBP_INT);                                       \
-    uint64_t result = op(a_val->data.i, b_val->data.i);                       \
+    uint64_t result = op(*a_val->data.i, *b_val->data.i);               \
     _qdbp_object_arr capture = (_qdbp_object_ptr[1]){0};                      \
-    capture[0] =                                                              \
-        _qdbp_make_object(QDBP_INT, (union _qdbp_object_data){.i = result});  \
+    capture[0] = _qdbp_make_object(                                           \
+        QDBP_INT, (union _qdbp_object_data){.i = _qdbp_make_bigint(result)}); \
     _qdbp_drop(a_val, 1);                                                     \
     _qdbp_drop(b_val, 1);                                                     \
     return _qdbp_replace(a, VAL, (void *)drop_and_get_capture, capture, 1);   \
@@ -47,7 +47,7 @@ static _qdbp_object_ptr print_intproto(_qdbp_object_arr captures,
     _qdbp_object_ptr b_val = _qdbp_invoke_1(b, VAL, b);                       \
     _qdbp_assert_kind(a_val, QDBP_INT);                                       \
     _qdbp_assert_kind(b_val, QDBP_INT);                                       \
-    bool result = _QDBP_COMPARE(op, a_val->data.i, b_val->data.i);            \
+    bool result = _QDBP_COMPARE(op, *a_val->data.i, *b_val->data.i);            \
     _qdbp_drop(a_val, 1);                                                     \
     _qdbp_drop(b_val, 1);                                                     \
     return result ? _qdbp_true() : _qdbp_false();                             \
@@ -67,8 +67,8 @@ MK_PROTO_CMP_OP(_qdbp_lte, <=)
 
 _qdbp_object_ptr _qdbp_int_prototype(uint64_t value) {
   _qdbp_object_ptr proto = _qdbp_empty_prototype();
-  _qdbp_object_ptr capture =
-      _qdbp_make_object(QDBP_INT, (union _qdbp_object_data){.i = value});
+  _qdbp_object_ptr capture = _qdbp_make_object(
+      QDBP_INT, (union _qdbp_object_data){.i = _qdbp_make_bigint(value)});
   proto = _qdbp_extend(proto, VAL, (void *)drop_and_get_capture,
                        (_qdbp_object_ptr[1]){capture}, 1, 16);
   proto = _qdbp_extend(proto, ADD, (void *)_qdbp_add, NULL, 0, 16);

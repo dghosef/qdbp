@@ -1,4 +1,1 @@
-a := {4
-  +[that| 5]
-}
-a - 3. Print.
+"Hello World" Print.

@@ -12,11 +12,17 @@ _qdbp_object_ptr _qdbp_make_object(_qdbp_tag_t tag,
   return new_obj;
 }
 
+_qdbp_bigint_t* _qdbp_make_bigint(uint64_t v) {
+  _qdbp_bigint_t *i = _qdbp_malloc(sizeof(_qdbp_bigint_t));
+  *i = v;
+  return i;
+}
+
 _qdbp_object_ptr _qdbp_make_boxed_int(uint64_t i) {
   _qdbp_object_ptr ret = _qdbp_make_object(
       QDBP_BOXED_INT, (union _qdbp_object_data)_qdbp_malloc_boxed_int());
   ret->data._qdbp_boxed_int->value = i;
-  ret->data._qdbp_boxed_int->other_labels.labels = NULL;
+  ret->data._qdbp_boxed_int->other_labels.label_map = NULL;
   return ret;
 }
 
@@ -27,8 +33,8 @@ _qdbp_object_ptr _qdbp_true() { return (_qdbp_object_ptr)(0xF0); }
 _qdbp_object_ptr _qdbp_false() { return (_qdbp_object_ptr)(0xE0); }
 
 _qdbp_object_ptr _qdbp_int(uint64_t i) {
-  _qdbp_object_ptr new_obj =
-      _qdbp_make_object(QDBP_INT, (union _qdbp_object_data){.i = i});
+  _qdbp_object_ptr new_obj = _qdbp_make_object(
+      QDBP_INT, (union _qdbp_object_data){.i = _qdbp_make_bigint(i)});
   return new_obj;
 }
 
