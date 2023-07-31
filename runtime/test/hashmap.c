@@ -24,6 +24,11 @@ TEST_CASE_NOLEAK(sequential_insert) {
         _qdbp_field_ptr found2 = _qdbp_ht_find(ht2, i);
         CHECK_INT_CMP(==, found2->label, i);
         CHECK_INT_CMP(==, found2->method.num_captures, i + 3);
+        CHECK(found2 == _qdbp_ht_find_opt(ht2, i));
+      }
+      for(int j = elem + 1; j < 100; j++) {
+        CHECK(_qdbp_ht_find_opt(ht, j) == NULL);
+        CHECK(_qdbp_ht_find_opt(ht2, j) == NULL);
       }
       _qdbp_ht_del(ht2);
     }

@@ -27,27 +27,36 @@ let make_new_unbound_var tvars level =
 let update_tvars tvars var_id new_var =
   (fst tvars, TyVarMap.add var_id new_var (snd tvars))
 
-let bool_ty =
+let bool_ty level tvars = 
+  let tvars, var = make_new_unbound_var tvars level in
+  let ty = `TVariant 
+      (`TRowExtend
+         ("True", (`TRecord `TRowEmpty),
+          (`TRowExtend 
+             ("False", (`TRecord `TRowEmpty),
+              (var)))))
+  in
+  tvars, ty
+
+let strconst_ty =
   `TVariant (
     `TRowExtend (
-      "True", `TRecord (`TRowEmpty),
-      `TRowExtend (
-        "False", `TRecord (`TRowEmpty),
-        `TRowEmpty
-      )
+      "isString", `TRecord (`TRowEmpty),
+      `TRowEmpty
     )
   )
+
 let int_proto_type tvars level =
   let add_arith_binop tvars level binop row =
     let tvars, v1 = make_new_unbound_var tvars level in
     let tvars, v2 = make_new_unbound_var tvars level in
     let tvars, v3 = make_new_unbound_var tvars level in
     let arg0_ty = `TRecord (
-      `TRowExtend (
-        "isAnInt:this", `TArrow ([v2], `TRecord `TRowEmpty),
-        v3
-      )
-    ) in
+        `TRowExtend (
+          "isAnInt:this", `TArrow ([v2], `TRecord `TRowEmpty),
+          v3
+        )
+      ) in
     tvars,
     `TRowExtend (
       binop ^ ":this" ^ ":Arg0", 
@@ -59,15 +68,16 @@ let int_proto_type tvars level =
     let tvars, v2 = make_new_unbound_var tvars level in
     let tvars, v3 = make_new_unbound_var tvars level in
     let arg0_ty = `TRecord (
-      `TRowExtend (
-        "isAnInt:this", `TArrow ([v2], `TRecord `TRowEmpty),
-        v3
-      )
-    ) in
+        `TRowExtend (
+          "isAnInt:this", `TArrow ([v2], `TRecord `TRowEmpty),
+          v3
+        )
+      ) in
+    let tvars, ret_ty = bool_ty level tvars in
     tvars,
     `TRowExtend (
       binop ^ ":this" ^ ":Arg0", 
-      `TArrow ([ v1;  arg0_ty], bool_ty)
+      `TArrow ([ v1;  arg0_ty], ret_ty)
       , row
     ) in
   let tvars, v1 = make_new_unbound_var tvars level in
@@ -82,7 +92,7 @@ let int_proto_type tvars level =
   let row = 
     `TRowExtend (
       "isAnInt:this", `TArrow ([v1],
-                           (`TRecord `TRowEmpty)),
+                               (`TRecord `TRowEmpty)),
       row)
   in
   let tvars, row = add_arith_binop tvars level "+" row in
@@ -123,8 +133,6 @@ let annotate_rec_tvars tvars ty =
       rec_tvars, `TVariant row
     | `TRowEmpty ->
       TyVarSet.empty, `TRowEmpty
-    | `TConst c ->
-      TyVarSet.empty, `TConst c
     | `TRowExtend (label, field_ty, extension) ->
       let rec_tvars, field_ty = annotate_rec_tvars seen field_ty in
       let rec_tvars', extension_ty = annotate_rec_tvars seen extension in
@@ -155,10 +163,6 @@ let annotate_rec_tvars tvars ty =
 let newline indent =
   "\n" ^ (String.make (indent * 2) ' ')
 
-let str_of_const_ty ty =
-  match ty with
-  | `String -> "String Literal"
-
 let str_of_ty tvars ty =
   let rec str_of_ty indent fixpoint_ids unbound_ids ty =
     match ty with
@@ -188,7 +192,6 @@ let str_of_ty tvars ty =
         newline indent
       )
     | `TRowEmpty -> unbound_ids, "<>"
-    | `TConst c -> unbound_ids, str_of_const_ty c
     | `TRowExtend (label, field_ty, extension_ty) ->
       let unbound_ids, field_ty_str =
         str_of_ty (indent + 1) fixpoint_ids unbound_ids field_ty in 
@@ -231,7 +234,6 @@ let rec kind_of tvars ty =
   | `TRecord _ -> "Nonempty Prototype"
   | `TVariant _ -> "Tagged Object"
   | `TRowEmpty -> "Empty Row"
-  | `TConst c -> str_of_const_ty c
   | `TRowExtend _ -> "Row Extend"
   | `TVar id ->
     begin

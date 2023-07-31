@@ -73,7 +73,7 @@ _qdbp_field_ptr _qdbp_ht_find_opt(_qdbp_hashtable* table, _qdbp_label_t label) {
     }
     _qdbp_assert(index < table->header.capacity);
   }
-  return &(fields[index].field);
+  return fields[index].field.method.code == NULL ? NULL : &(fields[index].field);
 }
 
 static void ht_insert_no_resize(_qdbp_hashtable* table,

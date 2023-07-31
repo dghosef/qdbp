@@ -20,16 +20,6 @@ module Env = struct
   let lookup env name = StringMap.find_opt name env
 end
 
-let bool_type level tvars = 
-  let tvars, var = make_new_unbound_var tvars level in
-  let ty = `TVariant 
-      (`TRowExtend
-         ("True", (`TRecord `TRowEmpty),
-          (`TRowExtend 
-             ("False", (`TRecord `TRowEmpty),
-              (var)))))
-  in
-  tvars, ty
 
 let generalize tvars level ty =
   let rec generalize state level ty =
@@ -77,7 +67,6 @@ let generalize tvars level ty =
       let state, ty = generalize state level ty in
       let state, row = generalize state level row in
       state, `TRowExtend (label, ty, row)
-    | `TConst c -> state, `TConst c
     | `TRowEmpty -> state, `TRowEmpty
   in
   let ((tvars, _), ty) = generalize (tvars, TyVarMap.empty) level ty in
@@ -86,7 +75,6 @@ let generalize tvars level ty =
 let adjust_levels tvars level ty =
   let rec adjust_levels state level ty =
     match ty with
-    | `TConst _ -> state
     | `TRowEmpty -> state
     | `TRowExtend (_, ty, row) ->
       let state = adjust_levels state level ty in
@@ -136,7 +124,6 @@ let splat tvars ty =
   | `TArrow t -> `TArrow t
   | `TRecord t -> `TRecord t
   | `TVariant t -> `TVariant t
-  | `TConst t -> `TConst t
   | `TRowEmpty -> `TRowEmpty
   | `TRowExtend (l, t, r) -> `TRowExtend (l, t, r)
   | `TVar id ->
@@ -152,7 +139,6 @@ let unsplat ty =
   | `TArrow t -> `TArrow t
   | `TRecord t -> `TRecord t
   | `TVariant t -> `TVariant t
-  | `TConst t -> `TConst t
   | `TRowEmpty -> `TRowEmpty
   | `TRowExtend (l, t, r) -> `TRowExtend (l, t, r)
   | `Link (id, _) -> `TVar id
@@ -181,9 +167,6 @@ let unify tvars already_unified ty1 ty2 =
           if ty1 = ty2 then (`Ok s)
           else
             match splat (fst s) ty1, splat (fst s) ty2 with
-            | `TConst ty1 , `TConst ty2 ->
-              if ty1 = ty2 then (`Ok s)
-              else `Error (`ConstTypeMismatch (ty1, ty2), s)
             | `TArrow (param_tys1, ret_ty1), `TArrow (param_tys2, ret_ty2) ->
               if List.length param_tys1 != List.length param_tys2 then
                 `Error (`MethodArity (param_tys1, param_tys2), s)
@@ -262,7 +245,6 @@ let unify tvars already_unified ty1 ty2 =
 let instantiate tvars level ty =
   let rec instantiate state ty =
     match ty with
-    | `TConst _ -> state, ty
     | `TRowEmpty -> state, ty
     | `TRowExtend (label, ty, row) ->
       let state, ty = instantiate state ty in
@@ -350,11 +332,6 @@ let unify_error_msg (err, (tvars, _)) =
     ^ kind_of tvars ty1
     ^ " with a "
     ^ kind_of tvars ty2
-  | `ConstTypeMismatch (ty1, ty2) ->
-    "tried to unify a "
-    ^ str_of_const_ty ty1
-    ^ "with a"
-    ^ str_of_const_ty ty2
   | `MethodArity (param_list1, param_list2) ->
     "expected " ^ (string_of_int (List.length param_list1))
     ^ "params but got " 
@@ -453,7 +430,7 @@ let infer files expr =
       let tvars, already_unified = state in 
       let tvars, tvar = make_new_unbound_var tvars level in
       (tvars, already_unified), tvar, `Abort a
-    | `StringLiteral s -> state, (`TConst `String), `StringLiteral s
+    | `StringLiteral s -> state, (strconst_ty), `StringLiteral s
     | `VariableLookup (name, loc) ->
       let tvars, already_unified = state in
       begin
@@ -481,19 +458,8 @@ let infer files expr =
              (* The arg types don't matter so we can ignore them *)
              let state, _, ast = infer state env level arg in 
              state, ast) state args in
-      let ty_str = String.sub 
-          name
-          (String.rindex name '_')
-          (String.length name - String.rindex name '_')
-      in
       let tvars, already_unified = state in
-      let tvars, ty = match ty_str with
-        | "aaskdfhjkasdhfk" -> bool_type level tvars
-        | _ -> 
-          infer_error
-            ("This is garbage - hasn't been implemented yet")
-            name_loc
-      in
+      let tvars, ty = make_new_unbound_var tvars level in
       (tvars, already_unified), ty, `ExternalCall ((name, name_loc), args, loc)
     | `PrototypeCopy (extension, ((name, nameLoc), meth, fieldLoc), size, loc) ->
       let tvars, already_unified = state in

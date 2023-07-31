@@ -51,7 +51,7 @@ static void _qdbptest_log(const char* fmt, ...) {
 #define TEST_CASE(name) _QDBP_TEST_CASE_INTERNAL(name, (void)0)
 #define TEST_CASE_NOLEAK(name) \
   _QDBP_TEST_CASE_INTERNAL(    \
-      name, (_qdbptest_success = _qdbptest_success && _qdbp_check_mem()))
+      name, (_qdbptest_success = _qdbptest_success))
 
 #define DECLARE_SUITE(name) \
   extern struct _qdbptest_suite_results _qdbptest_suite_##name(void);

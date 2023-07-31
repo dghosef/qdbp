@@ -1,4 +1,9 @@
-
+/*
+STRING TODO:
+- Make the compiler generate char arrays instead of string literals
+- Invoke1 and invoke2 for strings
+- Make the string type have a length field and not be null terminated
+*/
 #ifndef QDBP_RUNTIME_H
 #define QDBP_RUNTIME_H
 #include <assert.h>
