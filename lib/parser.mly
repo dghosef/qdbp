@@ -40,10 +40,12 @@ expr:
 | LBRACKET; e = expr; RBRACKET {AstCreate.make_closure [] e $loc}
 (* tagged object *)
 | TAG; id = UPPER_ID; e = expr; {AstCreate.make_tagged_object (id, $loc(id)) e $loc}
-(* prototype method invoke *)
-| r = expr; id = upper_id; arg1 = expr?; a = prototype_invoke_arg*; PERIOD;
-| LPAREN; r = expr; id = upper_id; arg1 = expr?; a = prototype_invoke_arg*; RPAREN;
-  {AstCreate.make_method_invocation r id arg1 a $loc}
+(* prototype method invoke w/ arg(s) *)
+| r = expr; id = upper_id; arg1 = expr; a = prototype_invoke_arg*; PERIOD;
+  {AstCreate.make_method_invocation r id (Some arg1) a $loc}
+(* prototype method invoke no args *)
+| r = expr; id = upper_id; PERIOD;
+  {AstCreate.make_method_invocation r id None [] $loc}
 (* pattern match of tagged object *)
 | r = expr; m = pattern_match_atom+; PERIOD;
 | LPAREN; r = expr; m = pattern_match_atom+; RPAREN

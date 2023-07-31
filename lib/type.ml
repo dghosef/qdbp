@@ -1,4 +1,3 @@
-(* TODO: Phantom types for str? *)
 module TyVarMap = Map.Make(struct type t = int let compare = compare end)
 module TyVarSet = Set.Make(struct type t = int let compare = compare end)
 module TyVarPairSet = Set.Make(struct type t = (int * int) let compare = compare end)
@@ -43,7 +42,7 @@ let int_proto_type tvars level =
     let tvars, v1 = make_new_unbound_var tvars level in
     let tvars, v2 = make_new_unbound_var tvars level in
     let tvars, v3 = make_new_unbound_var tvars level in
-    let that_ty = `TRecord (
+    let arg0_ty = `TRecord (
       `TRowExtend (
         "isAnInt:this", `TArrow ([v2], `TRecord `TRowEmpty),
         v3
@@ -51,15 +50,15 @@ let int_proto_type tvars level =
     ) in
     tvars,
     `TRowExtend (
-      binop ^ ":this" ^ ":that", 
-      `TArrow ([ v1;  that_ty], v1)
+      binop ^ ":this" ^ ":Arg0", 
+      `TArrow ([ v1;  arg0_ty], v1)
       , row
     ) in
   let add_cmp_binop tvars level binop row =
     let tvars, v1 = make_new_unbound_var tvars level in
     let tvars, v2 = make_new_unbound_var tvars level in
     let tvars, v3 = make_new_unbound_var tvars level in
-    let that_ty = `TRecord (
+    let arg0_ty = `TRecord (
       `TRowExtend (
         "isAnInt:this", `TArrow ([v2], `TRecord `TRowEmpty),
         v3
@@ -67,8 +66,8 @@ let int_proto_type tvars level =
     ) in
     tvars,
     `TRowExtend (
-      binop ^ ":this" ^ ":that", 
-      `TArrow ([ v1;  that_ty], bool_ty)
+      binop ^ ":this" ^ ":Arg0", 
+      `TArrow ([ v1;  arg0_ty], bool_ty)
       , row
     ) in
   let tvars, v1 = make_new_unbound_var tvars level in

@@ -36,11 +36,16 @@ let make_prototype maybe_extension fields loc : ast =
 let make_prototype_invoke_arg name value loc =
   (name, value, loc)
 let make_meth args body loc =
-  (("this", loc) :: args, body, loc)
-let make_method_invocation receiver field_name arg1 args loc : ast =
-  let args = match arg1 with
-    | Some arg -> ("that", arg, loc) :: args
-    | None -> args
+  match args with
+  | (_, arg0_loc) as arg0 :: tl ->
+    (("this", loc) :: ("Arg0", arg0_loc) :: tl,
+     make_declaration arg0 (make_variable_lookup "Arg0" arg0_loc)
+       body arg0_loc, loc)
+  | [] -> (("this", loc) :: args, body, loc)
+let make_method_invocation receiver field_name arg0 args loc : ast =
+  let args = match arg0 with
+    | Some arg -> ("Arg0", arg, loc) :: args
+    | None -> args (* Equivalently, [] since args will be [] *)
   in
   let args = ("this", make_variable_lookup "This" loc, loc) :: args in
   let arg_names = List.map (fun (name, _, _) -> name) args in
