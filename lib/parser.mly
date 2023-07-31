@@ -1,9 +1,3 @@
-// TODO: Change so that arg1 doesn't have to be and cannot be specified by name
-//   Should just be transforming
-//   [arg1_name ...| ...] -> [ARG1 ... | arg1_name := ARG1 ...]
-//    and:
-//   object Method arg1 ... -> object Method ARG1: arg1 ...
-
 %token<string> UPPER_ID LOWER_ID ARG IMPORT STRING INT
 %token PIPE DECLARATION PERIOD TAG QUESTION MONEY ABORT EOF
 %token LPAREN RPAREN LBRACE RBRACE LBRACKET RBRACKET

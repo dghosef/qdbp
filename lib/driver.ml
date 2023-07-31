@@ -97,7 +97,7 @@ let compile args =
               " clang out.c " ^
               !runtime_dir ^ "/lib/*.c" ^
               " -I" ^ !runtime_dir ^
-              " -g" ^
+              " -Og" ^
               " -lgmp" ^
               " -Wall -Wextra" ^
               " -Wno-unused-parameter" ^

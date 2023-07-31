@@ -122,8 +122,6 @@ void _qdbp_free_obj(_qdbp_object_ptr obj) {
 void _qdbp_free_capture_arr(_qdbp_object_arr arr) { _qdbp_free(arr); }
 
 void _qdbp_del_fields(_qdbp_prototype_ptr proto) {
-  _qdbp_field_ptr field;
-  size_t tmp;
   _QDBP_HT_ITER(proto->label_map, field, tmp) {
     _qdbp_del_method(&field->method);
   }

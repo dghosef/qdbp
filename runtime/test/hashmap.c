@@ -44,8 +44,6 @@ TEST_CASE_NOLEAK(random_insert) {
       fld.method.num_captures = label + 3;
       ht = _qdbp_ht_insert(ht, &fld);
 
-      _qdbp_field_ptr fld2;
-      size_t tmp;
       _QDBP_HT_ITER(ht, fld2, tmp) {
         CHECK_INT_CMP(==, fld2->label, _qdbp_ht_find(ht, fld2->label)->label);
       }

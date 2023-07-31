@@ -12,8 +12,8 @@
 #ifdef QDBP_DEBUG
 const bool _QDBP_REFCOUNT = true;
 const bool _QDBP_REUSE_ANALYSIS = true;
-const bool _QDBP_OBJ_FREELIST = true;
-const bool _QDBP_BOX_FREELIST = true;
+const bool _QDBP_OBJ_FREELIST = false;
+const bool _QDBP_BOX_FREELIST = false;
 const bool _QDBP_ASSERTS_ENABLED = true;
 #elif defined(QDBP_RELEASE)
 const bool _QDBP_REFCOUNT = true;
@@ -111,6 +111,7 @@ struct _qdbp_object {
   struct _qdbp_object_metadata metadata;
   union _qdbp_object_data data;
 };
+
 // MUST KEEP IN SYNC WITH namesToInts.ml
 enum _QDBP_ARITH_OP {
   _QDBP_PRINT = 69,
@@ -170,7 +171,9 @@ __attribute__((warn_unused_result)) _qdbp_hashtable* _qdbp_ht_insert(
     _qdbp_hashtable* table, const _qdbp_field_ptr fld);
 size_t _qdbp_ht_size(_qdbp_hashtable* table);
 #define _QDBP_HT_ITER(ht, fld, tmp)                                       \
-  for (tmp = 0; ht && tmp < (ht)->header.size &&                                \
+  size_t tmp;                                                             \
+  _qdbp_field_ptr fld;                                                    \
+  for (tmp = 0; ht && tmp < (ht)->header.size &&                          \
                 (fld = &((ht)[(ht)->header.directory[tmp]].field), true); \
        tmp++)
 // smallint math
@@ -183,7 +186,10 @@ _qdbp_object_ptr _qdbp_smallint_mod(uint64_t a, uint64_t b);
 typedef typeof(_qdbp_smallint_add) _qdbp_smallint_arith_fn;
 // bigint math
 typedef typeof(mpz_add) _qdbp_bigint_arith_fn;
-_qdbp_object_ptr _qdbp_int_binary_op(_qdbp_object_ptr l, _qdbp_object_ptr r, enum _QDBP_ARITH_OP op);
+_qdbp_object_ptr _qdbp_int_binary_op(_qdbp_object_ptr l, _qdbp_object_ptr r,
+                                     enum _QDBP_ARITH_OP op);
+_qdbp_object_ptr _qdbp_int_unary_op(_qdbp_object_ptr obj,
+                                    enum _QDBP_ARITH_OP op);
 // Memory
 #define _QDBP_STR_INTERNAL(x) #x
 #define _QDBP_STR(x) _QDBP_STR_INTERNAL(x)
@@ -234,15 +240,14 @@ void _qdbp_label_add(_qdbp_prototype_ptr proto, _qdbp_field_ptr field,
                      size_t default_capacity);
 _qdbp_field_ptr _qdbp_label_get(_qdbp_prototype_ptr proto, _qdbp_label_t label);
 _qdbp_field_ptr _qdbp_label_get_opt(_qdbp_prototype_ptr proto,
-                                           _qdbp_label_t label);
+                                    _qdbp_label_t label);
 void _qdbp_copy_prototype(_qdbp_prototype_ptr src, _qdbp_prototype_ptr dest);
 // For each label in `new_prototype`, re-malloc the capture array and copy the
 // captures from `old_prototype` to `new_prototype` except for the label
 // `except`
 void _qdbp_make_fresh_captures_except(_qdbp_prototype_ptr new_prototype,
                                       _qdbp_label_t except);
-_qdbp_object_arr _qdbp_copy_captures(_qdbp_object_arr captures,
-                                          size_t size);
+_qdbp_object_arr _qdbp_copy_captures(_qdbp_object_arr captures, size_t size);
 // returns a pointer to the method's capture array and stores its fn pointer in
 // `code_ptr`
 _qdbp_object_arr _qdbp_get_method(_qdbp_object_ptr obj, _qdbp_label_t label,
@@ -261,7 +266,6 @@ _qdbp_object_ptr _qdbp_invoke_1(_qdbp_object_ptr receiver, _qdbp_label_t label,
 _qdbp_object_ptr _qdbp_invoke_2(_qdbp_object_ptr receiver, _qdbp_label_t label,
                                 _qdbp_object_ptr arg0, _qdbp_object_ptr arg1);
 
-
 // ints
 bool _qdbp_is_unboxed_int(_qdbp_object_ptr obj);
 _qdbp_object_ptr _qdbp_make_unboxed_int(uint64_t value);
@@ -269,8 +273,7 @@ uint64_t _qdbp_get_unboxed_int(_qdbp_object_ptr obj);
 bool _qdbp_is_boxed_int(_qdbp_object_ptr obj);
 // strings
 
-_qdbp_object_ptr _qdbp_concat_string(_qdbp_object_ptr a,
-                                            _qdbp_object_ptr b);
+_qdbp_object_ptr _qdbp_concat_string(_qdbp_object_ptr a, _qdbp_object_ptr b);
 _qdbp_object_ptr _qdbp_empty_string();
 // Tags and Variants
 enum _qdbp_object_kind _qdbp_get_kind(_qdbp_object_ptr obj);
