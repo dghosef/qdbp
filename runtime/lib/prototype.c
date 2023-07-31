@@ -25,7 +25,7 @@ _qdbp_field_ptr _qdbp_label_get(_qdbp_prototype_ptr proto,
 }
 
 _qdbp_field_ptr _qdbp_label_get_opt(_qdbp_prototype_ptr proto,
-                                           _qdbp_label_t label) {
+                                    _qdbp_label_t label) {
   return _qdbp_ht_find_opt(proto->label_map, label);
 }
 
@@ -37,8 +37,6 @@ void _qdbp_copy_prototype(_qdbp_prototype_ptr src, _qdbp_prototype_ptr dest) {
 void _qdbp_make_fresh_captures_except(_qdbp_prototype_ptr new_prototype,
                                       _qdbp_label_t except) {
   // Copy all the capture arrays except the new one
-  _qdbp_field_ptr field;
-  size_t tmp;
   _QDBP_HT_ITER(new_prototype->label_map, field, tmp) {
     if (field->label != except) {
       _qdbp_object_arr original = field->method.captures;
@@ -50,8 +48,7 @@ void _qdbp_make_fresh_captures_except(_qdbp_prototype_ptr new_prototype,
   }
 }
 
-_qdbp_object_arr _qdbp_copy_captures(_qdbp_object_arr captures,
-                                          size_t size) {
+_qdbp_object_arr _qdbp_copy_captures(_qdbp_object_arr captures, size_t size) {
   if (size == 0) {
     return NULL;
   } else {
@@ -80,10 +77,9 @@ _qdbp_object_arr _qdbp_get_method(_qdbp_object_ptr obj, _qdbp_label_t label,
 _qdbp_object_arr _qdbp_get_method_opt(_qdbp_object_ptr obj, _qdbp_label_t label,
                                       void **code /*output param*/) {
   _qdbp_prototype_ptr proto;
-  if(_qdbp_is_unboxed_int(obj)) {
+  if (_qdbp_is_unboxed_int(obj)) {
     return NULL;
-  }
-  else if (_qdbp_get_kind(obj) == _QDBP_PROTOTYPE) {
+  } else if (_qdbp_get_kind(obj) == _QDBP_PROTOTYPE) {
     proto = &(obj->data.prototype);
   } else if (_qdbp_get_kind(obj) == _QDBP_BOXED_INT) {
     proto = &(obj->data.boxed_int->prototype);
@@ -227,6 +223,9 @@ _qdbp_object_ptr _qdbp_replace(_qdbp_object_ptr obj, _qdbp_label_t label,
 
 _qdbp_object_ptr _qdbp_invoke_1(_qdbp_object_ptr receiver, _qdbp_label_t label,
                                 _qdbp_object_ptr arg0) {
+  if (_qdbp_is_unboxed_int(receiver) || _qdbp_is_boxed_int(receiver)) {
+    return _qdbp_int_unary_op(receiver, label);
+  }
   void *code;
   _qdbp_object_arr captures = _qdbp_get_method(receiver, label, &code);
   return ((_qdbp_object_ptr(*)(_qdbp_object_arr, _qdbp_object_ptr))code)(

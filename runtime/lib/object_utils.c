@@ -14,6 +14,8 @@ _qdbp_object_ptr _qdbp_make_object(_qdbp_tag_t tag,
 
 _qdbp_object_ptr _qdbp_empty_prototype() { return NULL; }
 
+// todo: instead of special casing true and false, we could
+// special case all variants with no payload
 _qdbp_object_ptr _qdbp_true() { return (_qdbp_object_ptr)(0xF0); }
 
 _qdbp_object_ptr _qdbp_false() { return (_qdbp_object_ptr)(0xE0); }
@@ -21,8 +23,8 @@ _qdbp_object_ptr _qdbp_false() { return (_qdbp_object_ptr)(0xE0); }
 _qdbp_object_ptr _qdbp_string(const char *src) {
   char *dest = (char *)_qdbp_malloc(strlen(src) + 1);
   strcpy(dest, src);
-  _qdbp_object_ptr new_obj =
-      _qdbp_make_object(_QDBP_STRING, (union _qdbp_object_data){.string = dest});
+  _qdbp_object_ptr new_obj = _qdbp_make_object(
+      _QDBP_STRING, (union _qdbp_object_data){.string = dest});
   return new_obj;
 }
 
@@ -49,6 +51,7 @@ void _qdbp_init_field(_qdbp_field_ptr field, _qdbp_label_t label,
           },
   };
 }
+
 bool _qdbp_is_unboxed_int(_qdbp_object_ptr obj) {
   return ((uintptr_t)obj & 1) == 1;
 }
