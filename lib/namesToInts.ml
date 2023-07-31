@@ -16,7 +16,7 @@ let names_to_ints ast =
   done;
   (* MUST keep in sync with int_proto.h and infer.ml *)
   (* Must be less than 1000 *)
-  Hashtbl.add label_map "Val:this" (Int64.of_int 64);
+  Hashtbl.add label_map "isAnInt:this" (Int64.of_int 64);
   Hashtbl.add label_map "Print:this" (Int64.of_int 69);
   Hashtbl.add label_map "+:this:that" (Int64.of_int 84);
   Hashtbl.add label_map "-:this:that" (Int64.of_int 139);
@@ -103,11 +103,7 @@ let names_to_ints ast =
     | `ExternalCall ((name, nameLoc), args, loc) ->
       let args = List.map (names_to_ints varnames) args in
       `ExternalCall ((name, nameLoc), args, loc)
-    | `IntLiteral (i, loc) ->
-      `IntLiteral (i, loc)
     | `IntProto (i, loc) -> `IntProto (i, loc)
-    | `FloatLiteral (f, loc) -> 
-      `FloatLiteral (f, loc)
     | `StringLiteral (s, loc) ->
       `StringLiteral (s, loc)
     | `Abort loc ->

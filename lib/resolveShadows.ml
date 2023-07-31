@@ -51,10 +51,6 @@ let resolve_shadows ast =
     | `ExternalCall ((name, nameLoc), args, loc) ->
       let args = List.map (resolve_shadows varnames) args in
       `ExternalCall ((name, nameLoc), args, loc)
-    | `IntLiteral (i, loc) ->
-      `IntLiteral (i, loc)
-    | `FloatLiteral (f, loc) -> 
-      `FloatLiteral (f, loc)
     | `StringLiteral (s, loc) ->
       `StringLiteral (s, loc)
     | `Abort loc ->

@@ -6,9 +6,9 @@ enum _qdbp_object_kind _qdbp_get_kind(_qdbp_object_ptr obj) {
   _qdbp_assert(!_qdbp_is_unboxed_int(obj));
   _qdbp_assert(obj != _qdbp_true());
   _qdbp_assert(obj != _qdbp_false());
-  _qdbp_assert(obj->metadata.tag != QDBP_VARIANT);
-  if (obj->metadata.tag > QDBP_VARIANT) {
-    return QDBP_VARIANT;
+  _qdbp_assert(obj->metadata.tag != _QDBP_VARIANT);
+  if (obj->metadata.tag > _QDBP_VARIANT) {
+    return _QDBP_VARIANT;
   } else {
     return obj->metadata.tag;
   }
@@ -50,7 +50,7 @@ void _qdbp_decompose_variant(_qdbp_object_ptr obj, _qdbp_tag_t *tag,
     *payload = NULL;
     return;
   }
-  _qdbp_assert_kind(obj, QDBP_VARIANT);
+  _qdbp_assert_kind(obj, _QDBP_VARIANT);
   _qdbp_object_ptr value = obj->data.variant.value;
   *tag = _qdbp_get_tag(obj);
   // return value, tag

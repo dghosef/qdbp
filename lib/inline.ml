@@ -1,5 +1,5 @@
 module StringMap = Map.Make(String)
-module FvSet = FreeVariablesStr.FvSet
+module FvSet = FreeVariablesAndDCE.FvSet
 
 
 let rename_args arg_ids fvs body =
@@ -48,8 +48,6 @@ let rename_args arg_ids fvs body =
       `ExternalCall (name, args, loc)
     | `Abort _ as a -> a
     | `StringLiteral _ as s -> s
-    | `FloatLiteral _ as f -> f
-    | `IntLiteral _ as i -> i
     | `EmptyPrototype _ as e -> e
     | `IntProto _ as e -> e
   in
@@ -116,7 +114,7 @@ let inline depth expr =
               `Declaration(arg_id, arg, e, loc)
             ) args body in
           if depth > 0 then
-            let _, inlined = FreeVariablesStr.free_variables inlined in
+            let _, inlined = FreeVariablesAndDCE.free_variables inlined in
             `Unit, inlined
           else
             `Unit, inlined
@@ -133,7 +131,7 @@ let inline depth expr =
       let env = List.fold_left (fun env (name, _) ->
           StringMap.add name `Unit env) env args in
       let _, body = inline depth env body in
-      let meth_fvs, body = FreeVariablesStr.free_variables body in
+      let meth_fvs, body = FreeVariablesAndDCE.free_variables body in
       let meth_fvs = List.fold_left (
           fun meth_fvs (id, _) -> FvSet.remove id meth_fvs
         ) meth_fvs args in
@@ -166,10 +164,6 @@ let inline depth expr =
       `Proto StringMap.empty, e
     | `IntProto _ as e ->
       `Unit, e
-    | `IntLiteral _ as i ->
-      `Unit, i
-    | `FloatLiteral _ as f -> 
-      `Unit, f
     | `StringLiteral _ as s ->
       `Unit, s
     | `Abort _ as a ->

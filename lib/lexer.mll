@@ -28,14 +28,8 @@ rule token = parse
 | spaces { token lexbuf }
 | "@" (filename as name) { IMPORT(name) }
 | string_delimiter as delimiter '"' { STRING(get_string delimiter lexbuf) }
-| '-'? digit+ as s { 
-  try (INT (
-    let i = int_of_string (s) in
-    if i > 4611686018427387903 || i < -4611686018427387904
-      then (raise (Failure "Integer out of range"))
-      else i
-    )) with 
-    | Failure _ -> raise (LexerError (("Integer out of range: " ^ s), lexbuf.lex_curr_p))
+| '-'? ("0x"|"0X"|"0b"|"0B")? digit+ as s { 
+  INT s
 }
 | ';' [ ^'\n']* { token lexbuf }
 | "ABORT" { ABORT }

@@ -55,10 +55,6 @@ let rec free_variables ast =
           FvSet.union fvs arg_fvs, arg
       ) FvSet.empty args in
     fvs, `ExternalCall ((name, nameLoc), args, loc, fvs)
-  | `IntLiteral (i, loc) ->
-    FvSet.empty, `IntLiteral (i, loc)
-  | `FloatLiteral (f, loc) -> 
-    FvSet.empty, `FloatLiteral (f, loc)
   | `IntProto _ as i ->
     FvSet.empty, i
   | `StringLiteral (s, loc) ->

@@ -10,7 +10,6 @@ is_string := {that|
   {
     Val[that]
     Print[
-      _ := $_qdbp_print_string_int(this Val.)
       {}
     ]
     ++[that|

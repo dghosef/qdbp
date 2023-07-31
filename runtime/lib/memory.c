@@ -2,41 +2,6 @@
 #include <string.h>
 
 #include "runtime.h"
-#include "uthash.h"
-
-struct malloc_entry {
-  void* ptr;
-  const char* msg;
-  UT_hash_handle hh;
-};
-static struct malloc_entry* active_mallocs = NULL;
-
-static void add_to_malloc_list(void* ptr, const char* msg) {
-  struct malloc_entry* m;
-  HASH_FIND_PTR(active_mallocs, &ptr, m);
-  if (m == NULL) {
-    m = malloc(sizeof(struct malloc_entry));
-    m->msg = msg;
-    m->ptr = ptr;
-    HASH_ADD_PTR(active_mallocs, ptr, m);
-  } else {
-    printf("Internal error - Double malloc: %s\n", msg);
-    assert(false);
-  }
-}
-
-static void remove_from_malloc_list(void* ptr) {
-  struct malloc_entry* m;
-  HASH_FIND_PTR(active_mallocs, &ptr, m);
-  if (m) {
-    HASH_DEL(active_mallocs, m);
-    free(m);
-  } else {
-    printf("Freeing unallocated memory\n");
-    assert(false);
-  }
-}
-
 #define MK_FREELIST(type, name)                              \
   struct _qdbp_##name##_t {                                  \
     type objects[_QDBP_FREELIST_SIZE];                       \
@@ -66,20 +31,13 @@ static void remove_from_malloc_list(void* ptr) {
 MK_FREELIST(_qdbp_object_ptr, obj_freelist)
 MK_FREELIST(struct _qdbp_boxed_int*, box_freelist)
 
-void* _qdbp_malloc_internal(size_t size, const char* msg) {
+void* _qdbp_malloc(size_t size) {
   void* ptr = malloc(size);
-  if (_QDBP_MEMORY_SANITIZE) {
-    add_to_malloc_list(ptr, msg);
-  }
-  assert(ptr);
   return ptr;
 }
 
 void _qdbp_free(void* ptr) {
   _qdbp_assert(!_qdbp_is_unboxed_int((_qdbp_object_ptr)ptr));
-  if (_QDBP_MEMORY_SANITIZE) {
-    remove_from_malloc_list(ptr);
-  }
   free(ptr);
 }
 
@@ -87,28 +45,14 @@ void _qdbp_memcpy(void* dest, const void* src, size_t size) {
   memcpy(dest, src, size);
 }
 
-bool _qdbp_check_mem() {
+void _qdbp_cleanup() {
   // Make sure that everything that has been malloc'd has been freed
-  if (_QDBP_MEMORY_SANITIZE) {
-    if (_QDBP_OBJ_FREELIST) {
-      _qdbp_obj_freelist_free_all();
-    }
-    if (_QDBP_BOX_FREELIST) {
-      _qdbp_box_freelist_free_all();
-    }
-    struct malloc_entry* cur;
-    struct malloc_entry* tmp;
-    bool failed = false;
-    HASH_ITER(hh, active_mallocs, cur, tmp) {
-      failed = true;
-      fprintf(stderr, "Memory leak at %p: %s\n", cur->ptr, cur->msg);
-      HASH_DEL(active_mallocs, cur);
-      free(cur);
-    }
-    _qdbp_assert(active_mallocs == NULL);
-    return !failed;
+  if (_QDBP_OBJ_FREELIST) {
+    _qdbp_obj_freelist_free_all();
   }
-  return true;
+  if (_QDBP_BOX_FREELIST) {
+    _qdbp_box_freelist_free_all();
+  }
 }
 
 void _qdbp_init() {
@@ -122,12 +66,30 @@ void _qdbp_init() {
   }
 }
 
-struct _qdbp_boxed_int* _qdbp_malloc_boxed_int() {
+_qdbp_object_ptr _qdbp_make_boxed_int() {
+  struct _qdbp_boxed_int* i;
   if (_QDBP_BOX_FREELIST && box_freelist.idx > 0) {
-    return _qdbp_pop_box_freelist();
+    i = _qdbp_pop_box_freelist();
   } else {
-    return _qdbp_malloc(sizeof(struct _qdbp_boxed_int));
+    i = _qdbp_malloc(sizeof(struct _qdbp_boxed_int));
   }
+  mpz_init(i->value);
+  i->prototype.label_map = NULL;
+  return _qdbp_make_object(_QDBP_BOXED_INT,
+                           (union _qdbp_object_data){.boxed_int = i});
+}
+
+_qdbp_object_ptr _qdbp_make_boxed_int_from_cstr(const char* str) {
+  struct _qdbp_boxed_int* i;
+  if (_QDBP_BOX_FREELIST && box_freelist.idx > 0) {
+    i = _qdbp_pop_box_freelist();
+  } else {
+    i = _qdbp_malloc(sizeof(struct _qdbp_boxed_int));
+  }
+  i->prototype.label_map = NULL;
+  mpz_init_set_str(i->value, str, 0);
+  return _qdbp_make_object(_QDBP_BOXED_INT,
+                           (union _qdbp_object_data){.boxed_int = i});
 }
 
 _qdbp_object_ptr _qdbp_malloc_obj() {
@@ -191,22 +153,18 @@ void _qdbp_del_method(_qdbp_method_ptr method) {
 void _qdbp_del_obj(_qdbp_object_ptr obj) {
   _qdbp_assert(!_qdbp_is_unboxed_int(obj));
   switch (_qdbp_get_kind(obj)) {
-    case QDBP_INT:
-      _qdbp_free(obj->data.i);
+    case _QDBP_BOXED_INT:
+      _qdbp_del_prototype(&(obj->data.boxed_int->prototype));
+      mpz_clear(obj->data.boxed_int->value);
+      _qdbp_free(obj->data.boxed_int);
       break;
-    case QDBP_FLOAT:
+    case _QDBP_STRING:
+      _qdbp_free(obj->data.string);
       break;
-    case QDBP_BOXED_INT:
-      _qdbp_del_prototype(&(obj->data._qdbp_boxed_int->other_labels));
-      _qdbp_free(obj->data._qdbp_boxed_int);
-      break;
-    case QDBP_STRING:
-      _qdbp_free(obj->data.s);
-      break;
-    case QDBP_PROTOTYPE:
+    case _QDBP_PROTOTYPE:
       _qdbp_del_prototype(&(obj->data.prototype));
       break;
-    case QDBP_VARIANT:
+    case _QDBP_VARIANT:
       _qdbp_del_variant(&(obj->data.variant));
       break;
   }

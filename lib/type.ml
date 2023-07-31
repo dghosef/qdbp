@@ -1,3 +1,4 @@
+(* TODO: Phantom types for str? *)
 module TyVarMap = Map.Make(struct type t = int let compare = compare end)
 module TyVarSet = Set.Make(struct type t = int let compare = compare end)
 module TyVarPairSet = Set.Make(struct type t = (int * int) let compare = compare end)
@@ -44,7 +45,7 @@ let int_proto_type tvars level =
     let tvars, v3 = make_new_unbound_var tvars level in
     let that_ty = `TRecord (
       `TRowExtend (
-        "Val:this", `TArrow ([v2], `TConst `Int),
+        "isAnInt:this", `TArrow ([v2], `TRecord `TRowEmpty),
         v3
       )
     ) in
@@ -60,7 +61,7 @@ let int_proto_type tvars level =
     let tvars, v3 = make_new_unbound_var tvars level in
     let that_ty = `TRecord (
       `TRowExtend (
-        "Val:this", `TArrow ([v2], `TConst `Int),
+        "isAnInt:this", `TArrow ([v2], `TRecord `TRowEmpty),
         v3
       )
     ) in
@@ -81,8 +82,8 @@ let int_proto_type tvars level =
   let tvars, v1 = make_new_unbound_var tvars level in
   let row = 
     `TRowExtend (
-      "Val:this", `TArrow ([v1],
-                           (`TConst `Int)),
+      "isAnInt:this", `TArrow ([v1],
+                           (`TRecord `TRowEmpty)),
       row)
   in
   let tvars, row = add_arith_binop tvars level "+" row in
@@ -157,8 +158,6 @@ let newline indent =
 
 let str_of_const_ty ty =
   match ty with
-  | `Int -> "Integer Literal"
-  | `Float -> "Float Literal"
   | `String -> "String Literal"
 
 let str_of_ty tvars ty =

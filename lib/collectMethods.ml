@@ -12,8 +12,6 @@ let collect_methods ast =
     | `IntProto i -> methods, `IntProto i
     | `EmptyPrototype e -> methods, `EmptyPrototype e
     | `StringLiteral s -> methods, `StringLiteral s
-    | `FloatLiteral f -> methods, `FloatLiteral f
-    | `IntLiteral i -> methods, `IntLiteral i
     | `Declaration (lhs, rhs, body, loc) ->
       let methods, rhs = collect_methods methods rhs in 
       let methods, body = collect_methods methods body in

@@ -69,13 +69,10 @@ let compile args =
       full_input_file in
   let (imports, files) = ResolveImports.build_import_map files ast in
   let ast = ResolveImports.resolve_imports imports ast in
-  let _ = Infer2.infer files ast in
   let _, _, ast = Infer.infer files ast in
   let ast = Inline.inline 3 ast in
   let ast = Inline.inline 0 ast in
   let loc = Infer.loc_of ast in
-
-
   let ast = NamesToInts.names_to_ints ast in
   let fvs, ast = FreeVariables.free_variables ast in
   let ast = Refcount.refcount Refcount.FvSet.empty Refcount.FvSet.empty ast in
@@ -101,6 +98,7 @@ let compile args =
               !runtime_dir ^ "/lib/*.c" ^
               " -I" ^ !runtime_dir ^
               " -g" ^
+              " -lgmp" ^
               " -Wall -Wextra" ^
               " -Wno-unused-parameter" ^
               " -Wno-unused-function" ^

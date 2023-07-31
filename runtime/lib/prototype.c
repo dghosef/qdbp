@@ -21,9 +21,12 @@ void _qdbp_label_add(_qdbp_prototype_ptr proto, _qdbp_field_ptr field,
 
 _qdbp_field_ptr _qdbp_label_get(_qdbp_prototype_ptr proto,
                                 _qdbp_label_t label) {
-  _qdbp_assert(proto);
-  _qdbp_assert(proto->label_map);
   return _qdbp_ht_find(proto->label_map, label);
+}
+
+_qdbp_field_ptr _qdbp_label_get_opt(_qdbp_prototype_ptr proto,
+                                           _qdbp_label_t label) {
+  return _qdbp_ht_find_opt(proto->label_map, label);
 }
 
 void _qdbp_copy_prototype(_qdbp_prototype_ptr src, _qdbp_prototype_ptr dest) {
@@ -47,7 +50,7 @@ void _qdbp_make_fresh_captures_except(_qdbp_prototype_ptr new_prototype,
   }
 }
 
-_qdbp_object_arr _qdbp_duplicate_captures(_qdbp_object_arr captures,
+_qdbp_object_arr _qdbp_copy_captures(_qdbp_object_arr captures,
                                           size_t size) {
   if (size == 0) {
     return NULL;
@@ -60,9 +63,39 @@ _qdbp_object_arr _qdbp_duplicate_captures(_qdbp_object_arr captures,
 
 _qdbp_object_arr _qdbp_get_method(_qdbp_object_ptr obj, _qdbp_label_t label,
                                   void **code /*output param*/) {
-  _qdbp_assert_kind(obj, QDBP_PROTOTYPE);
-  struct _qdbp_method m =
-      _qdbp_label_get(&(obj->data.prototype), label)->method;
+  _qdbp_prototype_ptr proto;
+  if (_qdbp_get_kind(obj) == _QDBP_PROTOTYPE) {
+    proto = &(obj->data.prototype);
+  } else {
+    _qdbp_assert_kind(obj, _QDBP_BOXED_INT);
+    proto = &(obj->data.boxed_int->prototype);
+  }
+  struct _qdbp_method m = _qdbp_label_get(proto, label)->method;
+  _qdbp_dup_method_captures(&m);
+  *code = m.code;
+  _qdbp_object_arr ret = m.captures;
+  return ret;
+}
+
+_qdbp_object_arr _qdbp_get_method_opt(_qdbp_object_ptr obj, _qdbp_label_t label,
+                                      void **code /*output param*/) {
+  _qdbp_prototype_ptr proto;
+  if(_qdbp_is_unboxed_int(obj)) {
+    return NULL;
+  }
+  else if (_qdbp_get_kind(obj) == _QDBP_PROTOTYPE) {
+    proto = &(obj->data.prototype);
+  } else if (_qdbp_get_kind(obj) == _QDBP_BOXED_INT) {
+    proto = &(obj->data.boxed_int->prototype);
+  } else {
+    _qdbp_assert(false);
+    __builtin_unreachable();
+  }
+  _qdbp_field_ptr field = _qdbp_label_get_opt(proto, label);
+  if (!field) {
+    return NULL;
+  }
+  struct _qdbp_method m = field->method;
   _qdbp_dup_method_captures(&m);
   *code = m.code;
   _qdbp_object_arr ret = m.captures;
@@ -81,41 +114,53 @@ static struct _qdbp_prototype prototype_copy_and_extend(
   return new_prototype;
 }
 
+static _qdbp_object_ptr copy_obj_and_update_proto(
+    _qdbp_object_ptr obj, struct _qdbp_prototype new_prototype) {
+  _qdbp_object_ptr new_obj;
+  if (_qdbp_get_kind(obj) == _QDBP_PROTOTYPE) {
+    new_obj = _qdbp_make_object(
+        _QDBP_PROTOTYPE, (union _qdbp_object_data){.prototype = new_prototype});
+  } else {
+    new_obj = _qdbp_make_boxed_int();
+    new_obj->data.boxed_int->prototype = new_prototype;
+    mpz_set(new_obj->data.boxed_int->value, obj->data.boxed_int->value);
+  }
+  return new_obj;
+}
+
 _qdbp_object_ptr _qdbp_extend(_qdbp_object_ptr obj, _qdbp_label_t label,
                               void *code, _qdbp_object_arr captures,
                               size_t num_captures, size_t default_capacity) {
   if (!obj) {
     // Special case: `obj` is the empty prototype
     obj = _qdbp_make_object(
-        QDBP_PROTOTYPE,
+        _QDBP_PROTOTYPE,
         (union _qdbp_object_data){
             .prototype = {.label_map = _qdbp_ht_new(default_capacity)}});
     // Fallthrough to after special case handling
-  } else if (_qdbp_is_unboxed_int(obj)) {
-    // Special case: `obj` is an unboxed int
-    return _qdbp_box_unboxed_int_and_extend(obj, label, code, captures,
-                                            num_captures);
-  } else if (_qdbp_is_boxed_int(obj)) {
-    // Special case: `obj` is a boxed int
-    return _qdbp_boxed_int_extend(obj, label, code, captures, num_captures);
   }
   struct _qdbp_field new_field = {
       .label = label,
-      .method = {.captures = _qdbp_duplicate_captures(captures, num_captures),
+      .method = {.captures = _qdbp_copy_captures(captures, num_captures),
                  .num_captures = num_captures,
                  .code = code}};
-  _qdbp_assert_kind(obj, QDBP_PROTOTYPE);
+  _qdbp_prototype_ptr original_prototype;
+  if (_qdbp_get_kind(obj) == _QDBP_PROTOTYPE) {
+    original_prototype = &(obj->data.prototype);
+  } else {
+    _qdbp_assert_kind(obj, _QDBP_BOXED_INT);
+    original_prototype = &(obj->data.boxed_int->prototype);
+  }
   if (!_QDBP_REUSE_ANALYSIS || !_qdbp_is_unique(obj)) {
-    _qdbp_prototype_ptr prototype = &(obj->data.prototype);
+    _qdbp_prototype_ptr prototype = original_prototype;
     struct _qdbp_prototype new_prototype = prototype_copy_and_extend(
         prototype, &new_field, label, default_capacity);
-    _qdbp_object_ptr new_obj = _qdbp_make_object(
-        QDBP_PROTOTYPE, (union _qdbp_object_data){.prototype = new_prototype});
+    _qdbp_object_ptr new_obj = copy_obj_and_update_proto(obj, new_prototype);
     _qdbp_dup_prototype_captures(prototype);
     _qdbp_drop(obj, 1);
     return new_obj;
   } else {
-    _qdbp_label_add(&(obj->data.prototype), &new_field, default_capacity);
+    _qdbp_label_add(original_prototype, &new_field, default_capacity);
     return obj;
   }
 }
@@ -143,47 +188,34 @@ _qdbp_object_ptr _qdbp_replace(_qdbp_object_ptr obj, _qdbp_label_t label,
   if (!obj) {
     // Special case: `obj` is the empty prototype
     obj = _qdbp_make_object(
-        QDBP_PROTOTYPE,
+        _QDBP_PROTOTYPE,
         (union _qdbp_object_data){.prototype = {.label_map = NULL}});
     // Fallthrough to after special case handling
-  } else if (_qdbp_is_unboxed_int(obj)) {
-    // Special case: `obj` is an unboxed int
-    obj = _qdbp_int_prototype(_qdbp_get_unboxed_int(obj));
-    _qdbp_assert_kind(obj, QDBP_PROTOTYPE);
-    // Fallthrough to after special case handling
-  } else if (_qdbp_is_boxed_int(obj) && label < MAX_OP) {
-    // Special case: `obj` is a boxed int and we're replacing an builtin math
-    // method
-    _qdbp_bigint_t i = _qdbp_get_boxed_int(obj);
-    _qdbp_drop(obj, 1);
-    obj = _qdbp_int_prototype(i);
-    _qdbp_assert_kind(obj, QDBP_PROTOTYPE);
-    // Fallthrough to after special case handling
-  } else if (_qdbp_is_boxed_int(obj) && label >= MAX_OP) {
-    // Special case: `obj` is a boxed int and we're replacing a user-defined
-    // method
-    return _qdbp_boxed_int_replace(obj, label, code, captures, num_captures);
   }
 
-  _qdbp_assert_kind(obj, QDBP_PROTOTYPE);
   struct _qdbp_field new_field = {
       .label = label,
-      .method = {.captures = _qdbp_duplicate_captures(captures, num_captures),
+      .method = {.captures = _qdbp_copy_captures(captures, num_captures),
                  .num_captures = num_captures,
                  .code = code}};
+  _qdbp_prototype_ptr original_prototype;
+  if (_qdbp_get_kind(obj) == _QDBP_PROTOTYPE) {
+    original_prototype = &(obj->data.prototype);
+  } else {
+    _qdbp_assert_kind(obj, _QDBP_BOXED_INT);
+    original_prototype = &(obj->data.boxed_int->prototype);
+  }
   if (!_QDBP_REUSE_ANALYSIS || !_qdbp_is_unique(obj)) {
     struct _qdbp_prototype new_prototype =
-        prototype_copy_and_replace(&(obj->data.prototype), &new_field, label);
-    _qdbp_dup_prototype_captures_except(&(obj->data.prototype), label);
+        prototype_copy_and_replace(original_prototype, &new_field, label);
+    _qdbp_dup_prototype_captures_except(original_prototype, label);
 
-    _qdbp_object_ptr new_obj = _qdbp_make_object(
-        QDBP_PROTOTYPE, (union _qdbp_object_data){.prototype = new_prototype});
-
+    _qdbp_object_ptr new_obj = copy_obj_and_update_proto(obj, new_prototype);
     _qdbp_drop(obj, 1);
     return new_obj;
   } else {
-    // find the index to replace
-    _qdbp_field_ptr field = _qdbp_label_get(&(obj->data.prototype), label);
+    // find the field to replace
+    _qdbp_field_ptr field = _qdbp_label_get(original_prototype, label);
     _qdbp_assert(field->label == label);
     // reuse the field
     _qdbp_del_method(&(field->method));
@@ -195,78 +227,19 @@ _qdbp_object_ptr _qdbp_replace(_qdbp_object_ptr obj, _qdbp_label_t label,
 
 _qdbp_object_ptr _qdbp_invoke_1(_qdbp_object_ptr receiver, _qdbp_label_t label,
                                 _qdbp_object_ptr arg0) {
-  if (_qdbp_is_unboxed_int(arg0)) {
-    return _qdbp_unboxed_int_unary_op(arg0, label);
-  } else if (_qdbp_is_boxed_int(arg0)) {
-    if (label < ADD) {
-      // Built-in math method
-      return _qdbp_boxed_int_unary_op(arg0, label);
-    } else {
-      // User-defined method
-      _qdbp_field_ptr field =
-          _qdbp_label_get(&(arg0->data._qdbp_boxed_int->other_labels), label);
-      _qdbp_dup_method_captures(&(field->method));
-      return ((_qdbp_object_ptr(*)(_qdbp_object_arr,
-                                   _qdbp_object_ptr))field->method.code)(
-          field->method.captures, arg0);
-    }
-  } else {
-    void *code;
-    _qdbp_object_arr captures = _qdbp_get_method(receiver, label, &code);
-    return ((_qdbp_object_ptr(*)(_qdbp_object_arr, _qdbp_object_ptr))code)(
-        captures, arg0);
-  }
+  void *code;
+  _qdbp_object_arr captures = _qdbp_get_method(receiver, label, &code);
+  return ((_qdbp_object_ptr(*)(_qdbp_object_arr, _qdbp_object_ptr))code)(
+      captures, arg0);
 }
 
 _qdbp_object_ptr _qdbp_invoke_2(_qdbp_object_ptr receiver, _qdbp_label_t label,
                                 _qdbp_object_ptr arg0, _qdbp_object_ptr arg1) {
-  // arg0: unboxed int, arg1: unboxed int
-  if (_qdbp_is_unboxed_int(arg0) && _qdbp_is_unboxed_int(arg1)) {
-    return _qdbp_unboxed_int_binary_op(_qdbp_get_unboxed_int(arg0),
-                                       _qdbp_get_unboxed_int(arg1), label);
-  }
-  // arg0: unboxed int, arg1: boxed int
-  else if (_qdbp_is_unboxed_int(arg0) && _qdbp_is_boxed_int(arg1)) {
-    _qdbp_object_ptr result = _qdbp_unboxed_int_binary_op(
-        _qdbp_get_unboxed_int(arg0), _qdbp_get_boxed_int(arg1), label);
-    _qdbp_drop(arg1, 1);
-    return result;
-  }
-  // arg0: unboxed int, arg1: regular prototype
-  else if (_qdbp_is_unboxed_int(arg0) &&
-           _qdbp_get_kind(arg1) == QDBP_PROTOTYPE) {
-    uint64_t a = _qdbp_get_unboxed_int(arg0);
-    arg1 = _qdbp_invoke_1(arg1, VAL, arg1);
-    _qdbp_assert(_qdbp_get_kind(arg1) == QDBP_INT);
-    _qdbp_bigint_t b = *arg1->data.i;
-    _qdbp_drop(arg1, 1);
-    return _qdbp_unboxed_int_binary_op(a, b, label);
-  }
-  // arg0: boxed int, arg1: unboxed int
-  // arg0: boxed int, arg1: boxed int
-  // arg0: boxed int, arg1: regular prototype
-  else if (_qdbp_is_boxed_int(arg0)) {
-    if (label < MAX_OP) {
-      // built-in math method
-      return _qdbp_boxed_int_binary_op(arg0, arg1, label);
-    } else {
-      _qdbp_field_ptr field =
-          _qdbp_label_get(&arg0->data._qdbp_boxed_int->other_labels, label);
-      _qdbp_object_ptr (*code)(_qdbp_object_arr, _qdbp_object_ptr,
-                               _qdbp_object_ptr) =
-          ((_qdbp_object_ptr(*)(_qdbp_object_arr, _qdbp_object_ptr,
-                                _qdbp_object_ptr))field->method.code);
-      _qdbp_object_arr captures = field->method.captures;
-      return code(captures, arg0, arg1);
-    }
-  }
-  // arg0: regular prototype, arg1: unboxed int
-  // arg0: regular prototype, arg1: boxed int
-  // arg0: regular prototype, arg1: regular prototype
-  else {
-    _qdbp_assert(_qdbp_get_kind(arg0) == QDBP_PROTOTYPE);
-    void *code;
-    _qdbp_object_arr captures = _qdbp_get_method(receiver, label, &code);
+  void *code;
+  _qdbp_object_arr captures = _qdbp_get_method_opt(receiver, label, &code);
+  if (!captures) {
+    return _qdbp_int_binary_op(arg0, arg1, label);
+  } else {
     return ((_qdbp_object_ptr(*)(_qdbp_object_arr, _qdbp_object_ptr,
                                  _qdbp_object_ptr))code)(captures, arg0, arg1);
   }

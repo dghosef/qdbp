@@ -77,13 +77,35 @@ let rec expr_to_c level expr =
   | `Dup (v, e, cnt) ->
     c_call "_QDBP_DUP" [(varname v); string_of_int cnt; (expr_to_c (level + 1) e);]
   | `EmptyPrototype _ -> "_qdbp_empty_prototype()"
-  | `IntProto (i, _) -> c_call "_qdbp_make_unboxed_int" [string_of_int i]
+  | `IntProto (i, _) -> 
+    begin
+      (* Remove leading 0's from i *)
+      (* Keep in mind the fact there might be a - sign in the beginning *)
+      let rec remove_leading_zeros s =
+        if String.starts_with ~prefix:"-" s then
+          "-" ^ (remove_leading_zeros (String.sub s 1 ((String.length s) - 1)))
+        else if String.starts_with ~prefix:"0x" s || String.starts_with ~prefix:"Ox" s then
+          "0x" ^ (remove_leading_zeros (String.sub s 1 ((String.length s) - 1)))
+        else if String.starts_with ~prefix:"0b" s || String.starts_with ~prefix:"0B" s then
+          "0b" ^ (remove_leading_zeros (String.sub s 1 ((String.length s) - 1)))
+        else if String.starts_with ~prefix:"0" s then
+          remove_leading_zeros (String.sub s 1 ((String.length s) - 1))
+        else
+          s
+      in
+      let i = remove_leading_zeros i in
+      match int_of_string_opt i with
+      |Some intval ->
+        if intval > 4611686018427387903 || intval  < -4611686018427387904 then
+          c_call "_qdbp_make_boxed_int_from_cstr" ["\"" ^ i ^ "\""]
+        else
+          c_call "_qdbp_make_unboxed_int" [i]
+      |None ->
+        c_call "_qdbp_make_boxed_int_from_cstr" ["\"" ^ i ^ "\""]
+    end
   | `ExternalCall (fn, args, _, _) ->
     c_call (fst fn) (List.map (expr_to_c (level + 1)) args)
 
-  | `FloatLiteral (f, _) -> c_call "_qdbp_float" [string_of_float f]
-  | `IntLiteral (i, _) -> c_call "_qdbp_int" [string_of_int i]
-  (* FIXME: *)
   | `StringLiteral (s, _) -> c_call "_qdbp_string" [quoted s]
 
   | `MethodInvocation (receiver, label, args, _, _) ->
@@ -177,7 +199,6 @@ let codegen_c methods main_method_id =
   {|
 #define QDBP_DEBUG
 #include "runtime.h"
-#include "basic_fns.h"
 |} ^
   invoke_fns methods ^ "\n" ^
   fn_declarations methods ^ "\n" ^
@@ -186,6 +207,6 @@ let codegen_c methods main_method_id =
   int main() {
     _qdbp_init();
     _qdbp_object_ptr result = " ^ main_method ^ "(NULL);
-    _qdbp_drop(result, 1); _qdbp_check_mem(); return 0;
+    _qdbp_drop(result, 1); _qdbp_cleanup(); return 0;
   }
   "

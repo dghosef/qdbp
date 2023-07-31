@@ -17,10 +17,6 @@ let rec let_bound_variables ast =
     VarSet.empty, `EmptyPrototype e
   | `StringLiteral s ->
     VarSet.empty, `StringLiteral s
-  | `IntLiteral i ->
-    VarSet.empty, `IntLiteral i
-  | `FloatLiteral f ->
-    VarSet.empty, `FloatLiteral f
   | `MethodInvocation (receiver, label, args, loc) ->
     let bvs, receiver = let_bound_variables receiver in
     let bvs', args = List.fold_left_map (

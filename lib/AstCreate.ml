@@ -87,13 +87,12 @@ let make_import filename (loc: Lexing.position * Lexing.position) : ast =
     with
       Unix.Unix_error (Unix.ENOENT, _, _) ->
       Error.internal_error ("File not found: " ^ filename)
-let make_literal literal_template_filename literal_value loc =
-  let import = make_import literal_template_filename loc in
-  make_method_invocation import ("!", loc) (Some literal_value) [] loc
 let make_int_literal i loc : ast = `IntProto (i, loc)
 let make_float_literal _ _ : ast =
-  Error.internal_error "Float literals not implemented"
-let make_string_literal s loc : ast = make_literal "string" (`StringLiteral (s, loc)) loc
+  Error.internal_error "Floats not implemented yet"
+let make_string_literal _ _ : ast = 
+  Error.internal_error "Strings not implemented yet"
+
 let make_external_call fn_name args loc : ast = 
   `ExternalCall (fn_name, args, loc)
 let make_abort loc : ast = `Abort loc

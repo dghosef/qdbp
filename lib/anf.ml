@@ -29,10 +29,6 @@ let rec anf e k  =
     k e
   | `IntProto _ as i ->
     k i
-  | `FloatLiteral _ as f ->
-    k f
-  | `IntLiteral _ as i ->
-    k i
   | `StringLiteral _ as s ->
     k s
   | `VariableLookup (name, loc, _)  ->

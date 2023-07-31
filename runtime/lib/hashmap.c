@@ -1,5 +1,3 @@
-#ifndef HASHTABLE_C
-#define HASHTABLE_C
 #include <string.h>
 
 #include "runtime.h"
@@ -24,11 +22,16 @@ _qdbp_hashtable* _qdbp_ht_new(size_t capacity) {
 }
 
 void _qdbp_ht_del(_qdbp_hashtable* table) {
-  _qdbp_free(table->header.directory);
-  _qdbp_free(table);
+  if(table) {
+    _qdbp_free(table->header.directory);
+    _qdbp_free(table);
+  }
 }
 
 _qdbp_hashtable* _qdbp_ht_duplicate(_qdbp_hashtable* table) {
+  if(!table) {
+    return NULL;
+  }
   _qdbp_hashtable* new_table =
       _qdbp_malloc(sizeof(_qdbp_hashtable) +
                    (sizeof(_qdbp_hashtable) * table->header.capacity));
@@ -43,6 +46,7 @@ _qdbp_hashtable* _qdbp_ht_duplicate(_qdbp_hashtable* table) {
 }
 
 _qdbp_field_ptr _qdbp_ht_find(_qdbp_hashtable* table, _qdbp_label_t label) {
+  _qdbp_assert(table);
   size_t index = fast_mod(label, table->header.capacity);
   _qdbp_assert(index <= table->header.capacity);
   _qdbp_hashtable* fields = table + 1;
@@ -54,8 +58,27 @@ _qdbp_field_ptr _qdbp_ht_find(_qdbp_hashtable* table, _qdbp_label_t label) {
   return &(fields[index].field);
 }
 
+_qdbp_field_ptr _qdbp_ht_find_opt(_qdbp_hashtable* table, _qdbp_label_t label) {
+  if(!table) {
+    return NULL;
+  }
+  size_t start_index = fast_mod(label, table->header.capacity);
+  size_t index = start_index;
+  _qdbp_assert(index <= table->header.capacity);
+  _qdbp_hashtable* fields = table + 1;
+  while (fields[index].field.label != label) {
+    index = fast_mod(index + 1, table->header.capacity);
+    if(fields[index].field.method.code == NULL || index == start_index) {
+      return NULL;
+    }
+    _qdbp_assert(index < table->header.capacity);
+  }
+  return &(fields[index].field);
+}
+
 static void ht_insert_no_resize(_qdbp_hashtable* table,
                                 const _qdbp_field_ptr fld) {
+  _qdbp_assert(table);
   size_t index = fast_mod(fld->label, table->header.capacity);
   _qdbp_hashtable* fields = table + 1;
   _qdbp_assert(index <= table->header.capacity);
@@ -70,6 +93,9 @@ static void ht_insert_no_resize(_qdbp_hashtable* table,
 
 _qdbp_hashtable* _qdbp_ht_insert(_qdbp_hashtable* table,
                                  const _qdbp_field_ptr fld) {
+  if(!table) {
+    table = _qdbp_ht_new(_QDBP_HT_DEFAULT_CAPACITY);
+  }
   _qdbp_assert(fld->method.code != NULL);
   // resize the ht
   if (table->header.size * _QDBP_LOAD_FACTOR_NUM >=
@@ -86,7 +112,8 @@ _qdbp_hashtable* _qdbp_ht_insert(_qdbp_hashtable* table,
 }
 
 size_t _qdbp_ht_size(_qdbp_hashtable* table) {
-  _qdbp_assert(table);
+  if(!table) {
+    return 0;
+  }
   return table->header.size;
 }
-#endif

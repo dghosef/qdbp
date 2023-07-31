@@ -28,10 +28,6 @@ let build_import_map files ast =
       build_import_map already_seen imports body
     | `VariableLookup _ ->
       state
-    | `IntLiteral _ ->
-      state
-    | `FloatLiteral _ ->
-      state
     | `StringLiteral _ ->
       state
     | `IntProto _ ->
@@ -92,10 +88,6 @@ let resolve_imports imports ast =
     | `ExternalCall ((name, nameLoc), args, loc) ->
       let args = List.map (resolve_imports) args in
       `ExternalCall ((name, nameLoc), args, loc)
-    | `IntLiteral (i, loc) ->
-      `IntLiteral (i, loc)
-    | `FloatLiteral (f, loc) -> 
-      `FloatLiteral (f, loc)
     | `StringLiteral (s, loc) ->
       `StringLiteral (s, loc)
     | `Abort loc ->

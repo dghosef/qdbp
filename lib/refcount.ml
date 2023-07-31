@@ -10,8 +10,6 @@ let fv expr =
   | `Declaration (_, _, _, _, fvs) -> fvs
   | `VariableLookup (_, _, fvs) -> fvs
   | `ExternalCall (_, _, _, fvs) -> fvs
-  | `IntLiteral _ -> FvSet.empty
-  | `FloatLiteral _ -> FvSet.empty
   | `EmptyPrototype _ -> FvSet.empty
   | `StringLiteral _ -> FvSet.empty
   | `Abort _ -> FvSet.empty
@@ -99,10 +97,6 @@ let rec refcount delta gamma ast =
             `VariableLookup (x, loc, fvs))
     else
       Error.internal_error "refcount: variable lookup not in delta or gamma"
-  | `IntLiteral (i, loc) ->
-    `IntLiteral (i, loc)
-  | `FloatLiteral (f, loc) -> 
-    `FloatLiteral (f, loc)
   | `StringLiteral (s, loc) ->
     `StringLiteral (s, loc)
   | `Abort loc ->
@@ -263,8 +257,6 @@ let rec fusion expr =
   | `ExternalCall ((name, nameLoc), args, loc) -> 
     let args = List.map fusion args in
     `ExternalCall ((name, nameLoc), args, loc)
-  | `IntLiteral _ as i -> i
-  | `FloatLiteral _ as f -> f
   | `EmptyPrototype _ as e -> e
   | `StringLiteral _ as s -> s
   | `Abort _ as a-> a

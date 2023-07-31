@@ -380,8 +380,6 @@ let loc_of expr =
   | `Declaration (_, _, _, loc) -> loc
   | `VariableLookup (_, loc) -> loc
   | `ExternalCall (_, _, loc) -> loc
-  | `IntLiteral (_, loc) -> loc
-  | `FloatLiteral (_, loc) -> loc
   | `StringLiteral (_, loc) -> loc
   | `Abort loc -> loc
   | `Method (_, _, loc) -> loc
@@ -455,8 +453,6 @@ let infer files expr =
       let tvars, already_unified = state in 
       let tvars, tvar = make_new_unbound_var tvars level in
       (tvars, already_unified), tvar, `Abort a
-    | `IntLiteral i -> state, (`TConst `Int), `IntLiteral i
-    | `FloatLiteral f -> state, (`TConst `Float), `FloatLiteral f
     | `StringLiteral s -> state, (`TConst `String), `StringLiteral s
     | `VariableLookup (name, loc) ->
       let tvars, already_unified = state in
@@ -492,14 +488,10 @@ let infer files expr =
       in
       let tvars, already_unified = state in
       let tvars, ty = match ty_str with
-        | "_int" -> tvars, `TConst `Int
-        | "_float" -> tvars, `TConst `Float
-        | "_string" -> tvars, `TConst `String
-        | "_bool" -> bool_type level tvars
+        | "aaskdfhjkasdhfk" -> bool_type level tvars
         | _ -> 
           infer_error
-            ("external call should end with '_int', '_float', '_string', or '_bool'"
-             ^ " to signify its return type")
+            ("This is garbage - hasn't been implemented yet")
             name_loc
       in
       (tvars, already_unified), ty, `ExternalCall ((name, name_loc), args, loc)
