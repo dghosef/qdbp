@@ -4,7 +4,7 @@ let build_import_map files ast =
     | `ExternalCall (_, args, _) ->
         List.fold_left (build_import_map already_seen) state args
     | `EmptyPrototype _ -> state
-    | `PrototypeCopy (extension, (_, (_, body, _), _), _, _) ->
+    | `PrototypeCopy (extension, (_, (_, body, _), _), _, _, _) ->
         let imports = build_import_map already_seen state body in
         build_import_map already_seen imports extension
     | `TaggedObject (_, obj, _) -> build_import_map already_seen state obj
@@ -49,11 +49,11 @@ let resolve_imports imports ast =
     match ast with
     | `EmptyPrototype loc -> `EmptyPrototype loc
     | `PrototypeCopy
-        (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), size, loc) ->
+        (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), size, op, loc) ->
         let ext = resolve_imports ext in
         let body = resolve_imports body in
         `PrototypeCopy
-          (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), size, loc)
+          (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), size, op, loc)
     | `TaggedObject ((tag, tagLoc), value, loc) ->
         let value = resolve_imports value in
         `TaggedObject ((tag, tagLoc), value, loc)

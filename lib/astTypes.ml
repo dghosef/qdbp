@@ -5,10 +5,11 @@
 type lexer_pos = Lexing.position
 type parser_pos = Lexing.position * Lexing.position
 type id = string * parser_pos
+type proto_op = Replace | Extend
 
 type ast =
   [ `EmptyPrototype of parser_pos
-  | `PrototypeCopy of ast * field * int * parser_pos
+  | `PrototypeCopy of ast * field * int * proto_op * parser_pos
   | `TaggedObject of id * ast * parser_pos
   | `MethodInvocation of
     ast * id * (string * ast * parser_pos) list * parser_pos

@@ -36,7 +36,7 @@ let make_meth args body loc =
         loc )
   | [] -> (("ThisArg", loc) :: args, body, loc)
 
-let make_prototype maybe_extension fields loc : ast =
+let make_prototype maybe_extension fields op loc : ast =
   let extension =
     match maybe_extension with
     | Some extension -> extension
@@ -63,7 +63,7 @@ let make_prototype maybe_extension fields loc : ast =
   in
   let result =
     List.fold_left
-      (fun acc field -> `PrototypeCopy (acc, field, size, loc))
+      (fun acc field -> `PrototypeCopy (acc, field, size, op, loc))
       extension fields
   in
   let result =
@@ -94,7 +94,7 @@ let make_method_invocation receiver field_name arg0 args loc : ast =
 let make_closure args body loc : ast =
   let meth = make_meth args body loc in
   let field = make_prototype_method_field ("!", loc) meth loc in
-  make_prototype None [ Method field ] loc
+  make_prototype None [ Method field ] AstTypes.Extend loc
 
 let make_param name loc = (name, loc)
 

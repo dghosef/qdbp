@@ -20,12 +20,15 @@ lower_id:
 expr:
 (* parenthesized expression *)
 | LPAREN; e = expr; RPAREN; {e}
-(* prototype extension(of arbitrary prototype) *)
-| LBRACKET; extension = expr; fields = prototype_field+; RBRACKET 
-  {AstCreate.make_prototype (Some extension) fields $loc}
+(* prototype replacement *)
+| LBRACKET; original = expr; fields = prototype_field+; RBRACKET 
+  {AstCreate.make_prototype (Some original) fields AstTypes.Replace $loc}
+(* prototype extension *)
+| LBRACKET; original = expr; DOUBLE_COLON fields = prototype_field+; RBRACKET 
+  {AstCreate.make_prototype (Some original) fields AstTypes.Extend $loc}
 (* prototype extension(of empty prototype) *)
 | LBRACKET; fields = prototype_field+; RBRACKET
-  {AstCreate.make_prototype None fields $loc}
+  {AstCreate.make_prototype None fields AstTypes.Extend $loc}
 (* empty prototype literal *)
 | LBRACKET; RBRACKET {AstCreate.make_empty_prototype $loc}
 (* closure w/ args *)

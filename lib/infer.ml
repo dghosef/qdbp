@@ -450,8 +450,8 @@ let infer files expr =
         ( (tvars, already_unified),
           ty,
           `ExternalCall ((name, name_loc), args, loc) )
-    | `PrototypeCopy (extension, ((name, nameLoc), meth, fieldLoc), size, loc)
-      ->
+    | `PrototypeCopy
+        (extension, ((name, nameLoc), meth, fieldLoc), size, op, loc) -> (
         let tvars, already_unified = state in
         let tvars, rest_row_ty = make_new_unbound_var tvars level in
         let tvars, field_ty = make_new_unbound_var tvars level in
@@ -470,32 +470,36 @@ let infer files expr =
           try_unify tvars already_unified (loc_of extension) extension_ty
             extension_ty'
         in
-        if
-          row_is_complete tvars rest_row_ty
-          && get_row tvars rest_row_ty name = None
-        then
-          ( (tvars, already_unified),
-            `TRecord (`TRowExtend (name, field_ty, rest_row_ty)),
-            `PrototypeCopy
-              (extension, ((name, nameLoc), meth, fieldLoc), size, loc, `Extend)
-          )
-        else
-          let tvars, field_ty' = make_new_unbound_var tvars level in
-          let tvars, rest_row_ty' = make_new_unbound_var tvars level in
-          let tvars, already_unified =
-            try_unify tvars already_unified (loc_of extension) extension_ty'
-              (`TRecord (`TRowExtend (name, field_ty', rest_row_ty')))
-          in
-          let tvars, already_unified =
-            try_unify tvars already_unified
-              (loc_of (`Method meth))
-              field_ty field_ty'
-          in
-          ( (tvars, already_unified),
-            extension_ty,
-            `PrototypeCopy
-              (extension, ((name, nameLoc), meth, fieldLoc), size, loc, `Replace)
-          )
+        match op with
+        | AstTypes.Extend ->
+            ( (tvars, already_unified),
+              `TRecord (`TRowExtend (name, field_ty, rest_row_ty)),
+              `PrototypeCopy
+                ( extension,
+                  ((name, nameLoc), meth, fieldLoc),
+                  size,
+                  loc,
+                  `Extend ) )
+        | AstTypes.Replace ->
+            let tvars, field_ty' = make_new_unbound_var tvars level in
+            let tvars, rest_row_ty' = make_new_unbound_var tvars level in
+            let tvars, already_unified =
+              try_unify tvars already_unified (loc_of extension) extension_ty'
+                (`TRecord (`TRowExtend (name, field_ty', rest_row_ty')))
+            in
+            let tvars, already_unified =
+              try_unify tvars already_unified
+                (loc_of (`Method meth))
+                field_ty field_ty'
+            in
+            ( (tvars, already_unified),
+              extension_ty,
+              `PrototypeCopy
+                ( extension,
+                  ((name, nameLoc), meth, fieldLoc),
+                  size,
+                  loc,
+                  `Replace ) ))
     | `TaggedObject ((tag, tagLoc), value, loc) ->
         let tvars, already_unified = state in
         let tvars, rest_row_ty = make_new_unbound_var tvars level in
