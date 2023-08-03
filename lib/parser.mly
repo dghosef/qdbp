@@ -7,7 +7,7 @@
 %right UPPER_ID
 (* HIGHEST PRECEDNCE *)
 
-%start<Types.ast> program
+%start<AstTypes.ast> program
 %%
 program:
 | e = expr; EOF {e}

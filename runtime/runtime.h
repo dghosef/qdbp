@@ -78,14 +78,21 @@ struct _qdbp_hashtable_header {
 typedef union {
   struct _qdbp_hashtable_header header;
   struct _qdbp_field field;
-} _qdbp_hashtable;
+} _qdbp_hashtable_t;
 
 struct _qdbp_prototype {
-  _qdbp_hashtable* label_map;
+  _qdbp_hashtable_t* label_map;
 };
 
 struct _qdbp_variant {
   struct _qdbp_object* value;
+};
+
+struct _qdbp_string {
+  char* value;
+  size_t
+      length;  // number of characters in string(not including null terminator)
+  struct _qdbp_prototype prototype;
 };
 
 struct _qdbp_boxed_int {
@@ -95,7 +102,7 @@ struct _qdbp_boxed_int {
 
 union _qdbp_object_data {
   struct _qdbp_prototype prototype;
-  char* string;
+  struct _qdbp_string* string;
   struct _qdbp_boxed_int* boxed_int;
   struct _qdbp_variant variant;
 };
@@ -165,16 +172,17 @@ void _qdbp_dup_prototype_captures_except(_qdbp_prototype_ptr proto,
   } while (0);
 
 // Hash table
-_qdbp_hashtable* _qdbp_ht_new(size_t capacity);
-void _qdbp_ht_del(_qdbp_hashtable* table);
-_qdbp_hashtable* _qdbp_ht_duplicate(_qdbp_hashtable* table);
+_qdbp_hashtable_t* _qdbp_ht_new(size_t capacity);
+void _qdbp_ht_del(_qdbp_hashtable_t* table);
+_qdbp_hashtable_t* _qdbp_ht_duplicate(_qdbp_hashtable_t* table);
 // will hang if the label is not in the table
-_qdbp_field_ptr _qdbp_ht_find(_qdbp_hashtable* table, _qdbp_label_t label);
+_qdbp_field_ptr _qdbp_ht_find(_qdbp_hashtable_t* table, _qdbp_label_t label);
 // will return NULL if the label is not in the table
-_qdbp_field_ptr _qdbp_ht_find_opt(_qdbp_hashtable* table, _qdbp_label_t label);
-__attribute__((warn_unused_result)) _qdbp_hashtable* _qdbp_ht_insert(
-    _qdbp_hashtable* table, const _qdbp_field_ptr fld);
-size_t _qdbp_ht_size(_qdbp_hashtable* table);
+_qdbp_field_ptr _qdbp_ht_find_opt(_qdbp_hashtable_t* table,
+                                  _qdbp_label_t label);
+__attribute__((warn_unused_result)) _qdbp_hashtable_t* _qdbp_ht_insert(
+    _qdbp_hashtable_t* table, const _qdbp_field_ptr fld);
+size_t _qdbp_ht_size(_qdbp_hashtable_t* table);
 #define _QDBP_HT_ITER(ht, fld, tmp)                                       \
   size_t tmp;                                                             \
   _qdbp_field_ptr fld;                                                    \
@@ -226,10 +234,10 @@ void _qdbp_del_obj(_qdbp_object_ptr obj);
 _qdbp_object_ptr _qdbp_make_object(_qdbp_tag_t tag,
                                    union _qdbp_object_data data);
 _qdbp_object_ptr _qdbp_empty_prototype();
+_qdbp_object_ptr _qdbp_make_string(const char* cstr, size_t length);
 _qdbp_object_ptr _qdbp_true();
 _qdbp_object_ptr _qdbp_false();
 _qdbp_object_ptr _qdbp_bool(bool value);
-_qdbp_object_ptr _qdbp_string(const char* src);
 _qdbp_object_ptr _qdbp_abort();
 _qdbp_object_ptr _qdbp_match_failed();
 _qdbp_object_ptr _qdbp_make_boxed_int();
@@ -277,9 +285,10 @@ _qdbp_object_ptr _qdbp_make_unboxed_int(uint64_t value);
 uint64_t _qdbp_get_unboxed_int(_qdbp_object_ptr obj);
 bool _qdbp_is_boxed_int(_qdbp_object_ptr obj);
 // strings
-
-_qdbp_object_ptr _qdbp_concat_string(_qdbp_object_ptr a, _qdbp_object_ptr b);
-_qdbp_object_ptr _qdbp_empty_string();
+_qdbp_object_ptr _qdbp_string_unary_op(_qdbp_object_ptr obj,
+                                       enum _QDBP_ARITH_OP op);
+_qdbp_object_ptr _qdbp_string_binary_op(_qdbp_object_ptr l, _qdbp_object_ptr r,
+                                        enum _QDBP_ARITH_OP op);
 // Tags and Variants
 enum _qdbp_object_kind _qdbp_get_kind(_qdbp_object_ptr obj);
 void _qdbp_set_tag(_qdbp_object_ptr o, _qdbp_tag_t t);

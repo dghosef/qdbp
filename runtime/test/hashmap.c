@@ -7,7 +7,7 @@ TEST_SUITE(hashtable)
 TEST_CASE_NOLEAK(sequential_insert) {
   for (size_t initial_capacity = 1; initial_capacity < 200;
        initial_capacity *= 2) {
-    _qdbp_hashtable *ht = _qdbp_ht_new(initial_capacity);
+    _qdbp_hashtable_t *ht = _qdbp_ht_new(initial_capacity);
     for (size_t elem = 0; elem < 100; elem++) {
       struct _qdbp_field fld;
       fld.label = elem;
@@ -15,7 +15,7 @@ TEST_CASE_NOLEAK(sequential_insert) {
       fld.method.code = (void *)code;
       fld.method.num_captures = elem + 3;
       ht = _qdbp_ht_insert(ht, &fld);
-      _qdbp_hashtable *ht2 = _qdbp_ht_duplicate(ht);
+      _qdbp_hashtable_t *ht2 = _qdbp_ht_duplicate(ht);
       CHECK_INT_CMP(==, _qdbp_ht_size(ht), elem + 1);
       for (size_t i = 0; i <= elem; i++) {
         _qdbp_field_ptr found = _qdbp_ht_find(ht, i);
@@ -39,7 +39,7 @@ TEST_CASE_NOLEAK(sequential_insert) {
 TEST_CASE_NOLEAK(random_insert) {
   for (size_t initial_capacity = 1; initial_capacity < 200;
        initial_capacity *= 2) {
-    _qdbp_hashtable *ht = _qdbp_ht_new(initial_capacity);
+    _qdbp_hashtable_t *ht = _qdbp_ht_new(initial_capacity);
     for (size_t elem = 0; elem < 100; elem++) {
       struct _qdbp_field fld;
       _qdbp_label_t label = randomU32();

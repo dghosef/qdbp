@@ -157,6 +157,8 @@ void _qdbp_del_obj(_qdbp_object_ptr obj) {
       _qdbp_free(obj->data.boxed_int);
       break;
     case _QDBP_STRING:
+      _qdbp_del_prototype(&(obj->data.string->prototype));
+      _qdbp_free(obj->data.string->value);
       _qdbp_free(obj->data.string);
       break;
     case _QDBP_PROTOTYPE:

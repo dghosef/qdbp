@@ -63,6 +63,8 @@ _qdbp_object_arr _qdbp_get_method(_qdbp_object_ptr obj, _qdbp_label_t label,
   _qdbp_prototype_ptr proto;
   if (_qdbp_get_kind(obj) == _QDBP_PROTOTYPE) {
     proto = &(obj->data.prototype);
+  } else if (_qdbp_get_kind(obj) == _QDBP_STRING) {
+    proto = &(obj->data.string->prototype);
   } else {
     _qdbp_assert_kind(obj, _QDBP_BOXED_INT);
     proto = &(obj->data.boxed_int->prototype);
@@ -77,10 +79,12 @@ _qdbp_object_arr _qdbp_get_method(_qdbp_object_ptr obj, _qdbp_label_t label,
 _qdbp_object_arr _qdbp_get_method_opt(_qdbp_object_ptr obj, _qdbp_label_t label,
                                       void **code /*output param*/) {
   _qdbp_prototype_ptr proto;
-  if (_qdbp_is_unboxed_int(obj)) {
+  if (_qdbp_is_unboxed_int(obj) || !obj) {
     return NULL;
   } else if (_qdbp_get_kind(obj) == _QDBP_PROTOTYPE) {
     proto = &(obj->data.prototype);
+  } else if (_qdbp_get_kind(obj) == _QDBP_STRING) {
+    proto = &(obj->data.string->prototype);
   } else if (_qdbp_get_kind(obj) == _QDBP_BOXED_INT) {
     proto = &(obj->data.boxed_int->prototype);
   } else {
@@ -223,11 +227,18 @@ _qdbp_object_ptr _qdbp_replace(_qdbp_object_ptr obj, _qdbp_label_t label,
 
 _qdbp_object_ptr _qdbp_invoke_1(_qdbp_object_ptr receiver, _qdbp_label_t label,
                                 _qdbp_object_ptr arg0) {
-  if (_qdbp_is_unboxed_int(receiver) || _qdbp_is_boxed_int(receiver)) {
-    return _qdbp_int_unary_op(receiver, label);
-  }
   void *code;
-  _qdbp_object_arr captures = _qdbp_get_method(receiver, label, &code);
+  _qdbp_object_arr captures = _qdbp_get_method_opt(receiver, label, &code);
+  if (!captures) {
+    if (_qdbp_is_unboxed_int(receiver) || _qdbp_is_boxed_int(receiver)) {
+      return _qdbp_int_unary_op(receiver, label);
+    } else if (_qdbp_get_kind(receiver) == _QDBP_STRING) {
+      return _qdbp_string_unary_op(receiver, label);
+    } else {
+      _qdbp_assert(false);
+      __builtin_unreachable();
+    }
+  }
   return ((_qdbp_object_ptr(*)(_qdbp_object_arr, _qdbp_object_ptr))code)(
       captures, arg0);
 }
@@ -237,7 +248,14 @@ _qdbp_object_ptr _qdbp_invoke_2(_qdbp_object_ptr receiver, _qdbp_label_t label,
   void *code;
   _qdbp_object_arr captures = _qdbp_get_method_opt(receiver, label, &code);
   if (!captures) {
-    return _qdbp_int_binary_op(arg0, arg1, label);
+    if (_qdbp_is_unboxed_int(receiver) || _qdbp_is_boxed_int(receiver)) {
+      return _qdbp_int_binary_op(arg0, arg1, label);
+    } else if (_qdbp_get_kind(receiver) == _QDBP_STRING) {
+      return _qdbp_string_binary_op(arg0, arg1, label);
+    } else {
+      _qdbp_assert(false);
+      __builtin_unreachable();
+    }
   } else {
     return ((_qdbp_object_ptr(*)(_qdbp_object_arr, _qdbp_object_ptr,
                                  _qdbp_object_ptr))code)(captures, arg0, arg1);
