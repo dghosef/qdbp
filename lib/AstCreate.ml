@@ -1,9 +1,7 @@
 open AstTypes
 
 (* Variables *)
-let make_declaration lhs rhs expr loc : ast =
-  `Declaration (lhs, rhs, expr, loc)
-
+let make_declaration lhs rhs expr loc : ast = `Declaration (lhs, rhs, expr, loc)
 let make_variable_lookup name loc : ast = `VariableLookup (name, loc)
 
 (* Prototype stuff *)
@@ -17,12 +15,26 @@ let roundup x =
   let rec loop y = if y >= x then y else loop (y * 2) in
   loop 1
 
-let make_prototype_field name meth loc =
+let make_prototype_method_field name meth loc =
   let args, _, _ = meth in
   let arg_names = List.map (fun (name, _) -> name) args in
-  Method (full_field_name name arg_names, meth, loc)
+  (full_field_name name arg_names, meth, loc)
+
+let make_prototype_value_field name e loc =
+  let variable_name = "V" ^ string_of_int (Oo.id (object end)) in
+  (name, e, variable_name, loc)
 
 let make_empty_prototype loc : ast = `EmptyPrototype loc
+
+let make_meth args body loc =
+  match args with
+  | ((_, arg0_loc) as arg0) :: tl ->
+      ( ("ThisArg", loc) :: ("Arg0", arg0_loc) :: tl,
+        make_declaration arg0
+          (make_variable_lookup "Arg0" arg0_loc)
+          body arg0_loc,
+        loc )
+  | [] -> (("ThisArg", loc) :: args, body, loc)
 
 let make_prototype maybe_extension fields loc : ast =
   let extension =
@@ -33,28 +45,35 @@ let make_prototype maybe_extension fields loc : ast =
   let size = List.length fields in
   (* Round up size to nearest power of 2 *)
   let size = roundup (size * 2) in
+  let data_fields = List.filter_map (fun field ->
+    match field with
+    | Data f -> Some f
+    | Method _ -> None
+  ) fields in
   let fields =
-    List.filter_map
+    List.map
       (fun field ->
         match field with
-        | Method (f: AstTypes.field) -> Some f
-        | Data _ -> None)
-      fields in
-  List.fold_left
+        | Method (f : AstTypes.field) -> f
+        | Data (field_name, _, variable_name, loc) ->
+            make_prototype_method_field field_name
+              (make_meth [] (make_variable_lookup variable_name loc) loc)
+              loc)
+      fields
+  in
+  let result = List.fold_left
     (fun acc field -> `PrototypeCopy (acc, field, size, loc))
     extension fields
+  in
+  let result = List.fold_right (
+    fun (_, e, name, loc) acc ->
+      make_declaration (name, loc) e acc loc
+  ) data_fields result in
+  result
 
 let make_prototype_invoke_arg name value loc = (name, value, loc)
-
-let make_meth args body loc =
-  match args with
-  | ((_, arg0_loc) as arg0) :: tl ->
-      ( ("this", loc) :: ("Arg0", arg0_loc) :: tl,
-        make_declaration arg0
-          (make_variable_lookup "Arg0" arg0_loc)
-          body arg0_loc,
-        loc )
-  | [] -> (("this", loc) :: args, body, loc)
+let make_meth_body e loc =
+  make_declaration ("this", loc) (make_variable_lookup "ThisArg" loc) e loc
 
 let make_method_invocation receiver field_name arg0 args loc : ast =
   let args =
@@ -62,7 +81,7 @@ let make_method_invocation receiver field_name arg0 args loc : ast =
     | Some arg -> ("Arg0", arg, loc) :: args
     | None -> args (* Equivalently, [] since args will be [] *)
   in
-  let args = ("this", make_variable_lookup "This" loc, loc) :: args in
+  let args = ("ThisArg", make_variable_lookup "This" loc, loc) :: args in
   let arg_names = List.map (fun (name, _, _) -> name) args in
   let field_name = full_field_name field_name arg_names in
   make_declaration ("This", loc) receiver
@@ -71,8 +90,8 @@ let make_method_invocation receiver field_name arg0 args loc : ast =
 
 let make_closure args body loc : ast =
   let meth = make_meth args body loc in
-  let field = make_prototype_field ("!", loc) meth loc in
-  make_prototype None [ field ] loc
+  let field = make_prototype_method_field ("!", loc) meth loc in
+  make_prototype None [ Method field ] loc
 
 let make_param name loc = (name, loc)
 

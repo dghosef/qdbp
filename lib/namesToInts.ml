@@ -13,19 +13,19 @@ let names_to_ints ast =
   done;
   (* MUST keep in sync with int_proto.h and infer.ml *)
   (* Must be less than 1000 *)
-  Hashtbl.add label_map "isAnInt:this" (Int64.of_int 64);
-  Hashtbl.add label_map "Print:this" (Int64.of_int 69);
-  Hashtbl.add label_map "+:this:Arg0" (Int64.of_int 84);
-  Hashtbl.add label_map "-:this:Arg0" (Int64.of_int 139);
-  Hashtbl.add label_map "*:this:Arg0" (Int64.of_int 140);
-  Hashtbl.add label_map "/:this:Arg0" (Int64.of_int 193);
-  Hashtbl.add label_map "%:this:Arg0" (Int64.of_int 254);
-  Hashtbl.add label_map "=:this:Arg0" (Int64.of_int 306);
-  Hashtbl.add label_map "!=:this:Arg0" (Int64.of_int 355);
-  Hashtbl.add label_map "<:this:Arg0" (Int64.of_int 362);
-  Hashtbl.add label_map ">:this:Arg0" (Int64.of_int 447);
-  Hashtbl.add label_map "<=:this:Arg0" (Int64.of_int 455);
-  Hashtbl.add label_map ">=:this:Arg0" (Int64.of_int 461);
+  Hashtbl.add label_map "isAnInt:ThisArg" (Int64.of_int 64);
+  Hashtbl.add label_map "Print:ThisArg" (Int64.of_int 69);
+  Hashtbl.add label_map "+:ThisArg:Arg0" (Int64.of_int 84);
+  Hashtbl.add label_map "-:ThisArg:Arg0" (Int64.of_int 139);
+  Hashtbl.add label_map "*:ThisArg:Arg0" (Int64.of_int 140);
+  Hashtbl.add label_map "/:ThisArg:Arg0" (Int64.of_int 193);
+  Hashtbl.add label_map "%:ThisArg:Arg0" (Int64.of_int 254);
+  Hashtbl.add label_map "=:ThisArg:Arg0" (Int64.of_int 306);
+  Hashtbl.add label_map "!=:ThisArg:Arg0" (Int64.of_int 355);
+  Hashtbl.add label_map "<:ThisArg:Arg0" (Int64.of_int 362);
+  Hashtbl.add label_map ">:ThisArg:Arg0" (Int64.of_int 447);
+  Hashtbl.add label_map "<=:ThisArg:Arg0" (Int64.of_int 455);
+  Hashtbl.add label_map ">=:ThisArg:Arg0" (Int64.of_int 461);
   (* Save the first 1000 labels for reserved labels*)
   let get_label name =
     match Hashtbl.find_opt label_map name with

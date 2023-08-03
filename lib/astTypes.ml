@@ -25,7 +25,8 @@ and meth = (id list) * ast * parser_pos
 and case = id * (id * ast * parser_pos) * parser_pos
 type method_or_data_field = 
     | Method of field
-    | Data of id * ast * parser_pos
+    | Data of (id * ast * string * parser_pos)
+
 module IntSet = Set.Make(struct type t = int let compare = compare end)
 module IntMap = Map.Make(struct type t = int let compare = compare end)
 module StringSet = Set.Make(String)
