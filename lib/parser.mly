@@ -57,7 +57,8 @@ expr:
 | i = INT {AstCreate.make_int_literal i $loc}
 | s = STRING {AstCreate.make_string_literal s $loc}
 (* external call *)
-| MONEY; id = lower_id; LPAREN; args = expr*; RPAREN {AstCreate.make_external_call id args $loc}
+| MONEY; id = lower_id; LPAREN; args = expr*; RPAREN
+  {AstCreate.make_external_call id args $loc}
 (* abort *)
 | ABORT; PERIOD; {AstCreate.make_abort $loc}
 
@@ -68,7 +69,8 @@ meth:
   {AstCreate.make_meth [] (AstCreate.make_meth_body e $loc) $loc}
 
 pattern_match_meth:
-| LBRACE; a = lower_id; PIPE; e = expr; RBRACE {AstCreate.make_pattern_match_meth a e $loc}
+| LBRACE; a = lower_id; PIPE; e = expr; RBRACE
+  {AstCreate.make_pattern_match_meth a e $loc}
 | LBRACE; e = expr; RBRACE {AstCreate.make_pattern_match_meth ("", $loc) e $loc}
 
 arg_list:

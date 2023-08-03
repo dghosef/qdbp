@@ -45,11 +45,11 @@ let make_prototype maybe_extension fields loc : ast =
   let size = List.length fields in
   (* Round up size to nearest power of 2 *)
   let size = roundup (size * 2) in
-  let data_fields = List.filter_map (fun field ->
-    match field with
-    | Data f -> Some f
-    | Method _ -> None
-  ) fields in
+  let data_fields =
+    List.filter_map
+      (fun field -> match field with Data f -> Some f | Method _ -> None)
+      fields
+  in
   let fields =
     List.map
       (fun field ->
@@ -61,17 +61,20 @@ let make_prototype maybe_extension fields loc : ast =
               loc)
       fields
   in
-  let result = List.fold_left
-    (fun acc field -> `PrototypeCopy (acc, field, size, loc))
-    extension fields
+  let result =
+    List.fold_left
+      (fun acc field -> `PrototypeCopy (acc, field, size, loc))
+      extension fields
   in
-  let result = List.fold_right (
-    fun (_, e, name, loc) acc ->
-      make_declaration (name, loc) e acc loc
-  ) data_fields result in
+  let result =
+    List.fold_right
+      (fun (_, e, name, loc) acc -> make_declaration (name, loc) e acc loc)
+      data_fields result
+  in
   result
 
 let make_prototype_invoke_arg name value loc = (name, value, loc)
+
 let make_meth_body e loc =
   make_declaration ("this", loc) (make_variable_lookup "ThisArg" loc) e loc
 
