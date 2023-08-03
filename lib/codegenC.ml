@@ -32,7 +32,7 @@ let invoke_fns methods =
          (fun (_, (args, _, _, _, _)) -> List.length args)
          (AstTypes.IntMap.bindings methods))
   in
-  (* Arities 0 and 1 are hardcoded because of int objects *)
+  (* Arities 0 and 1 are hardcoded because they have special cases *)
   let arities = AstTypes.IntSet.remove 1 arities in
   let arities = AstTypes.IntSet.remove 2 arities in
   let invoke_fn arity =
@@ -180,7 +180,7 @@ let fn_definitions methods =
     (* Instead, omit both operations *)
     let _ =
       match args with
-      | v :: _ -> newline 1 ^ "_qdbp_drop(" ^ varname (fst v) ^ ", 1);"
+      | v :: _ -> newline 1 ^ (c_call "_qdbp_drop" [varname (fst v); string_of_int 1])
       | [] -> ""
     in
     let bvs_declarations = List.map declare (AstTypes.IntSet.elements bvs) in

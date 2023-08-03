@@ -74,6 +74,7 @@ param:
 
 prototype_field:
 | id = upper_id; m = meth; {AstCreate.make_prototype_field id m $loc}
+
 prototype_invoke_arg:
 | id = ARG; e = expr; {AstCreate.make_prototype_invoke_arg id e $loc}
 

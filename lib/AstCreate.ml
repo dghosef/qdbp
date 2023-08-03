@@ -1,8 +1,8 @@
 open AstTypes
 
 (* Variables *)
-let make_declaration name rhs post_decl_expr loc : ast =
-  `Declaration (name, rhs, post_decl_expr, loc)
+let make_declaration lhs rhs expr loc : ast =
+  `Declaration (lhs, rhs, expr, loc)
 
 let make_variable_lookup name loc : ast = `VariableLookup (name, loc)
 
@@ -20,7 +20,7 @@ let roundup x =
 let make_prototype_field name meth loc =
   let args, _, _ = meth in
   let arg_names = List.map (fun (name, _) -> name) args in
-  (full_field_name name arg_names, meth, loc)
+  Method (full_field_name name arg_names, meth, loc)
 
 let make_empty_prototype loc : ast = `EmptyPrototype loc
 
@@ -32,7 +32,14 @@ let make_prototype maybe_extension fields loc : ast =
   in
   let size = List.length fields in
   (* Round up size to nearest power of 2 *)
-  let size = roundup (size * 2 / 1) in
+  let size = roundup (size * 2) in
+  let fields =
+    List.filter_map
+      (fun field ->
+        match field with
+        | Method (f: AstTypes.field) -> Some f
+        | Data _ -> None)
+      fields in
   List.fold_left
     (fun acc field -> `PrototypeCopy (acc, field, size, loc))
     extension fields
