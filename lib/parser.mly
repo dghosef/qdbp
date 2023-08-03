@@ -1,5 +1,5 @@
 %token<string> UPPER_ID LOWER_ID ARG IMPORT STRING INT
-%token PIPE DECLARATION PERIOD TAG QUESTION MONEY ABORT EOF
+%token PIPE DECLARATION PERIOD TAG QUESTION MONEY ABORT EOF DOUBLE_COLON
 %token LPAREN RPAREN LBRACE RBRACE LBRACKET RBRACKET
 
 (* LOWEST PRECEDNCE *)
@@ -70,7 +70,7 @@ meth:
 
 pattern_match_meth:
 | LBRACE; a = lower_id; PIPE; e = expr; RBRACE
-  {AstCreate.make_pattern_match_meth a e $loc}
+  { AstCreate.make_pattern_match_meth a e $loc }
 | LBRACE; e = expr; RBRACE {AstCreate.make_pattern_match_meth ("", $loc) e $loc}
 
 arg_list:

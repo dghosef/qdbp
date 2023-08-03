@@ -18,6 +18,16 @@ static void mpz_op_si(mpz_t dest, const mpz_t l, int64_t r,
   mpz_clear(r_mpz);
 }
 
+static void _qdbp_bigint_div(mpz_t dest, const mpz_t l, const mpz_t r) {
+  if (mpz_sgn(r) == 0) {
+    fprintf(stderr, "Division by zero\n");
+    _qdbp_abort();
+  }
+  else {
+    mpz_tdiv_q(dest, l, r);
+  }
+}
+
 static void get_arith_fns(_qdbp_bigint_arith_fn **bigint_fn,
                           _qdbp_smallint_arith_fn **smallint_fn,
                           enum _QDBP_ARITH_OP op) {
@@ -35,7 +45,7 @@ static void get_arith_fns(_qdbp_bigint_arith_fn **bigint_fn,
       *smallint_fn = _qdbp_smallint_mul;
       break;
     case _QDBP_DIV:
-      *bigint_fn = mpz_tdiv_q;
+      *bigint_fn = _qdbp_bigint_div;
       *smallint_fn = _qdbp_smallint_div;
       break;
     case _QDBP_MOD:
@@ -96,9 +106,9 @@ static _qdbp_object_ptr bigint_arith(_qdbp_bigint_arith_fn bigint_op,
                 _qdbp_get_unboxed_int(r), bigint_op);
       return dest;
     } else {
-      _qdbp_drop(r, 1);
       bigint_op(dest->data.boxed_int->value, dest->data.boxed_int->value,
                 r->data.boxed_int->value);
+      _qdbp_drop(r, 1);
       return dest;
     }
   }

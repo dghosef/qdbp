@@ -50,6 +50,7 @@ rule token = parse
 | '#' { TAG }
 | '?' { QUESTION }
 | '$' { MONEY }
+| "::" { DOUBLE_COLON }
 | eof { EOF }
 | _ as c { raise
   (LexerError ("Unexpected character: " ^ (String.make 1 c),

@@ -93,7 +93,7 @@ let compile args =
   ignore
     (Sys.command
        (" clang out.c " ^ !runtime_dir ^ "/lib/*.c" ^ " -I" ^ !runtime_dir
-      ^ " -Og" ^ " -lgmp" ^ " -Wall -Wextra -Werror" ^ " -Wno-unused-parameter"
+      ^ " -g" ^ " -lgmp" ^ " -Wall -Wextra -Werror" ^ " -Wno-unused-parameter"
       ^ " -Wno-unused-function" ^ " -Wno-unused-variable"
       ^ " -fbracket-depth=10000000"
       ^ " -fsanitize=address,undefined,pointer-compare,"

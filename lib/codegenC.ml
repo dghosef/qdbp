@@ -180,7 +180,8 @@ let fn_definitions methods =
     (* Instead, omit both operations *)
     let _ =
       match args with
-      | v :: _ -> newline 1 ^ (c_call "_qdbp_drop" [varname (fst v); string_of_int 1])
+      | v :: _ ->
+          newline 1 ^ c_call "_qdbp_drop" [ varname (fst v); string_of_int 1 ]
       | [] -> ""
     in
     let bvs_declarations = List.map declare (AstTypes.IntSet.elements bvs) in
