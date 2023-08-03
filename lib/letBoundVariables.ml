@@ -28,7 +28,7 @@ let rec let_bound_variables ast =
   | `Dup (v, value, cnt) ->
       let bvs, value = let_bound_variables value in
       (bvs, `Dup (v, value, cnt))
-  | `PatternMatch (v, cases, loc) ->
+  | `PatternMatch (hasDefault, v, cases, loc) ->
       let bvs, cases =
         List.fold_left_map
           (fun bvs (tag, (arg, body, patternLoc), loc) ->
@@ -38,7 +38,7 @@ let rec let_bound_variables ast =
             (bvs'', (tag, (arg, body, patternLoc), loc)))
           AstTypes.IntSet.empty cases
       in
-      (bvs, `PatternMatch (v, cases, loc, bvs))
+      (bvs, `PatternMatch (hasDefault, v, cases, loc, bvs))
   | `PrototypeCopy (ext, (tag, meth, fieldLoc), size, loc, op) ->
       let bvs, ext = let_bound_variables ext in
       (bvs, `PrototypeCopy (ext, (tag, meth, fieldLoc), size, loc, op, bvs))

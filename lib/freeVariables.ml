@@ -34,7 +34,7 @@ let rec free_variables ast =
       let receiver_fvs, receiver = free_variables receiver in
       let fvs = AstTypes.IntSet.union arg_fvs receiver_fvs in
       (fvs, `MethodInvocation (receiver, (name, labelLoc), args, loc, fvs))
-  | `PatternMatch (receiver_id, cases, loc) ->
+  | `PatternMatch (hasDefault, receiver_id, cases, loc) ->
       let receiver_fvs = AstTypes.IntSet.singleton receiver_id in
       let cases_fvs, cases =
         List.fold_left_map
@@ -46,7 +46,7 @@ let rec free_variables ast =
           AstTypes.IntSet.empty cases
       in
       let fvs = AstTypes.IntSet.union receiver_fvs cases_fvs in
-      (fvs, `PatternMatch (receiver_id, cases, loc, fvs))
+      (fvs, `PatternMatch (hasDefault, receiver_id, cases, loc, fvs))
   | `Declaration ((name, nameLoc), rhs, body, loc) ->
       let rhs_fvs, rhs = free_variables rhs in
       let body_fvs, body = free_variables body in

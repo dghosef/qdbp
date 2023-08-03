@@ -113,10 +113,13 @@ let rec expr_to_c level expr =
       c_call
         (invoke_fn_name (List.length args))
         (receiver_c :: label_c :: args_c)
-  | `PatternMatch (v, cases, _, _) ->
-      let rec cases_to_c level cases =
+  | `PatternMatch (hasDefault, v, cases, _, _) ->
+      let rec cases_to_c level cases default =
         match cases with
-        | [] -> "_qdbp_match_failed()"
+        | [] -> (
+            match default with
+            | None -> "_qdbp_match_failed()"
+            | Some e -> expr_to_c level e)
         | ((tag, _), ((arg, _), body, _), _) :: rest ->
             c_call "_QDBP_MATCH"
               [
@@ -124,13 +127,18 @@ let rec expr_to_c level expr =
                 string_of_int tag;
                 varname arg;
                 expr_to_c (level + 1) body;
-                newline level ^ cases_to_c (level + 1) rest;
+                newline level ^ cases_to_c (level + 1) rest default;
               ]
       in
-
+      let casesC =
+        if hasDefault then cases_to_c (level + 1) (List.tl cases) (Some (
+          let ((_, _), (_, body, _), _) = List.hd cases in body
+        ))
+        else cases_to_c (level + 1) cases None
+      in
       paren
         (c_call "_qdbp_decompose_variant" [ varname v; "&tag"; "&payload" ]
-        ^ "," ^ newline level ^ cases_to_c level cases)
+        ^ "," ^ newline level ^ casesC)
   | `PrototypeCopy (ext, ((label, _), (meth_id, meth_fvs), _), size, _, op, _)
     ->
       let ext_c = expr_to_c (level + 1) ext in

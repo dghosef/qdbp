@@ -14,7 +14,7 @@ let build_import_map files ast =
           List.fold_left (build_import_map already_seen) state arg_exprs
         in
         build_import_map already_seen imports obj
-    | `PatternMatch (obj, cases, _) ->
+    | `PatternMatch (_, obj, cases, _) ->
         let case_body_exprs =
           List.map (fun (_, (_, body, _), _) -> body) cases
         in
@@ -65,7 +65,7 @@ let resolve_imports imports ast =
         in
         let receiver = resolve_imports receiver in
         `MethodInvocation (receiver, (name, labelLoc), args, loc)
-    | `PatternMatch (receiver, cases, loc) ->
+    | `PatternMatch (hasDefault, receiver, cases, loc) ->
         let receiver = resolve_imports receiver in
         let cases =
           List.map
@@ -74,7 +74,7 @@ let resolve_imports imports ast =
               ((name, nameLoc), ((arg, argLoc), body, patternLoc), loc))
             cases
         in
-        `PatternMatch (receiver, cases, loc)
+        `PatternMatch (hasDefault, receiver, cases, loc)
     | `Declaration ((name, nameLoc), rhs, body, loc) ->
         let rhs = resolve_imports rhs in
         let body = resolve_imports body in

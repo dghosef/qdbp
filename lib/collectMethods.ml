@@ -33,7 +33,7 @@ let collect_methods ast =
             methods args
         in
         (methods, `MethodInvocation (receiver, label, args, loc))
-    | `PatternMatch (v, cases, loc) ->
+    | `PatternMatch (hasDefault, v, cases, loc) ->
         let methods, cases =
           List.fold_left_map
             (fun methods (tag, (arg, body, patternLoc), loc) ->
@@ -41,7 +41,7 @@ let collect_methods ast =
               (methods, (tag, (arg, body, patternLoc), loc)))
             methods cases
         in
-        (methods, `PatternMatch (v, cases, loc))
+        (methods, `PatternMatch (hasDefault, v, cases, loc))
     | `TaggedObject (tag, value, loc) ->
         let methods, value = collect_methods methods value in
         (methods, `TaggedObject (tag, value, loc))

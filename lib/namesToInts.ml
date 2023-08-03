@@ -89,7 +89,7 @@ let names_to_ints ast =
         in
         let receiver = names_to_ints varnames receiver in
         `MethodInvocation (receiver, (get_label name, labelLoc), args, loc)
-    | `PatternMatch (receiver, cases, loc) ->
+    | `PatternMatch (hasDefault, receiver, cases, loc) ->
         let receiver = names_to_ints varnames receiver in
         let cases =
           List.map
@@ -105,7 +105,7 @@ let names_to_ints ast =
         `Declaration
           ( (receiver_id, loc),
             receiver,
-            `PatternMatch (receiver_id, cases, loc),
+            `PatternMatch (hasDefault, receiver_id, cases, loc),
             loc )
     | `Declaration ((name, nameLoc), rhs, body, loc) ->
         let rhs = names_to_ints varnames rhs in

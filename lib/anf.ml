@@ -22,7 +22,7 @@ let rec anf e k =
       anf r (fun r -> `Declaration ((l, lLoc), r, anf body k, loc))
   | `Drop (v, e) -> `Drop (v, anf e k)
   | `Dup (v, e) -> `Dup (v, anf e k)
-  | `PatternMatch (v, cases, loc, _) ->
+  | `PatternMatch (hasDefault, v, cases, loc, _) ->
       let cases =
         List.map
           (fun (n, (arg, body, patternLoc), loc) ->
@@ -30,7 +30,7 @@ let rec anf e k =
             (n, (arg, body, patternLoc), loc))
           cases
       in
-      k (`PatternMatch (v, cases, loc))
+      k (`PatternMatch (hasDefault, v, cases, loc))
   | `PrototypeCopy (ext, ((name, nameLoc), meth, fieldLoc), size, loc, op, _) ->
       let args, body, methLoc, methFvs = meth in
       anf ext (fun ext ->

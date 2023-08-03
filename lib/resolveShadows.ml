@@ -33,7 +33,7 @@ let resolve_shadows ast =
         in
         let receiver = resolve_shadows varnames receiver in
         `MethodInvocation (receiver, (name, labelLoc), args, loc)
-    | `PatternMatch (receiver_id, cases, loc) ->
+    | `PatternMatch (hasDefault, receiver_id, cases, loc) ->
         let cases =
           List.map
             (fun ((name, nameLoc), ((arg, argLoc), body, patternLoc), loc) ->
@@ -44,7 +44,7 @@ let resolve_shadows ast =
                 loc ))
             cases
         in
-        `PatternMatch (receiver_id, cases, loc)
+        `PatternMatch (hasDefault, receiver_id, cases, loc)
     | `Declaration ((name, nameLoc), rhs, body, loc) ->
         let rhs = resolve_shadows varnames rhs in
         let varnames = add_variable varnames name in

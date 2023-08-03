@@ -15,7 +15,7 @@ let rename_args arg_ids fvs body =
   let varname varmap name = AstTypes.StringMap.find name varmap in
   let rec rename varmap body =
     match body with
-    | `PatternMatch (receiver, cases, loc) ->
+    | `PatternMatch (hasDefault, receiver, cases, loc) ->
         let receiver = rename varmap receiver in
         let cases =
           List.map
@@ -25,7 +25,7 @@ let rename_args arg_ids fvs body =
               ((tag, tagLoc), ((arg, argLoc), body, patternLoc), caseLoc))
             cases
         in
-        `PatternMatch (receiver, cases, loc)
+        `PatternMatch (hasDefault, receiver, cases, loc)
     | `MethodInvocation (receiver, (name, labelLoc), args, loc) ->
         let receiver = rename varmap receiver in
         let args =
@@ -86,7 +86,7 @@ let inline depth expr =
   in
   let rec inline depth env expr =
     match expr with
-    | `PatternMatch (receiver, cases, loc) -> (
+    | `PatternMatch (hasDefault, receiver, cases, loc) -> (
         let peval_receiver, receiver = inline depth env receiver in
         match peval_receiver with
         | `Variant (label, payload)
@@ -99,7 +99,7 @@ let inline depth expr =
             let pevalbody, body = inline depth env body in
             ( pevalbody,
               `PatternMatch
-                ( receiver,
+                ( hasDefault, receiver,
                   [ (tag, ((argname, argloc), body, patternLoc), caseLoc) ],
                   loc ) )
         | `Unit | `Variant _ ->
@@ -114,7 +114,7 @@ let inline depth expr =
                     ((tag, tagLoc), ((arg, argLoc), body, patternLoc), caseLoc))
                   cases
               in
-              (`Unit, `PatternMatch (receiver, cases, loc))
+              (`Unit, `PatternMatch (hasDefault, receiver, cases, loc))
             else
               let case = List.hd cases in
               let (tag, tagLoc), ((arg, argLoc), body, patternLoc), caseLoc =
@@ -125,7 +125,7 @@ let inline depth expr =
               let case =
                 ((tag, tagLoc), ((arg, argLoc), body, patternLoc), caseLoc)
               in
-              (peval, `PatternMatch (receiver, [ case ], loc))
+              (peval, `PatternMatch (hasDefault, receiver, [ case ], loc))
         | `Proto _ -> Error.internal_error "Shouldn't have proto here")
     | `MethodInvocation (receiver, (name, labelLoc), args, loc) -> (
         let peval_receiver, receiver = inline depth env receiver in

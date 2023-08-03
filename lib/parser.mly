@@ -47,8 +47,9 @@ expr:
   {AstCreate.make_method_invocation r id None [] $loc}
 (* pattern match of tagged object *)
 | r = expr; m = pattern_match_atom+; PERIOD;
-| LPAREN; r = expr; m = pattern_match_atom+; RPAREN
-  {AstCreate.make_pattern_match r m $loc}
+  {AstCreate.make_pattern_match r m None $loc}
+| r = expr; m = pattern_match_atom+; LBRACE; default = expr; RBRACE PERIOD;
+  {AstCreate.make_pattern_match r m (Some (default, $loc(default))) $loc}
 (* variable declaration *)
 | id = lower_id; DECLARATION; rhs = expr; e = post_decl_expr
   {AstCreate.make_declaration id rhs e $loc}

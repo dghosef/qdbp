@@ -3,7 +3,7 @@ let fv expr =
   | `PrototypeCopy (_, _, _, _, _, fvs) -> fvs
   | `TaggedObject (_, _, _, fvs) -> fvs
   | `MethodInvocation (_, _, _, _, fvs) -> fvs
-  | `PatternMatch (_, _, _, fvs) -> fvs
+  | `PatternMatch (_, _, _, _, fvs) -> fvs
   | `Declaration (_, _, _, _, fvs) -> fvs
   | `VariableLookup (_, _, fvs) -> fvs
   | `ExternalCall (_, _, _, fvs) -> fvs
@@ -99,7 +99,7 @@ let rec refcount delta gamma ast =
   | `StrProto (s, loc) -> `StrProto (s, loc)
   | `Abort loc -> `Abort loc
   | `EmptyPrototype loc -> `EmptyPrototype loc
-  | `PatternMatch (x, cases, loc, fvs) ->
+  | `PatternMatch (hasDefault, x, cases, loc, fvs) ->
       assert (AstTypes.IntSet.mem x gamma);
       let gamma = AstTypes.IntSet.remove x gamma in
       let cases =
@@ -128,7 +128,7 @@ let rec refcount delta gamma ast =
             ((name, nameLoc), ((bv_pi, bv_pi_loc), body, methLoc), loc))
           cases
       in
-      `PatternMatch (x, cases, loc, fvs)
+      `PatternMatch (hasDefault, x, cases, loc, fvs)
   | `ExternalCall ((name, nameLoc), args, loc, fvs) ->
       (* Convert e to lambda app form *)
       (* Refcount app *)
@@ -263,14 +263,14 @@ let rec fusion expr =
         List.map (fun (name, value, loc) -> (name, fusion value, loc)) args
       in
       `MethodInvocation (fusion receiver, (name, nameLoc), args, loc)
-  | `PatternMatch (x, cases, loc) ->
+  | `PatternMatch (hasDefault, x, cases, loc) ->
       let cases =
         List.map
           (fun (name, (v, body, methLoc), loc) ->
             (name, (v, fusion body, methLoc), loc))
           cases
       in
-      `PatternMatch (x, cases, loc)
+      `PatternMatch (hasDefault, x, cases, loc)
   | `Declaration (l, r, body, loc) ->
       `Declaration (l, fusion r, fusion body, loc)
   | `VariableLookup _ as v -> v

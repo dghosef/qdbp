@@ -101,8 +101,12 @@ let make_param name loc = (name, loc)
 (* Tagged object stuff *)
 let make_tagged_object tag value loc : ast = `TaggedObject (tag, value, loc)
 
-let make_pattern_match receiver cases loc : ast =
-  `PatternMatch (receiver, cases, loc)
+let make_pattern_match receiver cases maybe_default loc : ast =
+  match maybe_default with
+  | Some (default, defaultLoc) ->
+    let firstCase = (("default", defaultLoc), (("DefaultVar", defaultLoc), default, defaultLoc), defaultLoc) in
+    `PatternMatch (true, receiver, firstCase:: cases, loc)
+  |None ->`PatternMatch (false, receiver, cases, loc)
 
 let make_pattern_match_meth arg body loc = (arg, body, loc)
 let make_pattern_match_atom name meth loc = (name, meth, loc)

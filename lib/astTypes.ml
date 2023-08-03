@@ -13,7 +13,12 @@ type ast =
   | `TaggedObject of id * ast * parser_pos
   | `MethodInvocation of
     ast * id * (string * ast * parser_pos) list * parser_pos
-  | `PatternMatch of ast * case list * parser_pos
+  | `PatternMatch of
+    bool
+    (* Indicates whether the first item in the case list is the default case*)
+    * ast
+    * case list
+    * parser_pos
   | `Declaration of id * ast * ast * parser_pos
   | `VariableLookup of string * parser_pos
   | `Import of string * parser_pos

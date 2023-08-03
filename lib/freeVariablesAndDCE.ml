@@ -5,7 +5,7 @@ let rec is_pure ast =
   | `TaggedObject (_, value, _) -> is_pure value
   | `MethodInvocation (receiver, _, args, _) ->
       is_pure receiver && List.for_all (fun (_, arg, _) -> is_pure arg) args
-  | `PatternMatch (receiver, cases, _) ->
+  | `PatternMatch (_, receiver, cases, _) ->
       is_pure receiver
       && List.for_all (fun (_, (_, body, _), _) -> is_pure body) cases
   | `Declaration (_, rhs, body, _) -> is_pure rhs && is_pure body
@@ -53,7 +53,7 @@ let rec free_variables ast =
       let receiver_fvs, receiver = free_variables receiver in
       let fvs = AstTypes.StringSet.union arg_fvs receiver_fvs in
       (fvs, `MethodInvocation (receiver, (name, labelLoc), args, loc))
-  | `PatternMatch (receiver, cases, loc) ->
+  | `PatternMatch (hasDefault, receiver, cases, loc) ->
       let receiver_fvs, receiver = free_variables receiver in
       let cases_fvs, cases =
         List.fold_left_map
@@ -65,7 +65,7 @@ let rec free_variables ast =
           AstTypes.StringSet.empty cases
       in
       let fvs = AstTypes.StringSet.union receiver_fvs cases_fvs in
-      (fvs, `PatternMatch (receiver, cases, loc))
+      (fvs, `PatternMatch (hasDefault, receiver, cases, loc))
   | `Declaration ((name, nameLoc), rhs, body, loc) ->
       let body_fvs, body = free_variables body in
       let rhs_is_pure = is_pure rhs in

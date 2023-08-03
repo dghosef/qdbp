@@ -324,7 +324,7 @@ let loc_of expr =
   | `PrototypeCopy (_, _, _, loc, _) -> loc
   | `TaggedObject (_, _, loc) -> loc
   | `MethodInvocation (_, _, _, loc) -> loc
-  | `PatternMatch (_, _, loc) -> loc
+  | `PatternMatch (_, _, _, loc) -> loc
   | `Declaration (_, _, _, loc) -> loc
   | `VariableLookup (_, loc) -> loc
   | `ExternalCall (_, _, loc) -> loc
@@ -543,20 +543,47 @@ let infer files expr =
         ( (tvars, already_unified),
           return_ty,
           `MethodInvocation (receiver, (name, nameLoc), args, loc) )
-    | `PatternMatch (expr, cases, loc) ->
-        let tvars, already_unified = state in
-        let tvars, return_ty = make_new_unbound_var tvars level in
-        let (tvars, already_unified), expr_ty, expr =
-          infer (tvars, already_unified) env level expr
-        in
-        let tvars, cases_row, cases =
-          infer_cases tvars already_unified env level return_ty `TRowEmpty cases
-        in
-        let tvars, already_unified =
-          try_unify tvars already_unified (loc_of expr) expr_ty
-            (`TVariant cases_row)
-        in
-        ((tvars, already_unified), return_ty, `PatternMatch (expr, cases, loc))
+    | `PatternMatch (hasDefault, expr, cases, loc) ->
+        if hasDefault then
+          let tvars, already_unified = state in
+          let tvars, default_variant_ty = make_new_unbound_var tvars level in
+          let a, (b, default, c), d = List.hd cases in
+          let cases = List.tl cases in
+          let ((tvars, already_unified), return_ty, default) =
+            infer (tvars, already_unified) env level default
+          in
+          let ((tvars, already_unified), expr_ty, expr) =
+            infer (tvars, already_unified) env level expr
+          in
+          let tvars, cases_row, cases =
+            infer_cases tvars already_unified env level return_ty default_variant_ty
+              cases
+          in
+          let tvars, already_unified =
+            try_unify tvars already_unified (loc_of expr) expr_ty
+              (`TVariant cases_row)
+          in
+          ( (tvars, already_unified),
+            return_ty,
+            `PatternMatch
+              (hasDefault, expr, (a, (b, default, c), d) :: cases, loc) )
+        else
+          let tvars, already_unified = state in
+          let tvars, return_ty = make_new_unbound_var tvars level in
+          let (tvars, already_unified), expr_ty, expr =
+            infer (tvars, already_unified) env level expr
+          in
+          let tvars, cases_row, cases =
+            infer_cases tvars already_unified env level return_ty `TRowEmpty
+              cases
+          in
+          let tvars, already_unified =
+            try_unify tvars already_unified (loc_of expr) expr_ty
+              (`TVariant cases_row)
+          in
+          ( (tvars, already_unified),
+            return_ty,
+            `PatternMatch (hasDefault, expr, cases, loc) )
     | `IntProto _ as i ->
         let tvars, already_unified = state in
         let tvars, typ = InferUtils.int_proto_type tvars level in
