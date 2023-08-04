@@ -9,8 +9,8 @@ static size_t fast_mod(size_t x, size_t n) {
 }
 
 _qdbp_hashtable_t* _qdbp_ht_new(size_t capacity) {
-  _qdbp_hashtable_t* table =
-      (_qdbp_hashtable_t*)_qdbp_malloc((capacity + 1) * sizeof(_qdbp_hashtable_t));
+  _qdbp_hashtable_t* table = (_qdbp_hashtable_t*)_qdbp_malloc(
+      (capacity + 1) * sizeof(_qdbp_hashtable_t));
   for (size_t i = 1; i <= capacity; i++) {
     table[i].field.method.code = NULL;
   }
@@ -22,7 +22,7 @@ _qdbp_hashtable_t* _qdbp_ht_new(size_t capacity) {
 }
 
 void _qdbp_ht_del(_qdbp_hashtable_t* table) {
-  if(table) {
+  if (table) {
     _qdbp_free(table->header.directory);
     _qdbp_free(table);
   }
@@ -58,7 +58,8 @@ _qdbp_field_ptr _qdbp_ht_find(_qdbp_hashtable_t* table, _qdbp_label_t label) {
   return &(fields[index].field);
 }
 
-_qdbp_field_ptr _qdbp_ht_find_opt(_qdbp_hashtable_t* table, _qdbp_label_t label) {
+_qdbp_field_ptr _qdbp_ht_find_opt(_qdbp_hashtable_t* table,
+                                  _qdbp_label_t label) {
   if (!table) {
     return NULL;
   }
@@ -73,7 +74,8 @@ _qdbp_field_ptr _qdbp_ht_find_opt(_qdbp_hashtable_t* table, _qdbp_label_t label)
     }
     _qdbp_assert(index < table->header.capacity);
   }
-  return fields[index].field.method.code == NULL ? NULL : &(fields[index].field);
+  return fields[index].field.method.code == NULL ? NULL
+                                                 : &(fields[index].field);
 }
 
 static void ht_insert_no_resize(_qdbp_hashtable_t* table,
@@ -92,7 +94,7 @@ static void ht_insert_no_resize(_qdbp_hashtable_t* table,
 }
 
 _qdbp_hashtable_t* _qdbp_ht_insert(_qdbp_hashtable_t* table,
-                                 const _qdbp_field_ptr fld) {
+                                   const _qdbp_field_ptr fld) {
   if (!table) {
     table = _qdbp_ht_new(_QDBP_HT_DEFAULT_CAPACITY);
   }

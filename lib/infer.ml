@@ -549,15 +549,15 @@ let infer files expr =
           let tvars, default_variant_ty = make_new_unbound_var tvars level in
           let a, (b, default, c), d = List.hd cases in
           let cases = List.tl cases in
-          let ((tvars, already_unified), return_ty, default) =
+          let (tvars, already_unified), return_ty, default =
             infer (tvars, already_unified) env level default
           in
-          let ((tvars, already_unified), expr_ty, expr) =
+          let (tvars, already_unified), expr_ty, expr =
             infer (tvars, already_unified) env level expr
           in
           let tvars, cases_row, cases =
-            infer_cases tvars already_unified env level return_ty default_variant_ty
-              cases
+            infer_cases tvars already_unified env level return_ty
+              default_variant_ty cases
           in
           let tvars, already_unified =
             try_unify tvars already_unified (loc_of expr) expr_ty

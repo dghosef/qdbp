@@ -49,11 +49,16 @@ let resolve_imports imports ast =
     match ast with
     | `EmptyPrototype loc -> `EmptyPrototype loc
     | `PrototypeCopy
-        (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), size, op, loc) ->
+        (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), size, op, loc)
+      ->
         let ext = resolve_imports ext in
         let body = resolve_imports body in
         `PrototypeCopy
-          (ext, ((name, labelLoc), (args, body, methLoc), fieldLoc), size, op, loc)
+          ( ext,
+            ((name, labelLoc), (args, body, methLoc), fieldLoc),
+            size,
+            op,
+            loc )
     | `TaggedObject ((tag, tagLoc), value, loc) ->
         let value = resolve_imports value in
         `TaggedObject ((tag, tagLoc), value, loc)

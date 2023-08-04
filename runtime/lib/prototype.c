@@ -206,6 +206,13 @@ _qdbp_object_ptr _qdbp_replace(_qdbp_object_ptr obj, _qdbp_label_t label,
   } else {
     _qdbp_assert_kind(obj, _QDBP_BOXED_INT);
     original_prototype = &(obj->data.boxed_int->prototype);
+    // This case should be rare enough that it is ok to have the double lookup
+    // because how often are you going to replace a default op on a boxed int
+    if (label < _QDBP_MAX_OP &&
+        !_qdbp_ht_find_opt(original_prototype->label_map, label)) {
+      return _qdbp_extend(obj, label, code, captures, num_captures,
+                          _QDBP_HT_DEFAULT_CAPACITY);
+    }
   }
   if (!_QDBP_REUSE_ANALYSIS || !_qdbp_is_unique(obj)) {
     struct _qdbp_prototype new_prototype =

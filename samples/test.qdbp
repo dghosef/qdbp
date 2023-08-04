@@ -1,5 +1,4 @@
-a : {A[{}]}
-(#Asdf{})
-  Asdff? [a]
-  [a].
-  A.
+a: {0
+  Print["HI" Print.]
+}
+{a Print["Bye" Print.]} Print.

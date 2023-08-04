@@ -99,7 +99,8 @@ let inline depth expr =
             let pevalbody, body = inline depth env body in
             ( pevalbody,
               `PatternMatch
-                ( hasDefault, receiver,
+                ( hasDefault,
+                  receiver,
                   [ (tag, ((argname, argloc), body, patternLoc), caseLoc) ],
                   loc ) )
         | `Unit | `Variant _ ->

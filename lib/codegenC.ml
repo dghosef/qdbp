@@ -131,9 +131,11 @@ let rec expr_to_c level expr =
               ]
       in
       let casesC =
-        if hasDefault then cases_to_c (level + 1) (List.tl cases) (Some (
-          let ((_, _), (_, body, _), _) = List.hd cases in body
-        ))
+        if hasDefault then
+          cases_to_c (level + 1) (List.tl cases)
+            (Some
+               (let (_, _), (_, body, _), _ = List.hd cases in
+                body))
         else cases_to_c (level + 1) cases None
       in
       paren
