@@ -3,8 +3,8 @@
 #include <stdlib.h>
 
 #include "runtime.h"
-static intptr_t int_max = 4611686018427387903;   // biggest 63 bit signed int
-static intptr_t int_min = -4611686018427387904;  // smallest 63 bit signed int
+static const intptr_t int_max = INTPTR_MAX >> 1;
+static const intptr_t int_min = INTPTR_MIN >> 1;
 
 static _qdbp_object_ptr bigint_op(_qdbp_bigint_arith_fn op, uintptr_t l,
                                   uintptr_t r) {

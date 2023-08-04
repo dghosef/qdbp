@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "runtime.h"
+#include <inttypes.h>
 
 static void mpz_si_op(mpz_t dest, intptr_t l, const mpz_t r,
                       _qdbp_bigint_arith_fn op) {
@@ -184,7 +185,7 @@ _qdbp_object_ptr _qdbp_int_unary_op(_qdbp_object_ptr receiver,
   switch (op) {
     case _QDBP_PRINT:
       if (_qdbp_is_unboxed_int(receiver)) {
-        printf("%lu\n", _qdbp_get_unboxed_int(receiver));
+        printf("%"PRIiPTR, _qdbp_get_unboxed_int(receiver));
       } else {
         _qdbp_assert(_qdbp_is_boxed_int(receiver));
         mpz_out_str(stdout, 10, receiver->data.boxed_int->value);
