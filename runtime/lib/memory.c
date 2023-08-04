@@ -100,6 +100,7 @@ _qdbp_object_ptr _qdbp_malloc_obj() {
   }
 }
 
+/* I think the problem is null capture array in find opt and here */
 _qdbp_object_arr _qdbp_malloc_capture_arr(size_t size) {
   return _qdbp_malloc(sizeof(_qdbp_object_ptr) * size);
 }

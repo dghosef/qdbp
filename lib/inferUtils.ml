@@ -47,11 +47,11 @@ let str_proto_type tvars level =
   (* MUST Keep in sync with int_proto.h and namesToInts.ml *)
   let row =
     `TRowExtend
-      ("Print:ThisArg", `TArrow ([ v1 ], `TRecord `TRowEmpty), `TRowEmpty)
+      ("Print:SelfArg", `TArrow ([ v1 ], `TRecord `TRowEmpty), `TRowEmpty)
   in
   let tvars, v1 = make_new_unbound_var tvars level in
   let row =
-    `TRowExtend ("isAStr:ThisArg", `TArrow ([ v1 ], `TRecord `TRowEmpty), row)
+    `TRowExtend ("isAStr:SelfArg", `TArrow ([ v1 ], `TRecord `TRowEmpty), row)
   in
   (tvars, `TRecord row)
 
@@ -63,11 +63,11 @@ let int_proto_type tvars level =
     let arg0_ty =
       `TRecord
         (`TRowExtend
-          ("isAnInt:ThisArg", `TArrow ([ v2 ], `TRecord `TRowEmpty), v3))
+          ("isAnInt:SelfArg", `TArrow ([ v2 ], `TRecord `TRowEmpty), v3))
     in
     ( tvars,
       `TRowExtend
-        (binop ^ ":ThisArg" ^ ":Arg0", `TArrow ([ v1; arg0_ty ], v1), row) )
+        (binop ^ ":SelfArg" ^ ":Arg0", `TArrow ([ v1; arg0_ty ], v1), row) )
   in
   let add_cmp_binop tvars level binop row =
     let tvars, v1 = make_new_unbound_var tvars level in
@@ -76,23 +76,23 @@ let int_proto_type tvars level =
     let arg0_ty =
       `TRecord
         (`TRowExtend
-          ("isAnInt:ThisArg", `TArrow ([ v2 ], `TRecord `TRowEmpty), v3))
+          ("isAnInt:SelfArg", `TArrow ([ v2 ], `TRecord `TRowEmpty), v3))
     in
     let tvars, ret_ty = bool_ty level tvars in
     ( tvars,
       `TRowExtend
-        (binop ^ ":ThisArg" ^ ":Arg0", `TArrow ([ v1; arg0_ty ], ret_ty), row)
+        (binop ^ ":SelfArg" ^ ":Arg0", `TArrow ([ v1; arg0_ty ], ret_ty), row)
     )
   in
   let tvars, v1 = make_new_unbound_var tvars level in
   (* MUST Keep in sync with int_proto.h and namesToInts.ml *)
   let row =
     `TRowExtend
-      ("Print:ThisArg", `TArrow ([ v1 ], `TRecord `TRowEmpty), `TRowEmpty)
+      ("Print:SelfArg", `TArrow ([ v1 ], `TRecord `TRowEmpty), `TRowEmpty)
   in
   let tvars, v1 = make_new_unbound_var tvars level in
   let row =
-    `TRowExtend ("isAnInt:ThisArg", `TArrow ([ v1 ], `TRecord `TRowEmpty), row)
+    `TRowExtend ("isAnInt:SelfArg", `TArrow ([ v1 ], `TRecord `TRowEmpty), row)
   in
   let tvars, row = add_arith_binop tvars level "+" row in
   let tvars, row = add_arith_binop tvars level "-" row in

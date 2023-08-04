@@ -29,12 +29,12 @@ let make_empty_prototype loc : ast = `EmptyPrototype loc
 let make_meth args body loc =
   match args with
   | ((_, arg0_loc) as arg0) :: tl ->
-      ( ("ThisArg", loc) :: ("Arg0", arg0_loc) :: tl,
+      ( ("SelfArg", loc) :: ("Arg0", arg0_loc) :: tl,
         make_declaration arg0
           (make_variable_lookup "Arg0" arg0_loc)
           body arg0_loc,
         loc )
-  | [] -> (("ThisArg", loc) :: args, body, loc)
+  | [] -> (("SelfArg", loc) :: args, body, loc)
 
 let make_prototype maybe_extension fields op loc : ast =
   let extension =
@@ -76,7 +76,7 @@ let make_prototype maybe_extension fields op loc : ast =
 let make_prototype_invoke_arg name value loc = (name, value, loc)
 
 let make_meth_body e loc =
-  make_declaration ("this", loc) (make_variable_lookup "ThisArg" loc) e loc
+  make_declaration ("self", loc) (make_variable_lookup "SelfArg" loc) e loc
 
 let make_method_invocation receiver field_name arg0 args loc : ast =
   let args =
@@ -84,11 +84,11 @@ let make_method_invocation receiver field_name arg0 args loc : ast =
     | Some arg -> ("Arg0", arg, loc) :: args
     | None -> args (* Equivalently, [] since args will be [] *)
   in
-  let args = ("ThisArg", make_variable_lookup "This" loc, loc) :: args in
+  let args = ("SelfArg", make_variable_lookup "Self" loc, loc) :: args in
   let arg_names = List.map (fun (name, _, _) -> name) args in
   let field_name = full_field_name field_name arg_names in
-  make_declaration ("This", loc) receiver
-    (`MethodInvocation (make_variable_lookup "This" loc, field_name, args, loc))
+  make_declaration ("Self", loc) receiver
+    (`MethodInvocation (make_variable_lookup "Self" loc, field_name, args, loc))
     loc
 
 let make_closure args body loc : ast =

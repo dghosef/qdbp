@@ -1,4 +1,5 @@
-a : (#Asdf{})
-  Asdff? [{A[{}]}]
-  [{A[3 Print.]}].
-a A.
+a : {A[{}]}
+(#Asdf{})
+  Asdff? [a]
+  [a].
+  A.

@@ -80,6 +80,7 @@ _qdbp_object_arr _qdbp_get_method_opt(_qdbp_object_ptr obj, _qdbp_label_t label,
                                       void **code /*output param*/) {
   _qdbp_prototype_ptr proto;
   if (_qdbp_is_unboxed_int(obj) || !obj) {
+    *code = NULL;
     return NULL;
   } else if (_qdbp_get_kind(obj) == _QDBP_PROTOTYPE) {
     proto = &(obj->data.prototype);
@@ -93,6 +94,7 @@ _qdbp_object_arr _qdbp_get_method_opt(_qdbp_object_ptr obj, _qdbp_label_t label,
   }
   _qdbp_field_ptr field = _qdbp_label_get_opt(proto, label);
   if (!field) {
+    *code = NULL;
     return NULL;
   }
   struct _qdbp_method m = field->method;
@@ -229,7 +231,7 @@ _qdbp_object_ptr _qdbp_invoke_1(_qdbp_object_ptr receiver, _qdbp_label_t label,
                                 _qdbp_object_ptr arg0) {
   void *code;
   _qdbp_object_arr captures = _qdbp_get_method_opt(receiver, label, &code);
-  if (!captures) {
+  if (!code) {
     if (_qdbp_is_unboxed_int(receiver) || _qdbp_is_boxed_int(receiver)) {
       return _qdbp_int_unary_op(receiver, label);
     } else if (_qdbp_get_kind(receiver) == _QDBP_STRING) {
@@ -247,7 +249,7 @@ _qdbp_object_ptr _qdbp_invoke_2(_qdbp_object_ptr receiver, _qdbp_label_t label,
                                 _qdbp_object_ptr arg0, _qdbp_object_ptr arg1) {
   void *code;
   _qdbp_object_arr captures = _qdbp_get_method_opt(receiver, label, &code);
-  if (!captures) {
+  if (!code) {
     if (_qdbp_is_unboxed_int(receiver) || _qdbp_is_boxed_int(receiver)) {
       return _qdbp_int_binary_op(arg0, arg1, label);
     } else if (_qdbp_get_kind(receiver) == _QDBP_STRING) {
