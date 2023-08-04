@@ -1,5 +1,5 @@
-%token<string> UPPER_ID LOWER_ID ARG IMPORT STRING INT
-%token PIPE DECLARATION PERIOD TAG QUESTION MONEY ABORT EOF DOUBLE_COLON
+%token<string> UPPER_ID LOWER_ID IMPORT STRING INT
+%token PIPE PERIOD TAG QUESTION MONEY ABORT EOF COLON DOUBLE_COLON
 %token LPAREN RPAREN LBRACE RBRACE LBRACKET RBRACKET
 
 (* LOWEST PRECEDNCE *)
@@ -51,7 +51,7 @@ expr:
 | r = expr; m = pattern_match_atom+; LBRACE; default = expr; RBRACE PERIOD;
   {AstCreate.make_pattern_match r m (Some (default, $loc(default))) $loc}
 (* variable declaration *)
-| id = lower_id; DECLARATION; rhs = expr; e = post_decl_expr
+| id = lower_id; COLON; rhs = expr; e = post_decl_expr
   {AstCreate.make_declaration id rhs e $loc}
 (* variable lookup *)
 | name = LOWER_ID {AstCreate.make_variable_lookup name $loc}
@@ -89,7 +89,7 @@ prototype_field:
   { AstTypes.Data (AstCreate.make_prototype_value_field id e $loc) }
 
 prototype_invoke_arg:
-| id = ARG; e = expr; {AstCreate.make_prototype_invoke_arg id e $loc}
+| id = LOWER_ID; COLON; e = expr; {AstCreate.make_prototype_invoke_arg id e $loc}
 
 pattern_match_atom:
 | n = upper_id; QUESTION; e = pattern_match_meth;

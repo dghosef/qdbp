@@ -34,12 +34,10 @@ rule token = parse
 | ';' [ ^'\n']* { token lexbuf }
 | "ABORT" { ABORT }
 | upper_id as s { UPPER_ID (s) }
-| lower_id as s ':' { ARG (s) }
 | lower_id as s { LOWER_ID (s) }
 | newline { next_line lexbuf; token lexbuf}
 | "(*" { comment 0 lexbuf }
 | '.' { PERIOD }
-| ":=" { DECLARATION }
 | '|' { PIPE }
 | '[' { LBRACE }
 | ']' { RBRACE }
@@ -51,6 +49,7 @@ rule token = parse
 | '?' { QUESTION }
 | '$' { MONEY }
 | "::" { DOUBLE_COLON }
+| ':' { COLON }
 | eof { EOF }
 | _ as c { raise
   (LexerError ("Unexpected character: " ^ (String.make 1 c),
