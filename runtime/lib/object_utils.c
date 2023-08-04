@@ -48,13 +48,13 @@ bool _qdbp_is_unboxed_int(_qdbp_object_ptr obj) {
   return ((uintptr_t)obj & 1) == 1;
 }
 
-_qdbp_object_ptr _qdbp_make_unboxed_int(uint64_t value) {
+_qdbp_object_ptr _qdbp_make_unboxed_int(uintptr_t value) {
   return (_qdbp_object_ptr)((intptr_t)(value << 1) | 1);
 }
 
-uint64_t _qdbp_get_unboxed_int(_qdbp_object_ptr obj) {
+uintptr_t _qdbp_get_unboxed_int(_qdbp_object_ptr obj) {
   _qdbp_assert(_qdbp_is_unboxed_int(obj));
-  uint64_t result = ((intptr_t)obj) >> 1;
+  uintptr_t result = ((intptr_t)obj) >> 1;
   return result;
 }
 

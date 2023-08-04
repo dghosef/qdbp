@@ -190,12 +190,12 @@ size_t _qdbp_ht_size(_qdbp_hashtable_t* table);
                 (fld = &((ht)[(ht)->header.directory[tmp]].field), true); \
        tmp++)
 // smallint math
-int64_t _qdbp_sign_extend(uint64_t a);
-_qdbp_object_ptr _qdbp_smallint_add(uint64_t a, uint64_t b);
-_qdbp_object_ptr _qdbp_smallint_sub(uint64_t a, uint64_t b);
-_qdbp_object_ptr _qdbp_smallint_mul(uint64_t a, uint64_t b);
-_qdbp_object_ptr _qdbp_smallint_div(uint64_t a, uint64_t b);
-_qdbp_object_ptr _qdbp_smallint_mod(uint64_t a, uint64_t b);
+intptr_t _qdbp_sign_extend(uintptr_t a);
+_qdbp_object_ptr _qdbp_smallint_add(uintptr_t a, uintptr_t b);
+_qdbp_object_ptr _qdbp_smallint_sub(uintptr_t a, uintptr_t b);
+_qdbp_object_ptr _qdbp_smallint_mul(uintptr_t a, uintptr_t b);
+_qdbp_object_ptr _qdbp_smallint_div(uintptr_t a, uintptr_t b);
+_qdbp_object_ptr _qdbp_smallint_mod(uintptr_t a, uintptr_t b);
 typedef typeof(_qdbp_smallint_add) _qdbp_smallint_arith_fn;
 // bigint math
 typedef typeof(mpz_add) _qdbp_bigint_arith_fn;
@@ -281,8 +281,8 @@ _qdbp_object_ptr _qdbp_invoke_2(_qdbp_object_ptr receiver, _qdbp_label_t label,
 
 // ints
 bool _qdbp_is_unboxed_int(_qdbp_object_ptr obj);
-_qdbp_object_ptr _qdbp_make_unboxed_int(uint64_t value);
-uint64_t _qdbp_get_unboxed_int(_qdbp_object_ptr obj);
+_qdbp_object_ptr _qdbp_make_unboxed_int(uintptr_t value);
+uintptr_t _qdbp_get_unboxed_int(_qdbp_object_ptr obj);
 bool _qdbp_is_boxed_int(_qdbp_object_ptr obj);
 // strings
 _qdbp_object_ptr _qdbp_string_unary_op(_qdbp_object_ptr obj,

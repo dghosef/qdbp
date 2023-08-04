@@ -2,7 +2,7 @@
 
 #include "runtime.h"
 
-static void mpz_si_op(mpz_t dest, int64_t l, const mpz_t r,
+static void mpz_si_op(mpz_t dest, intptr_t l, const mpz_t r,
                       _qdbp_bigint_arith_fn op) {
   mpz_t l_mpz;
   mpz_init_set_si(l_mpz, l);
@@ -10,7 +10,7 @@ static void mpz_si_op(mpz_t dest, int64_t l, const mpz_t r,
   mpz_clear(l_mpz);
 }
 
-static void mpz_op_si(mpz_t dest, const mpz_t l, int64_t r,
+static void mpz_op_si(mpz_t dest, const mpz_t l, intptr_t r,
                       _qdbp_bigint_arith_fn op) {
   mpz_t r_mpz;
   mpz_init_set_si(r_mpz, r);
@@ -184,7 +184,7 @@ _qdbp_object_ptr _qdbp_int_unary_op(_qdbp_object_ptr receiver,
   switch (op) {
     case _QDBP_PRINT:
       if (_qdbp_is_unboxed_int(receiver)) {
-        printf("%llu\n", _qdbp_get_unboxed_int(receiver));
+        printf("%lu\n", _qdbp_get_unboxed_int(receiver));
       } else {
         _qdbp_assert(_qdbp_is_boxed_int(receiver));
         mpz_out_str(stdout, 10, receiver->data.boxed_int->value);
