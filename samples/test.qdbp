@@ -1,4 +1,4 @@
-a: {0
-  Print["HI" Print.]
+a: {"Hi"
+  Print["Hello" Print.]
 }
-{a Print["Bye" Print.]} Print.
+a Print.

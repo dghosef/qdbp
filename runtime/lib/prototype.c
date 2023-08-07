@@ -149,9 +149,11 @@ _qdbp_object_ptr _qdbp_extend(_qdbp_object_ptr obj, _qdbp_label_t label,
   _qdbp_prototype_ptr original_prototype;
   if (_qdbp_get_kind(obj) == _QDBP_PROTOTYPE) {
     original_prototype = &(obj->data.prototype);
-  } else {
-    _qdbp_assert_kind(obj, _QDBP_BOXED_INT);
+  } else if(_qdbp_get_kind(obj) == _QDBP_BOXED_INT) {
     original_prototype = &(obj->data.boxed_int->prototype);
+  } else {
+    _qdbp_assert_kind(obj, _QDBP_STRING);
+    original_prototype = &(obj->data.string->prototype);
   }
   if (!_QDBP_REUSE_ANALYSIS || !_qdbp_is_unique(obj)) {
     _qdbp_prototype_ptr prototype = original_prototype;
@@ -187,14 +189,7 @@ static struct _qdbp_prototype prototype_copy_and_replace(
 _qdbp_object_ptr _qdbp_replace(_qdbp_object_ptr obj, _qdbp_label_t label,
                                void *code, _qdbp_object_arr captures,
                                size_t num_captures) {
-  if (!obj) {
-    // Special case: `obj` is the empty prototype
-    obj = _qdbp_make_object(
-        _QDBP_PROTOTYPE,
-        (union _qdbp_object_data){.prototype = {.label_map = NULL}});
-    // Fallthrough to after special case handling
-  }
-
+  _qdbp_assert(obj);
   struct _qdbp_field new_field = {
       .label = label,
       .method = {.captures = _qdbp_copy_captures(captures, num_captures),
@@ -203,9 +198,12 @@ _qdbp_object_ptr _qdbp_replace(_qdbp_object_ptr obj, _qdbp_label_t label,
   _qdbp_prototype_ptr original_prototype;
   if (_qdbp_get_kind(obj) == _QDBP_PROTOTYPE) {
     original_prototype = &(obj->data.prototype);
-  } else {
-    _qdbp_assert_kind(obj, _QDBP_BOXED_INT);
-    original_prototype = &(obj->data.boxed_int->prototype);
+  } else if (_qdbp_is_boxed_int(obj) || _qdbp_get_kind(obj) == _QDBP_STRING) {
+    if (_qdbp_is_boxed_int(obj)) {
+      original_prototype = &(obj->data.boxed_int->prototype);
+    } else {
+      original_prototype = &(obj->data.string->prototype);
+    }
     // This case should be rare enough that it is ok to have the double lookup
     // because how often are you going to replace a default op on a boxed int
     if (label < _QDBP_MAX_OP &&
@@ -213,6 +211,9 @@ _qdbp_object_ptr _qdbp_replace(_qdbp_object_ptr obj, _qdbp_label_t label,
       return _qdbp_extend(obj, label, code, captures, num_captures,
                           _QDBP_HT_DEFAULT_CAPACITY);
     }
+  } else {
+    _qdbp_assert(false);
+    __builtin_unreachable();
   }
   if (!_QDBP_REUSE_ANALYSIS || !_qdbp_is_unique(obj)) {
     struct _qdbp_prototype new_prototype =
