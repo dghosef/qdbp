@@ -1,4 +1,4 @@
-## The Little Language That Could
+# The Little Language That Could
 
 *From the [website](qdbplang.org):*
 
@@ -37,7 +37,7 @@ Of course, just being small and simple is not sufficient. If it were, the world 
 
 That qdbp's core feature set can be so naturally wielded to express complex abstractions is testament to the elegance of the language. The goal of qdbp is to be the distillation of programming into only its necessary components, and in doing so, become greater than the sum of its parts. If this sounds like something you want from a language, clone this repo, checkout [qdbp's website](https://qdbplang.org), and follow the quickstart below. Happy qdbping!
 
-## Quick Start
+# Quick Start
 
 qdbp requires ocaml, dune, menhir, and libgmp. To use the compiler, write your program in your text editor or IDE of your choice, clone this repo and, run
 ```bash
