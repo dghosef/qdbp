@@ -2,7 +2,7 @@
 
 *From the [website](qdbplang.org):*
 
-qdbp is small. Really, really small. The language has just 2 keywords and 7 core constructs(along with full type inference and a little bit of syntax sugar to sweeten the deal). In fact here is a small program that demonstrates *every single primitive* of the language:
+qdbp is small. Really, really small. The language has just one keyword and a small handful of core constructs(along with full type inference and a little bit of syntax sugar to sweeten the deal). In fact here is a small program that demonstrates *every single primitive* of the language:
 ```ocaml
 int := 0
 float := 0.0
