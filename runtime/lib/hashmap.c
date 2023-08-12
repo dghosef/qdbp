@@ -8,23 +8,25 @@ static size_t fast_mod(size_t x, size_t n) {
   return x & (n - 1);
 }
 
-_qdbp_hashtable_t* _qdbp_ht_new(size_t capacity) {
-  _qdbp_hashtable_t* table = (_qdbp_hashtable_t*)_qdbp_malloc(
-      (capacity + 1) * sizeof(_qdbp_hashtable_t));
+_qdbp_hashtable_t* _qdbp_ht_new(size_t capacity, size_t capacity_lg2) {
+  _qdbp_assert(capacity > 0);
+  _qdbp_assert((1 << capacity_lg2) == capacity);
+  _qdbp_hashtable_t* table = _qdbp_ht_malloc(capacity_lg2);
   for (size_t i = 1; i <= capacity; i++) {
     table[i].field.method.code = NULL;
   }
   table->header = (struct _qdbp_hashtable_header){
       .size = 0,
       .capacity = capacity,
-      .directory = _qdbp_malloc(capacity * sizeof(size_t))};
+      .capacity_lg2 = capacity_lg2,
+      .directory = _qdbp_directory_malloc(capacity)};
   return table;
 }
 
 void _qdbp_ht_del(_qdbp_hashtable_t* table) {
   if (table) {
-    _qdbp_free(table->header.directory);
-    _qdbp_free(table);
+    _qdbp_directory_free(table->header.directory);
+    _qdbp_ht_free(table);
   }
 }
 
@@ -33,13 +35,12 @@ _qdbp_hashtable_t* _qdbp_ht_duplicate(_qdbp_hashtable_t* table) {
     return NULL;
   }
   _qdbp_hashtable_t* new_table =
-      _qdbp_malloc(sizeof(_qdbp_hashtable_t) +
-                   (sizeof(_qdbp_hashtable_t) * table->header.capacity));
+      _qdbp_ht_malloc(table->header.capacity_lg2);
   _qdbp_memcpy(new_table, table,
                sizeof(_qdbp_hashtable_t) +
                    (sizeof(_qdbp_hashtable_t) * (table->header.capacity)));
   new_table->header.directory =
-      _qdbp_malloc(sizeof(size_t) * (table->header.capacity));
+      _qdbp_directory_malloc(table->header.capacity);
   _qdbp_memcpy(new_table->header.directory, table->header.directory,
                sizeof(size_t) * table->header.size);
   return new_table;
@@ -93,17 +94,19 @@ static void ht_insert_no_resize(_qdbp_hashtable_t* table,
   table->header.size++;
 }
 
-// NOTE: Assumes that we are the ONLY owner of `table`
+// NOTE: Assumes that we are the ONLY owner of `table`(refcount of 1)
 _qdbp_hashtable_t* _qdbp_ht_insert(_qdbp_hashtable_t* table,
                                    const _qdbp_field_ptr fld) {
   if (!table) {
-    table = _qdbp_ht_new(_QDBP_HT_DEFAULT_CAPACITY);
+    table =
+        _qdbp_ht_new(_QDBP_HT_DEFAULT_CAPACITY, _QDBP_HT_DEFAULT_CAPACITY_LG2);
   }
   _qdbp_assert(fld->method.code != NULL);
   // resize the ht
   if (table->header.size * _QDBP_LOAD_FACTOR_NUM >=
       table->header.capacity * _QDBP_LOAD_FACTOR_DEN) {
-    _qdbp_hashtable_t* new_table = _qdbp_ht_new(table->header.capacity * 2);
+    _qdbp_hashtable_t* new_table = _qdbp_ht_new(table->header.capacity * 2,
+                                                table->header.capacity_lg2 + 1);
     _QDBP_HT_ITER(table, f, tmp) { ht_insert_no_resize(new_table, f); }
     _qdbp_ht_del(table);
     table = new_table;

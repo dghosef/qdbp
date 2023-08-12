@@ -5,9 +5,10 @@ static void code() {}
 TEST_SUITE(hashtable)
 
 TEST_CASE_NOLEAK(sequential_insert) {
+  size_t capacity_lg2 = 0;
   for (size_t initial_capacity = 1; initial_capacity < 200;
        initial_capacity *= 2) {
-    _qdbp_hashtable_t *ht = _qdbp_ht_new(initial_capacity);
+    _qdbp_hashtable_t *ht = _qdbp_ht_new(initial_capacity, capacity_lg2);
     for (size_t elem = 0; elem < 100; elem++) {
       struct _qdbp_field fld;
       fld.label = elem;
@@ -33,13 +34,15 @@ TEST_CASE_NOLEAK(sequential_insert) {
       _qdbp_ht_del(ht2);
     }
     _qdbp_ht_del(ht);
+  capacity_lg2++;
   }
 }
 
 TEST_CASE_NOLEAK(random_insert) {
+  size_t capacity_lg2 = 0;
   for (size_t initial_capacity = 1; initial_capacity < 200;
        initial_capacity *= 2) {
-    _qdbp_hashtable_t *ht = _qdbp_ht_new(initial_capacity);
+    _qdbp_hashtable_t *ht = _qdbp_ht_new(initial_capacity, capacity_lg2);
     for (size_t elem = 0; elem < 100; elem++) {
       struct _qdbp_field fld;
       _qdbp_label_t label = randomU32();
@@ -54,6 +57,7 @@ TEST_CASE_NOLEAK(random_insert) {
       }
     }
     _qdbp_ht_del(ht);
+  capacity_lg2++;
   }
 }
 

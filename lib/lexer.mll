@@ -1,5 +1,4 @@
 (* FIXME: Money, Tag should include the name *)
-(* TODO: Should declaration be := or : *)
 {
   open Parser
   open Lexing

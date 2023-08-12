@@ -1,8 +1,12 @@
-channel chan
-par := {fn|
-    _ := {fn!.}
-    $_qdbp_invoke_excl_parallel(fn)
+proto := {
+    A[3]
+    B[4]
 }
-fn := {chan Send {}.}
-_ := par! fn.
-{}
+proto2 := { proto
+    A[5]
+}
+proto3 := {proto2 ::
+    C[6]
+    D[7]
+}
+proto3 A. Print.

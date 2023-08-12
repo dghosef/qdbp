@@ -1,6 +1,3 @@
-// TODO: Go through all global data structures and make sure they are
-// thread-safe
-
 // NOTE: Anything with the `chan` prefix is from the channel library I stole
 // from and anything that contains `channel` is my code
 #ifndef QDBP_RUNTIME_H
@@ -38,6 +35,8 @@ extern const bool _QDBP_ASSERTS_ENABLED;
 static const size_t _QDBP_LOAD_FACTOR_NUM = 1;
 static const size_t _QDBP_LOAD_FACTOR_DEN = 1;
 static const size_t _QDBP_HT_DEFAULT_CAPACITY = 4;
+static const size_t _QDBP_HT_DEFAULT_CAPACITY_LG2 = 2;
+static const size_t _QDBP_HT_MAX_SIZE_LG2 = 32;
 #endif
 
 #define _qdbp_assert(x)          \
@@ -73,6 +72,7 @@ struct _qdbp_field {
 
 struct _qdbp_hashtable_header {
   size_t capacity;
+  size_t capacity_lg2;
   size_t size;
   size_t* directory;
 };
@@ -174,12 +174,16 @@ enum _QDBP_ARITH_OP {
   _QDBP_RECEIVE = 506,
   _QDBP_MAX_OP = 1000
 };
+// TODO: Make sure the following is complete and used as much as possible
+// instead of struct _qdbp_object* use _qdbp_object_ptr for example
 typedef struct _qdbp_object* _qdbp_object_ptr;
 typedef struct _qdbp_object** _qdbp_object_arr;
 typedef struct _qdbp_variant* _qdbp_variant_ptr;
 typedef struct _qdbp_prototype* _qdbp_prototype_ptr;
 typedef struct _qdbp_method* _qdbp_method_ptr;
 typedef struct _qdbp_field* _qdbp_field_ptr;
+typedef struct _qdbp_channel* _qdbp_channel_ptr;
+typedef struct _qdbp_string* _qdbp_string_ptr;
 
 // Reference counting
 bool _qdbp_is_unique(_qdbp_object_ptr obj);
@@ -207,7 +211,7 @@ void _qdbp_dup_prototype_captures_except(_qdbp_prototype_ptr proto,
   } while (0)
 
 // Hash table
-_qdbp_hashtable_t* _qdbp_ht_new(size_t capacity);
+_qdbp_hashtable_t* _qdbp_ht_new(size_t capacity, size_t capacity_lg2);
 void _qdbp_ht_del(_qdbp_hashtable_t* table);
 _qdbp_hashtable_t* _qdbp_ht_duplicate(_qdbp_hashtable_t* table);
 // will hang if the label is not in the table
@@ -244,18 +248,40 @@ extern pthread_attr_t _qdbp_thread_attr;
 #define _QDBP_STR(x) _QDBP_STR_INTERNAL(x)
 
 void* _qdbp_malloc(size_t size);
+void* _qdbp_realloc(void* ptr, size_t size);
 void _qdbp_free(void* ptr);
 void _qdbp_memcpy(void* dest, const void* src, size_t n);
 void _qdbp_init();
 void _qdbp_cleanup();
 
 // _qdbp_malloc_<type> allocates the physical memory for the object
-_qdbp_object_ptr _qdbp_malloc_obj();
-_qdbp_object_arr _qdbp_malloc_capture_arr(size_t size);
 // _qdbp_free_<type> free the physical memory of the object
-void _qdbp_free_boxed_int(struct _qdbp_boxed_int* i);
-void _qdbp_free_obj(_qdbp_object_ptr obj);
-void _qdbp_free_capture_arr(_qdbp_object_arr arr);
+
+_qdbp_object_ptr _qdbp_obj_malloc();
+void _qdbp_obj_free(_qdbp_object_ptr obj);
+
+_qdbp_channel_ptr _qdbp_channel_malloc();
+void _qdbp_channel_free(_qdbp_channel_ptr channel);
+
+_qdbp_string_ptr _qdbp_qstring_malloc();
+void _qdbp_qstring_free(_qdbp_string_ptr str);
+
+_qdbp_object_arr _qdbp_capture_arr_malloc(size_t size);
+void _qdbp_capture_arr_free(_qdbp_object_arr arr);
+
+struct _qdbp_boxed_int* _qdbp_boxed_int_malloc();
+void _qdbp_boxed_int_free(struct _qdbp_boxed_int* i);
+
+_qdbp_hashtable_t* _qdbp_ht_malloc(size_t capacity_lg2);
+void _qdbp_ht_free(_qdbp_hashtable_t* table);
+
+// TODO: Use _qdbp_boxed_int_ptr instead
+size_t * _qdbp_directory_malloc(size_t capacity);
+void _qdbp_directory_free(size_t * directory);
+
+char *_qdbp_cstring_malloc(size_t length);
+void _qdbp_cstring_free(char *);
+
 // _qdbp_del_<type> recursively drops the object's children
 // then free the physical memory of the object
 void _qdbp_del_fields(_qdbp_prototype_ptr proto);
@@ -287,7 +313,7 @@ void _qdbp_init_field(_qdbp_field_ptr field, _qdbp_label_t label,
 // Prototypes
 size_t _qdbp_prototype_size(_qdbp_prototype_ptr proto);
 void _qdbp_label_add(_qdbp_prototype_ptr proto, _qdbp_field_ptr field,
-                     size_t default_capacity);
+                     size_t default_capacity, size_t default_capacity_lg2);
 _qdbp_field_ptr _qdbp_label_get(_qdbp_prototype_ptr proto, _qdbp_label_t label);
 _qdbp_field_ptr _qdbp_label_get_opt(_qdbp_prototype_ptr proto,
                                     _qdbp_label_t label);
@@ -304,7 +330,7 @@ _qdbp_object_arr _qdbp_get_method(_qdbp_object_ptr obj, _qdbp_label_t label,
                                   void** code /*output param*/);
 _qdbp_object_ptr _qdbp_extend(_qdbp_object_ptr obj, _qdbp_label_t label,
                               void* code, _qdbp_object_arr captures,
-                              size_t captures_size, size_t default_capacity);
+                              size_t captures_size, size_t default_capacity, size_t default_capacity_lg2);
 
 _qdbp_object_ptr _qdbp_replace(_qdbp_object_ptr obj, _qdbp_label_t label,
                                void* code, _qdbp_object_arr captures,

@@ -58,6 +58,8 @@ intptr_t _qdbp_sign_extend(uintptr_t a) {
 
 static bool fits_in_63_bits(intptr_t x) { return x <= int_max && x >= int_min; }
 
+// TODO: Maybe we can skip the right shift and just zero the lowest bit and do the
+// addition. But I'm not fully sure if this is feasible or even more performant
 _qdbp_object_ptr _qdbp_smallint_add(uintptr_t a, uintptr_t b) {
   CHECK_ARITH_INPUT(a, b);
   intptr_t res = DO_ARITH(+, a, b);

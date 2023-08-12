@@ -167,9 +167,11 @@ let rec expr_to_c level expr =
           string_of_int (List.length fv_list);
         ]
       in
+      let size_lg2 = int_of_float (log (float_of_int size) /. log 2.) in
+      assert (size = 1 lsl size_lg2);
       let args =
         match op with
-        | `Extend -> args @ [ string_of_int size ]
+        | `Extend -> args @ [ string_of_int size; string_of_int size_lg2 ]
         | `Replace -> args
       in
       c_call fn args

@@ -8,13 +8,12 @@ size_t _qdbp_prototype_size(_qdbp_prototype_ptr proto) {
 }
 
 void _qdbp_label_add(_qdbp_prototype_ptr proto, _qdbp_field_ptr field,
-                     size_t default_capacity) {
+                     size_t default_capacity, size_t default_capacity_lg2) {
   _qdbp_assert(proto);
   _qdbp_assert(field);
-  // check that default_capacity is a pwr of 2
-  _qdbp_assert((default_capacity & (default_capacity - 1)) == 0);
+  _qdbp_assert(default_capacity == (1 << default_capacity_lg2));
   if (!proto->label_map) {
-    proto->label_map = _qdbp_ht_new(default_capacity);
+    proto->label_map = _qdbp_ht_new(default_capacity, default_capacity_lg2);
   }
   proto->label_map = _qdbp_ht_insert(proto->label_map, field);
 }
@@ -41,7 +40,7 @@ void _qdbp_make_fresh_captures_except(_qdbp_prototype_ptr new_prototype,
     if (field->label != except) {
       _qdbp_object_arr original = field->method.captures;
       field->method.captures =
-          _qdbp_malloc_capture_arr(field->method.num_captures);
+          _qdbp_capture_arr_malloc(field->method.num_captures);
       _qdbp_memcpy(field->method.captures, original,
                    sizeof(_qdbp_object_ptr) * field->method.num_captures);
     }
@@ -52,7 +51,7 @@ _qdbp_object_arr _qdbp_copy_captures(_qdbp_object_arr captures, size_t size) {
   if (size == 0) {
     return NULL;
   } else {
-    _qdbp_object_arr out = _qdbp_malloc_capture_arr(size);
+    _qdbp_object_arr out = _qdbp_capture_arr_malloc(size);
     _qdbp_memcpy(out, captures, sizeof(struct _qdbp_object *) * size);
     return out;
   }
@@ -111,12 +110,12 @@ _qdbp_object_arr _qdbp_get_method_opt(_qdbp_object_ptr obj, _qdbp_label_t label,
 
 static struct _qdbp_prototype prototype_copy_and_extend(
     const _qdbp_prototype_ptr src, const _qdbp_field_ptr new_field,
-    size_t new_label, size_t default_capacity) {
+    size_t new_label, size_t default_capacity, size_t default_capacity_lg2) {
   // copy src
   struct _qdbp_prototype new_prototype = {.label_map = NULL};
 
   _qdbp_copy_prototype(src, &new_prototype);
-  _qdbp_label_add(&new_prototype, new_field, default_capacity);
+  _qdbp_label_add(&new_prototype, new_field, default_capacity, default_capacity_lg2);
   _qdbp_make_fresh_captures_except(&new_prototype, new_label);
   return new_prototype;
 }
@@ -137,13 +136,13 @@ static _qdbp_object_ptr copy_obj_and_update_proto(
 
 _qdbp_object_ptr _qdbp_extend(_qdbp_object_ptr obj, _qdbp_label_t label,
                               void *code, _qdbp_object_arr captures,
-                              size_t num_captures, size_t default_capacity) {
+                              size_t num_captures, size_t default_capacity, size_t default_capacity_lg2) {
   if (!obj) {
     // Special case: `obj` is the empty prototype
     obj = _qdbp_make_object(
         _QDBP_PROTOTYPE,
         (union _qdbp_object_data){
-            .prototype = {.label_map = _qdbp_ht_new(default_capacity)}});
+            .prototype = {.label_map = _qdbp_ht_new(default_capacity, default_capacity_lg2)}});
     // Fallthrough to after special case handling
   }
   struct _qdbp_field new_field = {
@@ -165,13 +164,13 @@ _qdbp_object_ptr _qdbp_extend(_qdbp_object_ptr obj, _qdbp_label_t label,
   if (!_QDBP_REUSE_ANALYSIS || !_qdbp_is_unique(obj)) {
     _qdbp_prototype_ptr prototype = original_prototype;
     struct _qdbp_prototype new_prototype = prototype_copy_and_extend(
-        prototype, &new_field, label, default_capacity);
+        prototype, &new_field, label, default_capacity, default_capacity_lg2);
     _qdbp_object_ptr new_obj = copy_obj_and_update_proto(obj, new_prototype);
     _qdbp_dup_prototype_captures(prototype);
     _qdbp_drop(obj, 1);
     return new_obj;
   } else {
-    _qdbp_label_add(original_prototype, &new_field, default_capacity);
+    _qdbp_label_add(original_prototype, &new_field, default_capacity, default_capacity_lg2);
     return obj;
   }
 }
@@ -220,7 +219,7 @@ _qdbp_object_ptr _qdbp_replace(_qdbp_object_ptr obj, _qdbp_label_t label,
     if (label < _QDBP_MAX_OP &&
         !_qdbp_ht_find_opt(original_prototype->label_map, label)) {
       return _qdbp_extend(obj, label, code, captures, num_captures,
-                          _QDBP_HT_DEFAULT_CAPACITY);
+                          _QDBP_HT_DEFAULT_CAPACITY, _QDBP_HT_DEFAULT_CAPACITY_LG2);
     }
   } else {
     _qdbp_assert(false);
@@ -246,7 +245,6 @@ _qdbp_object_ptr _qdbp_replace(_qdbp_object_ptr obj, _qdbp_label_t label,
   }
 }
 
-// TODO: In general, maybe get rid of arg0 (including innvoke2, 3, etc)
 _qdbp_object_ptr _qdbp_invoke_1(_qdbp_object_ptr receiver, _qdbp_label_t label,
                                 _qdbp_object_ptr arg0) {
   void *code;
