@@ -61,10 +61,13 @@ _qdbp_object_arr _qdbp_copy_captures(_qdbp_object_arr captures, size_t size) {
 _qdbp_object_arr _qdbp_get_method(_qdbp_object_ptr obj, _qdbp_label_t label,
                                   void **code /*output param*/) {
   _qdbp_prototype_ptr proto;
+  // TODO: Factor out the _qdbp_get_kind calls
   if (_qdbp_get_kind(obj) == _QDBP_PROTOTYPE) {
     proto = &(obj->data.prototype);
   } else if (_qdbp_get_kind(obj) == _QDBP_STRING) {
     proto = &(obj->data.string->prototype);
+  } else if (_qdbp_get_kind(obj) == _QDBP_CHANNEL) {
+    proto = &(obj->data.channel->prototype);
   } else {
     _qdbp_assert_kind(obj, _QDBP_BOXED_INT);
     proto = &(obj->data.boxed_int->prototype);
@@ -86,6 +89,8 @@ _qdbp_object_arr _qdbp_get_method_opt(_qdbp_object_ptr obj, _qdbp_label_t label,
     proto = &(obj->data.prototype);
   } else if (_qdbp_get_kind(obj) == _QDBP_STRING) {
     proto = &(obj->data.string->prototype);
+  } else if (_qdbp_get_kind(obj) == _QDBP_CHANNEL) {
+    proto = &(obj->data.channel->prototype);
   } else if (_qdbp_get_kind(obj) == _QDBP_BOXED_INT) {
     proto = &(obj->data.boxed_int->prototype);
   } else {
@@ -149,8 +154,10 @@ _qdbp_object_ptr _qdbp_extend(_qdbp_object_ptr obj, _qdbp_label_t label,
   _qdbp_prototype_ptr original_prototype;
   if (_qdbp_get_kind(obj) == _QDBP_PROTOTYPE) {
     original_prototype = &(obj->data.prototype);
-  } else if(_qdbp_get_kind(obj) == _QDBP_BOXED_INT) {
+  } else if (_qdbp_get_kind(obj) == _QDBP_BOXED_INT) {
     original_prototype = &(obj->data.boxed_int->prototype);
+  } else if (_qdbp_get_kind(obj) == _QDBP_CHANNEL) {
+    original_prototype = &(obj->data.channel->prototype);
   } else {
     _qdbp_assert_kind(obj, _QDBP_STRING);
     original_prototype = &(obj->data.string->prototype);
@@ -198,9 +205,13 @@ _qdbp_object_ptr _qdbp_replace(_qdbp_object_ptr obj, _qdbp_label_t label,
   _qdbp_prototype_ptr original_prototype;
   if (_qdbp_get_kind(obj) == _QDBP_PROTOTYPE) {
     original_prototype = &(obj->data.prototype);
-  } else if (_qdbp_is_boxed_int(obj) || _qdbp_get_kind(obj) == _QDBP_STRING) {
+  } else if (_qdbp_is_boxed_int(obj) || _qdbp_get_kind(obj) == _QDBP_STRING ||
+             _qdbp_get_kind(obj) == _QDBP_CHANNEL) {
+    // TODO: Make generic get_prototye fn or something lol
     if (_qdbp_is_boxed_int(obj)) {
       original_prototype = &(obj->data.boxed_int->prototype);
+    } else if (_qdbp_get_kind(obj) == _QDBP_CHANNEL) {
+      original_prototype = &(obj->data.channel->prototype);
     } else {
       original_prototype = &(obj->data.string->prototype);
     }
@@ -235,15 +246,19 @@ _qdbp_object_ptr _qdbp_replace(_qdbp_object_ptr obj, _qdbp_label_t label,
   }
 }
 
+// TODO: In general, maybe get rid of arg0 (including innvoke2, 3, etc)
 _qdbp_object_ptr _qdbp_invoke_1(_qdbp_object_ptr receiver, _qdbp_label_t label,
                                 _qdbp_object_ptr arg0) {
   void *code;
+  _qdbp_assert(receiver == arg0);
   _qdbp_object_arr captures = _qdbp_get_method_opt(receiver, label, &code);
   if (!code) {
     if (_qdbp_is_unboxed_int(receiver) || _qdbp_is_boxed_int(receiver)) {
       return _qdbp_int_unary_op(receiver, label);
     } else if (_qdbp_get_kind(receiver) == _QDBP_STRING) {
       return _qdbp_string_unary_op(receiver, label);
+    } else if (_qdbp_get_kind(receiver) == _QDBP_CHANNEL) {
+      return _qdbp_channel_unary_op(receiver, label);
     } else {
       _qdbp_assert(false);
       __builtin_unreachable();
@@ -255,6 +270,7 @@ _qdbp_object_ptr _qdbp_invoke_1(_qdbp_object_ptr receiver, _qdbp_label_t label,
 
 _qdbp_object_ptr _qdbp_invoke_2(_qdbp_object_ptr receiver, _qdbp_label_t label,
                                 _qdbp_object_ptr arg0, _qdbp_object_ptr arg1) {
+  _qdbp_assert(receiver == arg0);
   void *code;
   _qdbp_object_arr captures = _qdbp_get_method_opt(receiver, label, &code);
   if (!code) {
@@ -262,7 +278,10 @@ _qdbp_object_ptr _qdbp_invoke_2(_qdbp_object_ptr receiver, _qdbp_label_t label,
       return _qdbp_int_binary_op(arg0, arg1, label);
     } else if (_qdbp_get_kind(receiver) == _QDBP_STRING) {
       return _qdbp_string_binary_op(arg0, arg1, label);
-    } else {
+    } else if(_qdbp_get_kind(receiver) == _QDBP_CHANNEL) {
+      return _qdbp_channel_binary_op(arg0, arg1, label);
+    }
+    else {
       _qdbp_assert(false);
       __builtin_unreachable();
     }
@@ -270,4 +289,18 @@ _qdbp_object_ptr _qdbp_invoke_2(_qdbp_object_ptr receiver, _qdbp_label_t label,
     return ((_qdbp_object_ptr(*)(_qdbp_object_arr, _qdbp_object_ptr,
                                  _qdbp_object_ptr))code)(captures, arg0, arg1);
   }
+}
+
+void *_qdbp_invoke_excl(void *receiver_voidptr) {
+  _qdbp_object_ptr receiver = (_qdbp_object_ptr)receiver_voidptr;
+  _qdbp_object_ptr ret = _qdbp_invoke_1(receiver, _QDBP_EXCL, receiver);
+  _qdbp_drop(ret, 1);
+  return NULL;
+}
+
+_qdbp_object_ptr _qdbp_invoke_excl_parallel(_qdbp_object_ptr receiver) {
+  pthread_t thread;
+  pthread_create(&thread, &_qdbp_thread_attr, _qdbp_invoke_excl,
+                 (void *)receiver);
+  return _qdbp_empty_prototype();
 }

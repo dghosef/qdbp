@@ -1,15 +1,17 @@
-/*
-STRING TODO:
-- Make the compiler generate char arrays instead of string literals
-- Invoke1 and invoke2 for strings
-- Make the string type have a length field and not be null terminated
-*/
+// TODO: Go through all global data structures and make sure they are
+// thread-safe
+
+// NOTE: Anything with the `chan` prefix is from the channel library I stole
+// from and anything that contains `channel` is my code
 #ifndef QDBP_RUNTIME_H
 #define QDBP_RUNTIME_H
+#include <inttypes.h>
 #include <assert.h>
 #include <gmp.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 // config
 // You could also add fsanitize=undefined
@@ -54,7 +56,7 @@ static const size_t _QDBP_HT_DEFAULT_CAPACITY = 4;
 */
 typedef uint32_t _qdbp_label_t;
 typedef uint32_t _qdbp_tag_t;
-typedef uint32_t _qdbp_refcount_t;
+typedef intptr_t _qdbp_refcount_t;
 
 struct _qdbp_object;
 
@@ -95,6 +97,33 @@ struct _qdbp_string {
   struct _qdbp_prototype prototype;
 };
 
+// https://github.com/tylertreat/chan
+// Defines a thread-safe communication pipe. Channels are either buffered or
+// unbuffered. An unbuffered channel is synchronized. Receiving on either type
+// of channel will block until there is data to receive. If the channel is
+// unbuffered, the sender blocks until the receiver has received the value. If
+// the channel is buffered, the sender only blocks until the value has been
+// copied to the buffer, meaning it will block if the channel is full.
+typedef struct _qdbp_chan_t {
+  // Unbuffered channel properties
+  pthread_mutex_t r_mu;
+  pthread_mutex_t w_mu;
+  struct _qdbp_object* data;
+
+  // Shared properties
+  pthread_mutex_t m_mu;
+  pthread_cond_t r_cond;
+  pthread_cond_t w_cond;
+  int closed;
+  int r_waiting;
+  int w_waiting;
+} _qdbp_chan_t;
+
+struct _qdbp_channel {
+  struct _qdbp_chan_t chan;
+  struct _qdbp_prototype prototype;
+};
+
 struct _qdbp_boxed_int {
   mpz_t value;
   struct _qdbp_prototype prototype;
@@ -105,12 +134,14 @@ union _qdbp_object_data {
   struct _qdbp_string* string;
   struct _qdbp_boxed_int* boxed_int;
   struct _qdbp_variant variant;
+  struct _qdbp_channel* channel;
 };
 
 enum _qdbp_object_kind {
   _QDBP_STRING,
   _QDBP_PROTOTYPE,
   _QDBP_BOXED_INT,
+  _QDBP_CHANNEL,
   _QDBP_VARIANT  // Must be last
 };
 
@@ -138,6 +169,9 @@ enum _QDBP_ARITH_OP {
   _QDBP_GT = 447,
   _QDBP_LEQ = 455,
   _QDBP_GEQ = 461,
+  _QDBP_EXCL = 504,
+  _QDBP_SEND = 505,
+  _QDBP_RECEIVE = 506,
   _QDBP_MAX_OP = 1000
 };
 typedef struct _qdbp_object* _qdbp_object_ptr;
@@ -146,6 +180,7 @@ typedef struct _qdbp_variant* _qdbp_variant_ptr;
 typedef struct _qdbp_prototype* _qdbp_prototype_ptr;
 typedef struct _qdbp_method* _qdbp_method_ptr;
 typedef struct _qdbp_field* _qdbp_field_ptr;
+
 // Reference counting
 bool _qdbp_is_unique(_qdbp_object_ptr obj);
 void _qdbp_incref(_qdbp_object_ptr obj, _qdbp_refcount_t amount);
@@ -159,17 +194,17 @@ void _qdbp_dup_prototype_captures(_qdbp_prototype_ptr proto);
 void _qdbp_dup_prototype_captures_except(_qdbp_prototype_ptr proto,
                                          _qdbp_label_t except);
 
-#define _qdbp_check_refcount(obj)                            \
-  do {                                                       \
-    if (_QDBP_ASSERTS_ENABLED && obj) {                      \
-      _qdbp_assert(!_qdbp_is_unboxed_int(obj));              \
-      _qdbp_assert((obj));                                   \
-      if (_qdbp_get_refcount(obj) <= 0) {                    \
-        printf("refcount of %u\n", _qdbp_get_refcount(obj)); \
-        _qdbp_assert(false);                                 \
-      };                                                     \
-    }                                                        \
-  } while (0);
+#define _qdbp_check_refcount(obj)                                      \
+  do {                                                                 \
+    if (_QDBP_ASSERTS_ENABLED && obj) {                                \
+      _qdbp_assert(!_qdbp_is_unboxed_int(obj));                        \
+      _qdbp_assert((obj));                                             \
+      if (_qdbp_get_refcount(obj) <= 0) {                              \
+        printf("refcount of %" PRIiPTR "\n", _qdbp_get_refcount(obj)); \
+        _qdbp_assert(false);                                           \
+      };                                                               \
+    }                                                                  \
+  } while (0)
 
 // Hash table
 _qdbp_hashtable_t* _qdbp_ht_new(size_t capacity);
@@ -204,6 +239,7 @@ _qdbp_object_ptr _qdbp_int_binary_op(_qdbp_object_ptr l, _qdbp_object_ptr r,
 _qdbp_object_ptr _qdbp_int_unary_op(_qdbp_object_ptr obj,
                                     enum _QDBP_ARITH_OP op);
 // Memory
+extern pthread_attr_t _qdbp_thread_attr;
 #define _QDBP_STR_INTERNAL(x) #x
 #define _QDBP_STR(x) _QDBP_STR_INTERNAL(x)
 
@@ -235,6 +271,7 @@ _qdbp_object_ptr _qdbp_make_object(_qdbp_tag_t tag,
                                    union _qdbp_object_data data);
 _qdbp_object_ptr _qdbp_empty_prototype();
 _qdbp_object_ptr _qdbp_make_string(const char* cstr, size_t length);
+_qdbp_object_ptr _qdbp_make_channel();
 _qdbp_object_ptr _qdbp_true();
 _qdbp_object_ptr _qdbp_false();
 _qdbp_object_ptr _qdbp_bool(bool value);
@@ -278,6 +315,8 @@ _qdbp_object_ptr _qdbp_invoke_1(_qdbp_object_ptr receiver, _qdbp_label_t label,
                                 _qdbp_object_ptr arg0);
 _qdbp_object_ptr _qdbp_invoke_2(_qdbp_object_ptr receiver, _qdbp_label_t label,
                                 _qdbp_object_ptr arg0, _qdbp_object_ptr arg1);
+void* _qdbp_invoke_excl(void* receiver_voidptr);
+_qdbp_object_ptr _qdbp_invoke_excl_parallel(_qdbp_object_ptr receiver);
 
 // ints
 bool _qdbp_is_unboxed_int(_qdbp_object_ptr obj);
@@ -289,6 +328,11 @@ _qdbp_object_ptr _qdbp_string_unary_op(_qdbp_object_ptr obj,
                                        enum _QDBP_ARITH_OP op);
 _qdbp_object_ptr _qdbp_string_binary_op(_qdbp_object_ptr l, _qdbp_object_ptr r,
                                         enum _QDBP_ARITH_OP op);
+// Channels
+_qdbp_object_ptr _qdbp_channel_unary_op(_qdbp_object_ptr obj,
+                                        enum _QDBP_ARITH_OP op);
+_qdbp_object_ptr _qdbp_channel_binary_op(_qdbp_object_ptr l, _qdbp_object_ptr r,
+                                         enum _QDBP_ARITH_OP op);
 // Tags and Variants
 enum _qdbp_object_kind _qdbp_get_kind(_qdbp_object_ptr obj);
 void _qdbp_set_tag(_qdbp_object_ptr o, _qdbp_tag_t t);
@@ -302,7 +346,7 @@ void _qdbp_decompose_variant(_qdbp_object_ptr obj, _qdbp_tag_t* tag,
       _qdbp_check_refcount(obj);              \
       _qdbp_assert(_qdbp_get_kind(obj) == k); \
     }                                         \
-  } while (0);
+  } while (0)
 
 // Macros for the various kinds of expressions
 #define _QDBP_DROP(v, cnt, expr) (_qdbp_drop((v), (cnt)), (expr))
@@ -312,7 +356,37 @@ void _qdbp_decompose_variant(_qdbp_object_ptr obj, _qdbp_tag_t* tag,
 #define _QDBP_MATCH(tag1, tag2, arg, ifmatch, ifnomatch) \
   ((tag1) == (tag2) ? (_QDBP_LET((arg), (payload), (ifmatch))) : (ifnomatch))
 
-#endif
+// Largely copied from https://github.com/tylertreat/chan/tree/master
+// =============================== chan.h ===============================
+int unbuffered_chan_init(_qdbp_chan_t* chan);
+
+// Releases the channel resources.
+void _qdbp_chan_dispose(_qdbp_chan_t* chan);
+
+// Once a channel is closed, data cannot be sent into it. If the channel is
+// buffered, data can be read from it until it is empty, after which reads will
+// return an error code. Reading from a closed channel that is unbuffered will
+// return an error code. Closing a channel does not release its resources. This
+// must be done with a call to _qdbp_chan_dispose. Returns 0 if the channel was
+// successfully closed, -1 otherwise.
+int _qdbp_chan_close(_qdbp_chan_t* chan);
+
+// Returns 0 if the channel is open and 1 if it is closed.
+int _qdbp_chan_is_closed(_qdbp_chan_t* chan);
+
+// Sends a value into the channel. If the channel is unbuffered, this will
+// block until a receiver receives the value. If the channel is buffered and at
+// capacity, this will block until a receiver receives a value. Returns 0 if
+// the send succeeded or -1 if it failed.
+int _qdbp_chan_send(_qdbp_chan_t* chan, _qdbp_object_ptr data);
+
+// Receives a value from the channel. This will block until there is data to
+// receive. Returns 0 if the receive succeeded or -1 if it failed.
+int _qdbp_chan_recv(_qdbp_chan_t* chan, _qdbp_object_ptr* data);
+
+// Returns the number of items in the channel buffer. If the channel is
+// unbuffered, this will return 0.
+int _qdbp_chan_size(_qdbp_chan_t* chan);
 
 /*
 Every function that qdbp calls must follow the following rules:
@@ -323,3 +397,4 @@ Every function that qdbp calls must follow the following rules:
   - The return value has `n` references to `a` and `dup` is called on `a` `n -
 1` times
 */
+#endif

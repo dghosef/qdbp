@@ -1,4 +1,8 @@
-a: {"Hi"
-  Print["Hello" Print.]
+channel chan
+par := {fn|
+    _ := {fn!.}
+    $_qdbp_invoke_excl_parallel(fn)
 }
-a Print.
+fn := {chan Send {}.}
+_ := par! fn.
+{}

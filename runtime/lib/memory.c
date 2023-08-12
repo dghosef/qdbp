@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "runtime.h"
+pthread_attr_t _qdbp_thread_attr;
 #define MK_FREELIST(type, name)                              \
   struct _qdbp_##name##_t {                                  \
     type objects[_QDBP_FREELIST_SIZE];                       \
@@ -47,15 +48,23 @@ void _qdbp_memcpy(void* dest, const void* src, size_t size) {
 
 void _qdbp_cleanup() {
   // Make sure that everything that has been malloc'd has been freed
+  // TODO: Freelists should be threadsafe
   if (_QDBP_OBJ_FREELIST) {
     _qdbp_obj_freelist_free_all();
   }
   if (_QDBP_BOX_FREELIST) {
     _qdbp_box_freelist_free_all();
   }
+  pthread_attr_destroy(&_qdbp_thread_attr);
+  pthread_exit(NULL);
 }
 
 void _qdbp_init() {
+  if(pthread_attr_init(&_qdbp_thread_attr) == -1) {
+    fprintf(stderr, "pthread_attr_init");
+    exit(1);
+  }
+  pthread_attr_setdetachstate(&_qdbp_thread_attr, PTHREAD_CREATE_DETACHED);
   for (int i = 0; i < _QDBP_FREELIST_SIZE; i++) {
     if (_QDBP_OBJ_FREELIST) {
       _qdbp_push_obj_freelist(_qdbp_malloc(sizeof(struct _qdbp_object)));
@@ -152,6 +161,14 @@ void _qdbp_del_method(_qdbp_method_ptr method) {
 void _qdbp_del_obj(_qdbp_object_ptr obj) {
   _qdbp_assert(!_qdbp_is_unboxed_int(obj));
   switch (_qdbp_get_kind(obj)) {
+    case _QDBP_CHANNEL:
+      if(obj->data.channel->chan.r_waiting) {
+        _qdbp_assert(false); // I think this should be here
+        // Otherwise, maybe free the data it holds
+      }
+      _qdbp_chan_dispose(&obj->data.channel->chan);
+      _qdbp_del_prototype(&(obj->data.channel->prototype));
+      break;
     case _QDBP_BOXED_INT:
       _qdbp_del_prototype(&(obj->data.boxed_int->prototype));
       mpz_clear(obj->data.boxed_int->value);

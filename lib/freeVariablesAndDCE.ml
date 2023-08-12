@@ -3,8 +3,8 @@ let rec is_pure ast =
   match ast with
   | `PrototypeCopy (ext, _, _, _, _) -> is_pure ext
   | `TaggedObject (_, value, _) -> is_pure value
-  | `MethodInvocation (receiver, _, args, _) ->
-      is_pure receiver && List.for_all (fun (_, arg, _) -> is_pure arg) args
+  | `MethodInvocation (_) ->
+    false
   | `PatternMatch (_, receiver, cases, _) ->
       is_pure receiver
       && List.for_all (fun (_, (_, body, _), _) -> is_pure body) cases

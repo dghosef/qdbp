@@ -76,3 +76,14 @@ _qdbp_object_ptr _qdbp_make_string(const char* cstr, size_t length) {
       _QDBP_STRING, (union _qdbp_object_data){.string = qdbp_str});
   return o;
 }
+
+_qdbp_object_ptr _qdbp_make_channel() {
+  struct _qdbp_channel* channel = _qdbp_malloc(sizeof(struct _qdbp_channel));
+  if (unbuffered_chan_init(&channel->chan) != 0) {
+    _qdbp_assert(false);
+    __builtin_unreachable();
+  }
+  channel->prototype.label_map = NULL;
+  return _qdbp_make_object(_QDBP_CHANNEL,
+                           (union _qdbp_object_data){.channel = channel});
+}

@@ -1,5 +1,5 @@
 %token<string> UPPER_ID LOWER_ID IMPORT STRING INT
-%token PIPE PERIOD TAG QUESTION MONEY ABORT EOF COLON DOUBLE_COLON
+%token PIPE PERIOD TAG QUESTION MONEY ABORT EOF COLON DOUBLE_COLON DECLARATION CHANNEL
 %token LPAREN RPAREN LBRACE RBRACE LBRACKET RBRACKET
 
 (* LOWEST PRECEDNCE *)
@@ -10,7 +10,13 @@
 %start<AstTypes.ast> program
 %%
 program:
-| e = expr; EOF {e}
+| channels = channel_declaration*; e = expr; EOF {
+  AstCreate.make_program channels e $loc
+}
+
+channel_declaration:
+| CHANNEL; id = LOWER_ID;
+{AstCreate.make_channel id $loc}
 
 upper_id:
 | s = UPPER_ID {(s, $loc)}
@@ -41,9 +47,11 @@ expr:
 | TAG; id = UPPER_ID; e = expr; {AstCreate.make_tagged_object (id, $loc(id)) e $loc}
 (* prototype method invoke w/ arg(s) *)
 | r = expr; id = upper_id; arg1 = expr; a = prototype_invoke_arg*; PERIOD;
+| LPAREN; r = expr; id = upper_id; arg1 = expr; a = prototype_invoke_arg*; RPAREN;
   {AstCreate.make_method_invocation r id (Some arg1) a $loc}
 (* prototype method invoke no args *)
 | r = expr; id = upper_id; PERIOD;
+| LPAREN; r = expr; id = upper_id; RPAREN;
   {AstCreate.make_method_invocation r id None [] $loc}
 (* pattern match of tagged object *)
 | r = expr; m = pattern_match_atom+; PERIOD;
@@ -51,7 +59,7 @@ expr:
 | r = expr; m = pattern_match_atom+; LBRACE; default = expr; RBRACE PERIOD;
   {AstCreate.make_pattern_match r m (Some (default, $loc(default))) $loc}
 (* variable declaration *)
-| id = lower_id; COLON; rhs = expr; e = post_decl_expr
+| id = lower_id; DECLARATION; rhs = expr; e = post_decl_expr
   {AstCreate.make_declaration id rhs e $loc}
 (* variable lookup *)
 | name = LOWER_ID {AstCreate.make_variable_lookup name $loc}

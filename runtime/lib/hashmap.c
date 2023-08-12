@@ -93,6 +93,7 @@ static void ht_insert_no_resize(_qdbp_hashtable_t* table,
   table->header.size++;
 }
 
+// NOTE: Assumes that we are the ONLY owner of `table`
 _qdbp_hashtable_t* _qdbp_ht_insert(_qdbp_hashtable_t* table,
                                    const _qdbp_field_ptr fld) {
   if (!table) {

@@ -66,8 +66,10 @@ let compile args =
   let imports, files = ResolveImports.build_import_map files ast in
   let ast = ResolveImports.resolve_imports imports ast in
   let _, _, ast = Infer.infer files ast in
+  (*
   let ast = Inline.inline 3 ast in
   let ast = Inline.inline 0 ast in
+  *)
   let loc = Infer.loc_of ast in
   let ast = NamesToInts.names_to_ints ast in
   let fvs, ast = FreeVariables.free_variables ast in
@@ -93,7 +95,7 @@ let compile args =
   ignore
     (Sys.command
        (" clang out.c " ^ !runtime_dir ^ "/lib/*.c" ^ " -I" ^ !runtime_dir
-      ^ " -g" ^ " -lgmp" ^ " -Wall -Wextra -Werror" ^ " -Wno-unused-parameter"
+      ^ " -g" ^ " -lgmp -lpthread" ^ " -Wall -Wextra -Werror" ^ " -Wno-unused-parameter"
       ^ " -Wno-unused-function" ^ " -Wno-unused-variable"
       ^ " -fbracket-depth=10000000"
       ^ " -fsanitize=address,undefined,pointer-compare,"

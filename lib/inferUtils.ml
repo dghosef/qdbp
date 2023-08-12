@@ -55,6 +55,19 @@ let str_proto_type tvars level =
   in
   (tvars, `TRecord row)
 
+let channel_proto_type tvars level =
+  let tvars, v1 = make_new_unbound_var tvars (level) in
+  let tvars, v2 = make_new_unbound_var tvars (-1) in
+  let tvars, v3 = make_new_unbound_var tvars (level) in
+  (* MUST Keep in sync with int_proto.h and namesToInts.ml *)
+  let row =
+    `TRowExtend
+      ("Receive:SelfArg", `TArrow ([ v1 ], v2), `TRowEmpty) in
+  let row =
+    `TRowExtend ("Send:SelfArg:Arg0", `TArrow ([ v3; v2 ], `TRecord `TRowEmpty), row)
+  in
+  (tvars, `TRecord row)
+
 let int_proto_type tvars level =
   let add_arith_binop tvars level binop row =
     let tvars, v1 = make_new_unbound_var tvars level in

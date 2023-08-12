@@ -26,6 +26,9 @@ let names_to_ints ast =
   Hashtbl.add label_map ">:SelfArg:Arg0" (Int64.of_int 447);
   Hashtbl.add label_map "<=:SelfArg:Arg0" (Int64.of_int 455);
   Hashtbl.add label_map ">=:SelfArg:Arg0" (Int64.of_int 461);
+  Hashtbl.add label_map "!:SelfArg" (Int64.of_int 504);
+  Hashtbl.add label_map "Send:SelfArg:Arg0" (Int64.of_int 505);
+  Hashtbl.add label_map "Receive:SelfArg" (Int64.of_int 506);
   (* Save the first 1000 labels for reserved labels*)
   let get_label name =
     match Hashtbl.find_opt label_map name with

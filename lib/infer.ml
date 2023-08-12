@@ -446,7 +446,15 @@ let infer files expr =
             state args
         in
         let tvars, already_unified = state in
-        let tvars, ty = make_new_unbound_var tvars level in
+        (*
+           The return type of an external call must be stable - its type variable cannot be generalized
+           Therefore, we give it a negative level so that it will not be generalized
+           TODO: Verify that this is correct
+        *)
+        let tvars, ty =
+          if name = "_qdbp_make_channel" then channel_proto_type tvars level
+          else make_new_unbound_var tvars level
+        in
         ( (tvars, already_unified),
           ty,
           `ExternalCall ((name, name_loc), args, loc) )

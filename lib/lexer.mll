@@ -1,4 +1,5 @@
 (* FIXME: Money, Tag should include the name *)
+(* TODO: Should declaration be := or : *)
 {
   open Parser
   open Lexing
@@ -33,10 +34,12 @@ rule token = parse
 }
 | ';' [ ^'\n']* { token lexbuf }
 | "ABORT" { ABORT }
+| "channel" { CHANNEL }
 | upper_id as s { UPPER_ID (s) }
 | lower_id as s { LOWER_ID (s) }
 | newline { next_line lexbuf; token lexbuf}
 | "(*" { comment 0 lexbuf }
+| ":=" { DECLARATION }
 | '.' { PERIOD }
 | '|' { PIPE }
 | '[' { LBRACE }
