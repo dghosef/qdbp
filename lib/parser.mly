@@ -1,10 +1,10 @@
 %token<string> UPPER_ID LOWER_ID IMPORT STRING INT
-%token PIPE PERIOD TAG QUESTION MONEY ABORT EOF COLON DOUBLE_COLON DECLARATION CHANNEL
+%token PIPE PERIOD TAG QUESTION MONEY ABORT EOF COLON DOUBLE_COLON DECLARATION CHANNEL COMMA
 %token LPAREN RPAREN LBRACE RBRACE LBRACKET RBRACKET
 
 (* LOWEST PRECEDNCE *)
 %nonassoc post_decl_expr_prec (* Associativity never matters *)
-%right UPPER_ID
+%right UPPER_ID COMMA
 (* HIGHEST PRECEDNCE *)
 
 %start<AstTypes.ast> program
@@ -26,6 +26,8 @@ lower_id:
 expr:
 (* parenthesized expression *)
 | LPAREN; e = expr; RPAREN; {e}
+(* Sequence *)
+| e1 = expr; COMMA; e2 = expr; {AstCreate.make_sequence e1 e2 $loc}
 (* prototype replacement *)
 | LBRACKET; original = expr; fields = prototype_field+; RBRACKET 
   {AstCreate.make_prototype (Some original) fields AstTypes.Replace $loc}
@@ -55,8 +57,10 @@ expr:
   {AstCreate.make_method_invocation r id None [] $loc}
 (* pattern match of tagged object *)
 | r = expr; m = pattern_match_atom+; PERIOD;
+| LPAREN; r = expr; m = pattern_match_atom+; RPAREN;
   {AstCreate.make_pattern_match r m None $loc}
 | r = expr; m = pattern_match_atom+; LBRACE; default = expr; RBRACE PERIOD;
+| LPAREN; r = expr; m = pattern_match_atom+; LBRACE; default = expr; RBRACE; RPAREN;
   {AstCreate.make_pattern_match r m (Some (default, $loc(default))) $loc}
 (* variable declaration *)
 | id = lower_id; DECLARATION; rhs = expr; e = post_decl_expr

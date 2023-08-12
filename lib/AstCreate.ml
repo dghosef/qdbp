@@ -152,3 +152,6 @@ let make_program channels expr loc =
     channels expr
 
 let make_abort loc : ast = `Abort loc
+
+let make_sequence e1 e2 loc =
+  make_declaration ("Dummy", loc) e1 e2 loc

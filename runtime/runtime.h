@@ -201,7 +201,7 @@ void _qdbp_dup_prototype_captures_except(_qdbp_prototype_ptr proto,
 #define _qdbp_check_refcount(obj)                                      \
   do {                                                                 \
     if (_QDBP_ASSERTS_ENABLED && obj) {                                \
-      _qdbp_assert(!_qdbp_is_unboxed_int(obj));                        \
+      if(_qdbp_is_unboxed_int(obj)) {break;}\
       _qdbp_assert((obj));                                             \
       if (_qdbp_get_refcount(obj) <= 0) {                              \
         printf("refcount of %" PRIiPTR "\n", _qdbp_get_refcount(obj)); \

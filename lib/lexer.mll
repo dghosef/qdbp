@@ -39,6 +39,7 @@ rule token = parse
 | newline { next_line lexbuf; token lexbuf}
 | "(*" { comment 0 lexbuf }
 | ":=" { DECLARATION }
+| ',' { COMMA }
 | '.' { PERIOD }
 | '|' { PIPE }
 | '[' { LBRACE }
