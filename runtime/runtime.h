@@ -16,27 +16,23 @@
 #ifdef QDBP_DEBUG
 const bool _QDBP_REFCOUNT = true;
 const bool _QDBP_REUSE_ANALYSIS = true;
-const bool _QDBP_OBJ_FREELIST = false;
-const bool _QDBP_BOX_FREELIST = false;
+const bool _QDBP_POOL_ALLOC = false;
 const bool _QDBP_ASSERTS_ENABLED = true;
 #elif defined(QDBP_RELEASE)
 const bool _QDBP_REFCOUNT = true;
 const bool _QDBP_REUSE_ANALYSIS = true;
-const bool _QDBP_OBJ_FREELIST = true;
-const bool _QDBP_BOX_FREELIST = true;
+const bool _QDBP_POOL_ALLOC = true;
 const bool _QDBP_ASSERTS_ENABLED = false;
 #else
 extern const bool _QDBP_REFCOUNT;
 extern const bool _QDBP_REUSE_ANALYSIS;
-extern const bool _QDBP_OBJ_FREELIST;
-extern const bool _QDBP_BOX_FREELIST;
+extern const bool _QDBP_POOL_ALLOC;
 extern const bool _QDBP_ASSERTS_ENABLED;
 // Hashtable settings
 static const size_t _QDBP_LOAD_FACTOR_NUM = 1;
 static const size_t _QDBP_LOAD_FACTOR_DEN = 1;
 static const size_t _QDBP_HT_DEFAULT_CAPACITY = 4;
 static const size_t _QDBP_HT_DEFAULT_CAPACITY_LG2 = 2;
-static const size_t _QDBP_HT_MAX_SIZE_LG2 = 32;
 #endif
 
 #define _qdbp_assert(x)          \
@@ -46,7 +42,6 @@ static const size_t _QDBP_HT_MAX_SIZE_LG2 = 32;
     }                            \
   } while (0)
 
-#define _QDBP_FREELIST_SIZE 1000
 
 /*
     ====================================================
@@ -396,6 +391,7 @@ int _qdbp_chan_send(_qdbp_chan_t* chan, _qdbp_object_ptr data);
 // Receives a value from the channel. This will block until there is data to
 // receive. Returns 0 if the receive succeeded or -1 if it failed.
 int _qdbp_chan_recv(_qdbp_chan_t* chan, _qdbp_object_ptr* data);
+
 
 /*
 Every function that qdbp calls must follow the following rules:

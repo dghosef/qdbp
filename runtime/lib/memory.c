@@ -7,33 +7,35 @@ pthread_attr_t _qdbp_thread_attr;
 #define CONCAT_INNER(a, b) a##b
 #define CONCAT(a, b) CONCAT_INNER(a, b)
 
-#define STACK_TY(name, type)              \
-  struct CONCAT(name, _stack_t) {         \
-    type* data;                            \
-    size_t capacity; \
-    size_t size; \
+#define STACK_TY(name, type)      \
+  struct CONCAT(name, _stack_t) { \
+    type* data;                   \
+    size_t capacity;              \
+    size_t size;                  \
   };
 
-#define STACK(name, type) \
-  STACK_TY(name, type)    \
-  static struct CONCAT(name, _stack_t) CONCAT(name, _stack) = {.data = NULL, .capacity = 0, .size = 0};
-
+#define STACK(name, type)              \
+  STACK_TY(name, type)                 \
+  static struct CONCAT(name, _stack_t) \
+      CONCAT(name, _stack) = {.data = NULL, .capacity = 0, .size = 0};
 
 #define STACK_EMPTY(name) (CONCAT(name, _stack).size == 0)
-#define STACK_PUSH_IMPL(stackname, value)                                   \
-  do {                                                            \
-  if(stackname.capacity == stackname.size) { \
-    stackname.capacity = stackname.capacity == 0 ? 1 : stackname.capacity * 2; \
-    stackname.data = _qdbp_realloc(stackname.data, stackname.capacity * sizeof(*stackname.data)); \
-  } \
-  stackname.data[stackname.size++] = value; \
+#define STACK_PUSH_IMPL(stackname, value)                                \
+  do {                                                                   \
+    if (stackname.capacity == stackname.size) {                          \
+      stackname.capacity =                                               \
+          stackname.capacity == 0 ? 1 : stackname.capacity * 2;          \
+      stackname.data = _qdbp_realloc(                                    \
+          stackname.data, stackname.capacity * sizeof(*stackname.data)); \
+    }                                                                    \
+    stackname.data[stackname.size++] = value;                            \
   } while (0)
 #define STACK_PUSH(name, value) STACK_PUSH_IMPL(CONCAT(name, _stack), value)
 
-#define STACK_POP(name)                                      \
-  do {                                                       \
-    _qdbp_assert(!STACK_EMPTY(name));                        \
-    CONCAT(name, _stack).size--;                             \
+#define STACK_POP(name)               \
+  do {                                \
+    _qdbp_assert(!STACK_EMPTY(name)); \
+    CONCAT(name, _stack).size--;      \
   } while (0)
 
 void noop() {}
@@ -43,18 +45,22 @@ void noop() {}
    CONCAT(name, _stack).data[CONCAT(name, _stack).size - 1])
 
 #define MK_MALLOC_STACK(name, type) STACK(name, type*);
-#define MK_MALLOC(name, type)            \
-  type* CONCAT(name, _malloc)() {        \
-    if (STACK_EMPTY(name)) {             \
-      return _qdbp_malloc(sizeof(type)); \
-    } else {                             \
-      type* ptr = STACK_PEEK(name);      \
-      STACK_POP(name);                   \
-      return ptr;                        \
-    }                                    \
+#define MK_MALLOC(name, type)                     \
+  type* CONCAT(name, _malloc)() {                 \
+    if (!_QDBP_POOL_ALLOC || STACK_EMPTY(name)) { \
+      return _qdbp_malloc(sizeof(type));          \
+    } else {                                      \
+      type* ptr = STACK_PEEK(name);               \
+      STACK_POP(name);                            \
+      return ptr;                                 \
+    }                                             \
   }
 #define MK_FREE(name, type)              \
   void CONCAT(name, _free)(type * ptr) { \
+    if (!_QDBP_POOL_ALLOC) {             \
+      _qdbp_free(ptr);                   \
+      return;                            \
+    }                                    \
     if (ptr == NULL) {                   \
       return;                            \
     }                                    \
@@ -69,6 +75,7 @@ void* _qdbp_malloc(size_t size) {
   void* ptr = malloc(size);
   return ptr;
 }
+
 void* _qdbp_realloc(void* ptr, size_t size) {
   void* new_ptr = realloc(ptr, size);
   return new_ptr;
@@ -87,13 +94,16 @@ void _qdbp_cleanup() {
   pthread_attr_destroy(&_qdbp_thread_attr);
   pthread_exit(NULL);
 }
-void* _qdbp_realloc_gmp(void* ptr, size_t old_size, size_t new_size) {
+
+static void _qdbp_free_gmp(void* ptr, size_t size) { _qdbp_free(ptr); }
+
+static void* _qdbp_realloc_gmp(void* ptr, size_t old_size, size_t new_size) {
   void* new_ptr = _qdbp_realloc(ptr, new_size);
   return new_ptr;
 }
 
 void _qdbp_init() {
-  mp_set_memory_functions(_qdbp_malloc, _qdbp_realloc_gmp, _qdbp_free);
+  mp_set_memory_functions(_qdbp_malloc, _qdbp_realloc_gmp, _qdbp_free_gmp);
   _qdbp_assert(_QDBP_HT_DEFAULT_CAPACITY ==
                (1 << _QDBP_HT_DEFAULT_CAPACITY_LG2));
   if (pthread_attr_init(&_qdbp_thread_attr) == -1) {
@@ -179,7 +189,7 @@ bool HT_STACK_EMPTY(size_t size) {
 }
 
 _qdbp_hashtable_t* _qdbp_ht_malloc(size_t capacity_lg2) {
-  _qdbp_assert(capacity_lg2 < _QDBP_HT_MAX_SIZE_LG2);
+  _qdbp_assert(capacity_lg2 < 64);
   _qdbp_assert(capacity_lg2 >= 0);
   size_t ht_bytes = ((1 << capacity_lg2) + 1) * sizeof(_qdbp_hashtable_t);
   if (HT_STACK_EMPTY(capacity_lg2)) {

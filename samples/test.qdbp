@@ -1,2 +1,6 @@
-variable: #Hello 4, 3 Print.
-3
+(#True{})
+    True? [
+      x: 5
+      x + 3.
+    ]
+    False? [3].
