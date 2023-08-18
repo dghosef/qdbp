@@ -38,7 +38,6 @@ rule token = parse
 | lower_id as s { LOWER_ID (s) }
 | newline { next_line lexbuf; token lexbuf}
 | "(*" { comment 0 lexbuf }
-| ":=" { DECLARATION }
 | ',' { COMMA }
 | '.' { PERIOD }
 | '|' { PIPE }

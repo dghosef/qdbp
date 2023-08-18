@@ -87,8 +87,13 @@ void _qdbp_cleanup() {
   pthread_attr_destroy(&_qdbp_thread_attr);
   pthread_exit(NULL);
 }
+void* _qdbp_realloc_gmp(void* ptr, size_t old_size, size_t new_size) {
+  void* new_ptr = _qdbp_realloc(ptr, new_size);
+  return new_ptr;
+}
 
 void _qdbp_init() {
+  mp_set_memory_functions(_qdbp_malloc, _qdbp_realloc_gmp, _qdbp_free);
   _qdbp_assert(_QDBP_HT_DEFAULT_CAPACITY ==
                (1 << _QDBP_HT_DEFAULT_CAPACITY_LG2));
   if (pthread_attr_init(&_qdbp_thread_attr) == -1) {
