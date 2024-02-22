@@ -154,7 +154,8 @@ void HT_STACK_PUSH(size_t size, _qdbp_hashtable_t* value) {
 void HT_STACK_POP(size_t size) {
 #define POP_CASE(size) \
   case size:           \
-    STACK_POP(HT_STACK_NAME(size));
+    STACK_POP(HT_STACK_NAME(size)); \
+    break;
   switch (size) {
     REPEAT_64(POP_CASE)
     default:

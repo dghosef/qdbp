@@ -1,6 +1,6 @@
-(#True{})
-    True? [
-      x: 5
-      x + 3.
-    ]
-    False? [3].
+mk_color: {color|
+  {
+    Color[color]
+  }
+}
+mk_color! #Red{} .

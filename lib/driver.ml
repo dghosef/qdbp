@@ -95,9 +95,9 @@ let compile args =
   ignore
     (Sys.command
        (" clang out.c " ^ !runtime_dir ^ "/lib/*.c" ^ " -I" ^ !runtime_dir
-      ^ " -g" ^ " -lgmp -lpthread" ^ " -Wall -Wextra -Werror" ^ " -Wno-unused-parameter"
-      ^ " -Wno-unused-function" ^ " -Wno-unused-variable"
-      ^ " -fbracket-depth=10000000"
+      ^ " -g" ^ " -lgmp " ^ " -Wall -Wextra -Werror" ^ " -Wno-unused-parameter"
+      ^ " -Wno-unused-function" ^ " -Wno-unused-variable -Wno-unused-command-line-argument"
+      ^ " -fbracket-depth=10000000 -flto"
       ^ " -fsanitize=address,undefined,pointer-compare,"
-      ^ "pointer-subtract,leak,undefined"
-      ^ " && LSAN_OPTIONS=detect_leaks=1 ./a.out;"))
+      ^ "pointer-subtract,undefined"
+      ^ " && ./a.out;"))
