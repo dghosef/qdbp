@@ -18,8 +18,8 @@ let upper = ['A' - 'Z']
 let symbol = ['!' '%' '&' '*' '~' '-' '+' '=' '\\' '/' '>' '<' '^'] | [^'\x00'-'\x7F']
 let filename = ('_' | upper | lower | digit | '.')+
 let string_delimiter = (upper | lower | digit)*
-let upper_id = (symbol | upper) (symbol | upper | lower | digit | '_')*
-let lower_id = (lower | '_') (upper | lower | digit | '_' | '\'')*
+let upper_id = (symbol | upper | '_') (symbol | upper | lower | digit | '_')*
+let lower_id = (lower) (upper | lower | digit | '_' | '\'')*
 (* Other forms of whitespace are disallowed *)
 let spaces = [' ' '\t']+
 let newline = '\r' | '\n' | "\r\n"
