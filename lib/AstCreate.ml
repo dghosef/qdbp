@@ -113,7 +113,8 @@ let make_pattern_match receiver cases maybe_default loc : ast =
   | None -> `PatternMatch (false, receiver, cases, loc)
 
 let make_pattern_match_meth arg body loc = (arg, body, loc)
-let make_pattern_match_atom name meth loc = (name, meth, loc)
+let make_pattern_match_atom names meth loc =
+  List.map (fun name -> (name, meth, loc)) names
 
 (* Imports, literals, abort, external call *)
 let make_import filename (loc : Lexing.position * Lexing.position) : ast =
@@ -142,6 +143,4 @@ let make_external_call fn_name args loc : ast =
   `ExternalCall (fn_name, args, loc)
 
 let make_abort loc : ast = `Abort loc
-
-let make_sequence e1 e2 loc =
-  make_declaration ("Dummy", loc) e1 e2 loc
+let make_sequence e1 e2 loc = make_declaration ("Dummy", loc) e1 e2 loc

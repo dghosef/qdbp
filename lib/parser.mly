@@ -49,11 +49,11 @@ expr:
 | LPAREN; r = expr; id = upper_id; RPAREN;
   {AstCreate.make_method_invocation r id None [] $loc}
 (* pattern match of tagged object *)
-| r = expr; m = pattern_match_atom+; PERIOD;
-| LPAREN; r = expr; m = pattern_match_atom+; RPAREN;
+| r = expr; m = pattern_match_atoms; PERIOD;
+| LPAREN; r = expr; m = pattern_match_atoms; RPAREN;
   {AstCreate.make_pattern_match r m None $loc}
-| r = expr; m = pattern_match_atom+; LBRACE; default = expr; RBRACE PERIOD;
-| LPAREN; r = expr; m = pattern_match_atom+; LBRACE; default = expr; RBRACE; RPAREN;
+| r = expr; m = pattern_match_atoms; LBRACE; default = expr; RBRACE PERIOD;
+| LPAREN; r = expr; m = pattern_match_atoms; LBRACE; default = expr; RBRACE; RPAREN;
   {AstCreate.make_pattern_match r m (Some (default, $loc(default))) $loc}
 (* variable declaration *)
 | id = lower_id; COLON; rhs = expr; e = expr
@@ -94,6 +94,12 @@ prototype_field:
 prototype_invoke_arg:
 | id = LOWER_ID; COLON; e = expr; {AstCreate.make_prototype_invoke_arg id e $loc}
 
+question: n = upper_id; QUESTION; {n}
+
 pattern_match_atom:
-| n = upper_id; QUESTION; e = pattern_match_meth;
-  {AstCreate.make_pattern_match_atom n e $loc}
+| questions = nonempty_list(question); e = pattern_match_meth;
+  {AstCreate.make_pattern_match_atom questions e $loc}
+
+pattern_match_atoms:
+| atoms = pattern_match_atom+
+{ List.flatten atoms }
