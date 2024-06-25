@@ -3,4 +3,37 @@ mk_color: {color|
     Color[color]
   }
 }
-mk_color! #Red{} .
+red: mk_color! #Red{} .
+black: mk_color! #Black{} .
+rb_tree: {
+  Payload[
+    #Some {
+      Color [#Red{}]
+      Data[3]
+      Left[#None{}]
+      Right[#None{}]
+    }
+  ]
+
+  Contains[other|
+    me: self Payload.
+    me
+      Some? [data| 
+        data Data. = other.
+          True? [#True{}]
+          False? [
+            data Data. < other.
+              True? [
+                {self Payload[data Left.]} Contains other.
+              ]
+              False? [
+                {self Payload[data Right.]} Contains other.
+              ].
+          ].
+      ]
+      None? [#False{}].
+  ]
+}
+rb_tree Contains 4.
+  True? ["HI" Print.]
+  False? ["asdf" Print.].

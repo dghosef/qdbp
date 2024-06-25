@@ -32,13 +32,10 @@ rule token = parse
   INT s
 }
 | ';' [ ^'\n']* { token lexbuf }
-| "ABORT" { ABORT }
-| "channel" { CHANNEL }
 | upper_id as s { UPPER_ID (s) }
 | lower_id as s { LOWER_ID (s) }
 | newline { next_line lexbuf; token lexbuf}
 | "(*" { comment 0 lexbuf }
-| ',' { COMMA }
 | '.' { PERIOD }
 | '|' { PIPE }
 | '[' { LBRACE }

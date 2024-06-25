@@ -141,16 +141,6 @@ let make_string_literal s loc : ast = `StrProto (s, loc)
 let make_external_call fn_name args loc : ast =
   `ExternalCall (fn_name, args, loc)
 
-let make_channel name loc =
-  let channel = make_external_call ("_qdbp_make_channel", loc) [] loc in
-  ((name, loc), channel)
-
-let make_program channels expr loc =
-  List.fold_right
-    (fun (name, channel) acc ->
-      make_declaration name channel acc loc)
-    channels expr
-
 let make_abort loc : ast = `Abort loc
 
 let make_sequence e1 e2 loc =

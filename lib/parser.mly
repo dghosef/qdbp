@@ -1,21 +1,17 @@
 %token<string> UPPER_ID LOWER_ID IMPORT STRING INT
-%token PIPE PERIOD TAG QUESTION MONEY ABORT EOF COLON DOUBLE_COLON CHANNEL COMMA
+%token PIPE PERIOD TAG QUESTION MONEY EOF COLON DOUBLE_COLON
 %token LPAREN RPAREN LBRACE RBRACE LBRACKET RBRACKET
 
 (* LOWEST PRECEDNCE *)
-%right UPPER_ID COMMA COLON
+%right UPPER_ID COLON
 (* HIGHEST PRECEDNCE *)
 
 %start<AstTypes.ast> program
 %%
 program:
-| channels = channel_declaration*; e = expr; EOF {
-  AstCreate.make_program channels e $loc
+| e = expr; EOF {
+  e
 }
-
-channel_declaration:
-| CHANNEL; id = LOWER_ID;
-{AstCreate.make_channel id $loc}
 
 upper_id:
 | s = UPPER_ID {(s, $loc)}
@@ -25,8 +21,6 @@ lower_id:
 expr:
 (* parenthesized expression *)
 | LPAREN; e = expr; RPAREN; {e}
-(* Sequence *)
-| e1 = expr; COMMA; e2 = expr; {AstCreate.make_sequence e1 e2 $loc}
 (* prototype replacement *)
 | LBRACKET; original = expr; fields = prototype_field+; RBRACKET 
   {AstCreate.make_prototype (Some original) fields AstTypes.Replace $loc}
@@ -74,8 +68,6 @@ expr:
 (* external call *)
 | MONEY; id = lower_id; LPAREN; args = expr*; RPAREN
   {AstCreate.make_external_call id args $loc}
-(* abort *)
-| ABORT; PERIOD; {AstCreate.make_abort $loc}
 
 meth:
 | LBRACE; a = arg_list; e = expr; RBRACE
