@@ -446,9 +446,7 @@ let infer files expr =
             state args
         in
         let tvars, already_unified = state in
-        let tvars, ty =
-          if name = "_qdbp_make_channel" then channel_proto_type tvars level
-          else make_new_unbound_var tvars level
+        let tvars, ty = make_new_unbound_var tvars level
         in
         ( (tvars, already_unified),
           ty,
