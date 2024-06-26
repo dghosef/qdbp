@@ -52,7 +52,7 @@ _qdbp_object_ptr _qdbp_make_unboxed_int(uintptr_t value) {
 
 uintptr_t _qdbp_get_unboxed_int(_qdbp_object_ptr obj) {
   _qdbp_assert(_qdbp_is_unboxed_int(obj));
-  uintptr_t result = ((intptr_t)obj) >> 1;
+  uintptr_t result = ((uintptr_t)obj) >> 1;
   return result;
 }
 
@@ -73,17 +73,6 @@ _qdbp_object_ptr _qdbp_make_string(const char* cstr, size_t length) {
   _qdbp_object_ptr o = _qdbp_make_object(
       _QDBP_STRING, (union _qdbp_object_data){.string = qdbp_str});
   return o;
-}
-
-_qdbp_object_ptr _qdbp_make_channel() {
-  struct _qdbp_channel* channel = _qdbp_channel_malloc();
-  if (unbuffered_chan_init(&channel->chan) != 0) {
-    _qdbp_assert(false);
-    __builtin_unreachable();
-  }
-  channel->prototype.label_map = NULL;
-  return _qdbp_make_object(_QDBP_CHANNEL,
-                           (union _qdbp_object_data){.channel = channel});
 }
 
 _qdbp_object_ptr _qdbp_make_boxed_int() {
@@ -131,14 +120,6 @@ void _qdbp_del_method(_qdbp_method_ptr method) {
 void _qdbp_del_obj(_qdbp_object_ptr obj) {
   _qdbp_assert(!_qdbp_is_unboxed_int(obj));
   switch (_qdbp_get_kind(obj)) {
-    case _QDBP_CHANNEL:
-      if(obj->data.channel->chan.r_waiting) {
-        _qdbp_assert(false); // I think this should be here
-        // Otherwise, maybe free the data it holds
-      }
-      _qdbp_chan_dispose(&obj->data.channel->chan);
-      _qdbp_del_prototype(&(obj->data.channel->prototype));
-      break;
     case _QDBP_BOXED_INT:
       _qdbp_del_prototype(&(obj->data.boxed_int->prototype));
       mpz_clear(obj->data.boxed_int->value);

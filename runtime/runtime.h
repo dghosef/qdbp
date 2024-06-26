@@ -1,5 +1,3 @@
-// NOTE: Anything with the `chan` prefix is from the channel library I stole
-// from and anything that contains `channel` is my code
 #ifndef QDBP_RUNTIME_H
 #define QDBP_RUNTIME_H
 #include <inttypes.h>
@@ -92,32 +90,6 @@ struct _qdbp_string {
   struct _qdbp_prototype prototype;
 };
 
-// https://github.com/tylertreat/chan
-// Defines a thread-safe communication pipe. Channels are either buffered or
-// unbuffered. An unbuffered channel is synchronized. Receiving on either type
-// of channel will block until there is data to receive. If the channel is
-// unbuffered, the sender blocks until the receiver has received the value. If
-// the channel is buffered, the sender only blocks until the value has been
-// copied to the buffer, meaning it will block if the channel is full.
-typedef struct _qdbp_chan_t {
-  // Unbuffered channel properties
-  pthread_mutex_t r_mu;
-  pthread_mutex_t w_mu;
-  struct _qdbp_object* data;
-
-  // Shared properties
-  pthread_mutex_t m_mu;
-  pthread_cond_t r_cond;
-  pthread_cond_t w_cond;
-  int r_waiting;
-  int w_waiting;
-} _qdbp_chan_t;
-
-struct _qdbp_channel {
-  struct _qdbp_chan_t chan;
-  struct _qdbp_prototype prototype;
-};
-
 struct _qdbp_boxed_int {
   mpz_t value;
   struct _qdbp_prototype prototype;
@@ -128,14 +100,12 @@ union _qdbp_object_data {
   struct _qdbp_string* string;
   struct _qdbp_boxed_int* boxed_int;
   struct _qdbp_variant variant;
-  struct _qdbp_channel* channel;
 };
 
 enum _qdbp_object_kind {
   _QDBP_STRING,
   _QDBP_PROTOTYPE,
   _QDBP_BOXED_INT,
-  _QDBP_CHANNEL,
   _QDBP_VARIANT  // Must be last
 };
 
@@ -176,7 +146,6 @@ typedef struct _qdbp_variant* _qdbp_variant_ptr;
 typedef struct _qdbp_prototype* _qdbp_prototype_ptr;
 typedef struct _qdbp_method* _qdbp_method_ptr;
 typedef struct _qdbp_field* _qdbp_field_ptr;
-typedef struct _qdbp_channel* _qdbp_channel_ptr;
 typedef struct _qdbp_string* _qdbp_string_ptr;
 
 // Reference counting
@@ -254,9 +223,6 @@ void _qdbp_cleanup();
 _qdbp_object_ptr _qdbp_obj_malloc();
 void _qdbp_obj_free(_qdbp_object_ptr obj);
 
-_qdbp_channel_ptr _qdbp_channel_malloc();
-void _qdbp_channel_free(_qdbp_channel_ptr channel);
-
 _qdbp_string_ptr _qdbp_qstring_malloc();
 void _qdbp_qstring_free(_qdbp_string_ptr str);
 
@@ -291,7 +257,6 @@ _qdbp_object_ptr _qdbp_make_object(_qdbp_tag_t tag,
                                    union _qdbp_object_data data);
 _qdbp_object_ptr _qdbp_empty_prototype();
 _qdbp_object_ptr _qdbp_make_string(const char* cstr, size_t length);
-_qdbp_object_ptr _qdbp_make_channel();
 _qdbp_object_ptr _qdbp_true();
 _qdbp_object_ptr _qdbp_false();
 _qdbp_object_ptr _qdbp_bool(bool value);
@@ -348,11 +313,6 @@ _qdbp_object_ptr _qdbp_string_unary_op(_qdbp_object_ptr obj,
                                        enum _QDBP_ARITH_OP op);
 _qdbp_object_ptr _qdbp_string_binary_op(_qdbp_object_ptr l, _qdbp_object_ptr r,
                                         enum _QDBP_ARITH_OP op);
-// Channels
-_qdbp_object_ptr _qdbp_channel_unary_op(_qdbp_object_ptr obj,
-                                        enum _QDBP_ARITH_OP op);
-_qdbp_object_ptr _qdbp_channel_binary_op(_qdbp_object_ptr l, _qdbp_object_ptr r,
-                                         enum _QDBP_ARITH_OP op);
 // Tags and Variants
 enum _qdbp_object_kind _qdbp_get_kind(_qdbp_object_ptr obj);
 void _qdbp_set_tag(_qdbp_object_ptr o, _qdbp_tag_t t);
@@ -376,30 +336,4 @@ void _qdbp_decompose_variant(_qdbp_object_ptr obj, _qdbp_tag_t* tag,
 #define _QDBP_MATCH(tag1, tag2, arg, ifmatch, ifnomatch) \
   ((tag1) == (tag2) ? (_QDBP_LET((arg), (payload), (ifmatch))) : (ifnomatch))
 
-// Largely copied from https://github.com/tylertreat/chan/tree/master
-// =============================== chan.h ===============================
-int unbuffered_chan_init(_qdbp_chan_t* chan);
-
-// Releases the channel resources.
-void _qdbp_chan_dispose(_qdbp_chan_t* chan);
-
-// Sends a value into the channel. This will
-// block until a receiver receives the value. Returns 0 if
-// the send succeeded or -1 if it failed.
-int _qdbp_chan_send(_qdbp_chan_t* chan, _qdbp_object_ptr data);
-
-// Receives a value from the channel. This will block until there is data to
-// receive. Returns 0 if the receive succeeded or -1 if it failed.
-int _qdbp_chan_recv(_qdbp_chan_t* chan, _qdbp_object_ptr* data);
-
-
-/*
-Every function that qdbp calls must follow the following rules:
-- Type of return value must be `_qdbp_object_ptr`
-- All arguments must have type `_qdbp_object_ptr`
-- For each argument `a`, either
-  - The return value has 0 references to `a` and `a` is dropped
-  - The return value has `n` references to `a` and `dup` is called on `a` `n -
-1` times
-*/
 #endif

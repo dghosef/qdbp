@@ -1,39 +1,46 @@
-mk_color: {color|
-  {
-    Color[color]
-  }
+true: #True{}
+false: #False{}
+
+abort: {
+  msg: "Reached a fatal error. Aborting." Print.
+  `! !.
 }
-red: mk_color! #Red{} .
-black: mk_color! #Black{} .
-rb_tree: {
-  Payload[
-    #Some {
-      Color [#Red{}]
-      Data[3]
-      Left[#None{}]
-      Right[#None{}]
-    }
+
+if: {condition then else |
+  condition
+    True? [then!.]
+    False? [else!.].
+}
+
+map: {fn it|
+  it
+    Done? [#Done{}]
+    NotDone? [it| #NotDone {Value[fn! (it Value).] Next[`! ! fn it: (it Next).]}] .
+}
+
+fold_left: {fn acc it|
+  it
+    Done? [acc]
+                :W
+    NotDone? [it| `! ! fn acc: (fn! acc next: (it Value)) it: (it Next).] .
+}
+
+list: {
+  Data[#Empty{}]
+  Prepend[elem|
+    new_data: #NotEmpty { Front[elem] Rest[`Prepend Data.] }
+    {`Prepend Data[new_data]}
   ]
 
-  Contains[other|
-    me: self Payload.
-    me
-      Some? [data| 
-        data Data. = other.
-          True? [#True{}]
-          False? [
-            data Data. < other.
-              True? [
-                {self Payload[data Left.]} Contains other.
-              ]
-              False? [
-                {self Payload[data Right.]} Contains other.
-              ].
-          ].
-      ]
-      None? [#False{}].
+  It [
+    `It Data.
+      Empty? [#Done{}]
+      NotEmpty? [val |
+        #NotDone { Value[val Front.] Next[{`It Data[val Rest.]} It.] }
+      ].
   ]
 }
-rb_tree Contains 4.
-  True? ["HI" Print.]
-  False? ["asdf" Print.].
+
+lst: list Prepend 5. Prepend 4. Prepend 3. Prepend 2. Prepend 1.
+it: map! {x| x + 1.} it: (lst It).
+{}

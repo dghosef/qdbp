@@ -120,7 +120,6 @@ _qdbp_object_arr _qdbp_capture_arr_malloc(size_t size) {
 void _qdbp_capture_arr_free(_qdbp_object_arr arr) { _qdbp_free(arr); }
 
 MK_MALLOC_FREE(_qdbp_obj, struct _qdbp_object)
-MK_MALLOC_FREE(_qdbp_channel, struct _qdbp_channel)
 MK_MALLOC_FREE(_qdbp_boxed_int, struct _qdbp_boxed_int)
 MK_MALLOC_FREE(_qdbp_qstring, struct _qdbp_string)
 

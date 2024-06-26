@@ -34,10 +34,10 @@ expr:
 | LBRACKET; RBRACKET {AstCreate.make_empty_prototype $loc}
 (* closure w/ args *)
 | LBRACKET; a = arg_list; e = expr; RBRACKET
-  {AstCreate.make_closure a (AstCreate.make_meth_body e $loc) $loc}
+  {AstCreate.make_closure a (AstCreate.make_meth_body "!" e $loc) $loc}
 (* closure w/out args *)
 | LBRACKET; e = expr; RBRACKET 
-  {AstCreate.make_closure [] (AstCreate.make_meth_body e $loc) $loc}
+  {AstCreate.make_closure [] (AstCreate.make_meth_body "!" e $loc) $loc}
 (* tagged object *)
 | TAG; id = UPPER_ID; e = expr; {AstCreate.make_tagged_object (id, $loc(id)) e $loc}
 (* prototype method invoke w/ arg(s) *)
@@ -69,12 +69,6 @@ expr:
 | MONEY; id = lower_id; LPAREN; args = expr*; RPAREN
   {AstCreate.make_external_call id args $loc}
 
-meth:
-| LBRACE; a = arg_list; e = expr; RBRACE
-  {AstCreate.make_meth a (AstCreate.make_meth_body e $loc) $loc}
-| LBRACE; e = expr; RBRACE
-  {AstCreate.make_meth [] (AstCreate.make_meth_body e $loc) $loc}
-
 pattern_match_meth:
 | LBRACE; a = lower_id; PIPE; e = expr; RBRACE
   { AstCreate.make_pattern_match_meth a e $loc }
@@ -86,8 +80,10 @@ param:
 | name = LOWER_ID {AstCreate.make_param name $loc}
 
 prototype_field:
-| id = upper_id; m = meth;
-  { AstTypes.Method (AstCreate.make_prototype_method_field id m $loc) }
+| id = upper_id; LBRACE; a = arg_list; e = expr; RBRACE
+  {AstCreate.make_prototype_field id a e $loc}
+| id = upper_id; LBRACE; e = expr; RBRACE
+  {AstCreate.make_prototype_field id [] e $loc}
 | id = upper_id; LBRACE; e = expr; RBRACE; PERIOD;
   { AstTypes.Data (AstCreate.make_prototype_value_field id e $loc) }
 
