@@ -83,7 +83,26 @@ _qdbp_object_ptr _qdbp_make_boxed_int() {
                            (union _qdbp_object_data){.boxed_int = i});
 }
 
+static int is_valid_int(const char *str) {
+  _qdbp_assert(strlen(str) > 0);
+  if (str[0] == '-') {
+    str++;
+  }
+  if(strncmp(str, "0x", strlen(str)) == 0) {
+    str += 2;
+  }
+  while (*str) {
+    if (*str < '0' || *str > '9') {
+      return 0;
+    }
+    str++;
+  }
+  return 1;
+}
+
 _qdbp_object_ptr _qdbp_make_boxed_int_from_cstr(const char* str) {
+  // assert that `str` is a valid number
+  _qdbp_assert(is_valid_int(str));
   struct _qdbp_boxed_int* i = _qdbp_boxed_int_malloc();
   i->prototype.label_map = NULL;
   mpz_init_set_str(i->value, str, 0);

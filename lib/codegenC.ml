@@ -96,12 +96,15 @@ let rec expr_to_c level expr =
         else s
       in
       let i = remove_leading_zeros i in
+      let i = if i = "" then "0" else i in
       match int_of_string_opt i with
       | Some intval ->
           if intval > 4611686018427387903 || intval < -4611686018427387904 then
             c_call "_qdbp_make_boxed_int_from_cstr" [ "\"" ^ i ^ "\"" ]
           else c_call "_qdbp_make_unboxed_int" [ i ]
-      | None -> c_call "_qdbp_make_boxed_int_from_cstr" [ "\"" ^ i ^ "\"" ])
+      | None ->
+        prerr_string "INTERNAL ERROR: parsed an illegal int";
+        exit 0)
   | `ExternalCall (fn, args, _, _) ->
       c_call (fst fn) (List.map (expr_to_c (level + 1)) args)
   | `StrProto (s, _) ->

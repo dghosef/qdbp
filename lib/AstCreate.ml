@@ -76,7 +76,11 @@ let make_prototype maybe_extension fields op loc : ast =
 let make_prototype_invoke_arg name value loc = (name, value, loc)
 
 let make_meth_body methname e loc =
-  make_declaration ("`" ^ methname, loc) (make_variable_lookup "SelfArg" loc) e loc
+  make_declaration ("`" ^ methname, loc) (
+    make_variable_lookup "SelfArg" loc) 
+      (make_declaration ("self", loc) (
+          make_variable_lookup "SelfArg" loc) e loc
+      ) loc
 
 let make_prototype_field name args body loc =
   let body = make_meth_body (fst name) body loc in

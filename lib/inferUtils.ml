@@ -235,7 +235,7 @@ let rec kind_of tvars ty =
   | `TRecord _ -> "Nonempty Prototype"
   | `TVariant _ -> "Tagged Object"
   | `TRowEmpty -> "Empty Row"
-  | `TRowExtend _ -> "Row Extend"
+  | `TRowExtend (label, _, _) -> "Row Extend with first label = " ^ label
   | `TVar id -> (
       match get_tyvar id tvars with
       | `Unbound (_, _) -> "Unbound " ^ string_of_int id
