@@ -141,6 +141,8 @@ let unsplat ty =
 
 let unify tvars already_unified ty1 ty2 =
   let rec unify state ty1 ty2 =
+    let ty1str = str_of_ty tvars ty1 in
+    let ty2str = str_of_ty tvars ty2 in
     match state with
     | `Error e -> `Error e
     | `Ok s -> (
