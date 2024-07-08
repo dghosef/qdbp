@@ -65,7 +65,10 @@ let compile args =
   in
   let imports, files = ResolveImports.build_import_map files ast in
   let ast = ResolveImports.resolve_imports imports ast in
-  let _, _, ast = Infer.infer files ast in
+  let tvars, ty, ast = Infer.infer files ast in
+  let _ = print_endline "" in
+  print_string("finished inference");
+  let _ = print_endline (InferUtils.str_of_ty tvars ty) in
   (*
   let ast = Inline.inline 3 ast in
   let ast = Inline.inline 0 ast in
