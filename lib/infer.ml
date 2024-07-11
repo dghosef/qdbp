@@ -11,8 +11,11 @@
   Upon failure, start from the offending constraint and go backwards
 *)
 open InferUtils
-open UnionFind.StringUnionFind
-let uf = create ()
+
+module Ty = struct
+  let compare = compare
+end
+
 
 exception UnifyError of string
 
@@ -115,34 +118,8 @@ let adjust_levels tvars level ty =
   let tvars, _ = adjust_levels (tvars, AstTypes.IntSet.empty) level ty in
   tvars
 
-let splat tvars ty =
-  match ty with
-  | `TArrow t -> `TArrow t
-  | `TRecord t -> `TRecord t
-  | `TVariant t -> `TVariant t
-  | `TRowEmpty -> `TRowEmpty
-  | `TRowExtend (l, t, r) -> `TRowExtend (l, t, r)
-  | `TVar id -> (
-      match get_tyvar id tvars with
-      | `Link ty -> `Link (id, ty)
-      | `Unbound v -> `Unbound (id, v)
-      | `Generic v -> `Generic (id, v))
-
-let unsplat ty =
-  match ty with
-  | `TArrow t -> `TArrow t
-  | `TRecord t -> `TRecord t
-  | `TVariant t -> `TVariant t
-  | `TRowEmpty -> `TRowEmpty
-  | `TRowExtend (l, t, r) -> `TRowExtend (l, t, r)
-  | `Link (id, _) -> `TVar id
-  | `Unbound (id, _) -> `TVar id
-  | `Generic (id, _) -> `TVar id
-
 let unify tvars already_unified ty1 ty2 =
   let rec unify state ty1 ty2 =
-    let ty1str = str_of_ty tvars ty1 in
-    let ty2str = str_of_ty tvars ty2 in
     match state with
     | `Error e -> `Error e
     | `Ok s -> (
@@ -488,13 +465,18 @@ let infer files expr =
                 `Extend ) )
         | AstTypes.Replace ->
             print_string("\nTHE NEW VERSION - IT'S PROLLY WRONG, GO BACK TO THE ':(' COMMIT IF IN DOUBT )\n");
-            let state, record_type, record = infer state env level extension in
+            let state, old_record_ty, record = infer state env level extension in
             let (tvars, already_unified) = state in
             let tvars, extension_ty = make_new_unbound_var tvars level in
-            let tvars, method_ty = make_new_unbound_var tvars level in
-            let state = try_unify tvars already_unified (loc_of record) record_type (`TRecord (`TRowExtend (name, method_ty, extension_ty))) in
+            let tvars, old_method_ty = make_new_unbound_var tvars level in
+            let tvars, old_record_ty' = make_new_unbound_var tvars level in
+            let old_record_ty'' = (`TRecord (`TRowExtend (name, old_method_ty, extension_ty))) in
+            let (tvars, already_unified) = try_unify tvars already_unified (loc_of record) old_record_ty' old_record_ty'' in
+            let state = try_unify tvars already_unified (loc_of record) old_record_ty old_record_ty' in
             let (tvars, already_unified), meth_ty, meth = infer_method state env level meth in
             let new_ty = `TRecord (`TRowExtend (name, meth_ty, extension_ty)) in
+            let tvars, new_ty' = make_new_unbound_var tvars level in
+            let tvars, already_unified = try_unify tvars already_unified (loc_of record) new_ty new_ty' in
             ((tvars, already_unified), new_ty, `PrototypeCopy (record, ((name, nameLoc), meth, fieldLoc), size, loc, `Replace))
 
         )

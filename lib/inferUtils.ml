@@ -241,3 +241,155 @@ let rec kind_of tvars ty =
       | `Unbound (_, _) -> "Unbound " ^ string_of_int id
       | `Link ty -> "Link " ^ kind_of tvars ty
       | `Generic _ -> "Generic " ^ string_of_int id)
+
+
+
+let str_of_ty2 tvars ty =
+  let rec str_of_ty indent fixpoint_ids unbound_ids ty =
+    match ty with
+    | `TArrow (params, ret) ->
+        let unbound_ids, param_ty_strs =
+          List.fold_left_map
+            (str_of_ty (indent + 1) fixpoint_ids)
+            unbound_ids params
+        in
+        let params_ty_str = String.concat ", " param_ty_strs in
+        let unbound_ids, ret_str =
+          str_of_ty (indent + 1) fixpoint_ids unbound_ids ret
+        in
+        (unbound_ids, paren (params_ty_str ^ " -> " ^ ret_str))
+    | `TRecord row ->
+        let unbound_ids, row_ty_str =
+          str_of_ty (indent + 1) fixpoint_ids unbound_ids row
+        in
+        ( unbound_ids,
+          bracket (newline (indent + 1) ^ row_ty_str ^ newline indent) )
+    | `TVariant row ->
+        let unbound_ids, row_ty_str =
+          str_of_ty (indent + 1) fixpoint_ids unbound_ids row
+        in
+        (unbound_ids, brace (newline (indent + 1) ^ row_ty_str ^ newline indent))
+    | `TRowEmpty -> (unbound_ids, "<>")
+    | `TRowExtend (label, field_ty, extension_ty) ->
+        let unbound_ids, field_ty_str =
+          str_of_ty (indent + 1) fixpoint_ids unbound_ids field_ty
+        in
+        let unbound_ids, extension_ty_str =
+          str_of_ty indent fixpoint_ids unbound_ids extension_ty
+        in
+        ( unbound_ids,
+          angle
+            (label ^ " : " ^ field_ty_str ^ newline indent ^ extension_ty_str)
+        )
+    | `FixpointReference id ->
+        (unbound_ids, "'" ^ string_of_int (AstTypes.IntMap.find id fixpoint_ids))
+    | `Fixpoint (id, ty) ->
+        let unbound_ids, ty_str =
+          str_of_ty indent
+            (AstTypes.IntMap.add id
+               (AstTypes.IntMap.cardinal fixpoint_ids
+               + AstTypes.IntMap.cardinal unbound_ids)
+               fixpoint_ids)
+            unbound_ids ty
+        in
+        ( unbound_ids,
+          "'"
+          ^ string_of_int (AstTypes.IntMap.cardinal fixpoint_ids)
+          ^ "." ^ ty_str )
+    | `Unbound (id, _) -> (
+        match AstTypes.IntMap.find_opt id unbound_ids with
+        | Some id -> (unbound_ids, "'" ^ string_of_int id)
+        | None ->
+            let next_id =
+              AstTypes.IntMap.cardinal fixpoint_ids
+              + AstTypes.IntMap.cardinal unbound_ids
+            in
+            ( AstTypes.IntMap.add id next_id unbound_ids,
+              "'" ^ string_of_int id ))
+    | `Generic _ -> Error.internal_error "asdf"
+  in
+  let rec_types, ty = annotate_rec_tvars tvars ty in
+  if AstTypes.IntSet.is_empty rec_types then
+    snd (str_of_ty 0 AstTypes.IntMap.empty AstTypes.IntMap.empty ty)
+  else
+    Error.internal_error "Didn't resolve all the recursive types in `str_of_ty`"
+
+let splat tvars ty =
+  match ty with
+  | `TArrow t -> `TArrow t
+  | `TRecord t -> `TRecord t
+  | `TVariant t -> `TVariant t
+  | `TRowEmpty -> `TRowEmpty
+  | `TRowExtend (l, t, r) -> `TRowExtend (l, t, r)
+  | `TVar id -> (
+      match get_tyvar id tvars with
+      | `Link ty -> `Link (id, ty)
+      | `Unbound v -> `Unbound (id, v)
+      | `Generic v -> `Generic (id, v))
+
+let unsplat ty =
+  match ty with
+  | `TArrow t -> `TArrow t
+  | `TRecord t -> `TRecord t
+  | `TVariant t -> `TVariant t
+  | `TRowEmpty -> `TRowEmpty
+  | `TRowExtend (l, t, r) -> `TRowExtend (l, t, r)
+  | `Link (id, _) -> `TVar id
+  | `Unbound (id, _) -> `TVar id
+  | `Generic (id, _) -> `TVar id
+(* Return negative if ty1 < ty2, positive if ty1 > ty2, 0 if ty1 = ty2. Performs a
+  structural comparison but doesn't follow type variables
+*)
+type ty =  [
+  | `TArrow of ty list * ty
+  | `TRecord of ty
+  | `TVariant of ty
+  | `TRowEmpty
+  | `TRowExtend of string * ty * ty
+  | `TVar of int
+]
+let compare_tys (ty1: ty) (ty2: ty) =
+  let ty_to_num ty = match ty with
+  | `TArrow _ -> 0
+  | `TRecord _ -> 1
+  | `TVariant _ -> 2
+  | `TRowEmpty -> 3
+  | `TRowExtend _ -> 4
+  | `TVar _ -> 5
+  in
+  let rec compare (ty1: ty) (ty2: ty) = match ty1, ty2 with
+  | `TArrow (p1, r1), `TArrow (p2, r2) ->
+    (let cmp = List.fold_left2 (fun acc t1 t2 ->
+      if (acc != 0) then acc else compare t1 t2 ) 0 p1 p2
+   in
+    if (cmp = 0) then
+      compare r1 r2
+    else
+      cmp)
+  | `TRecord r1, `TRecord r2 -> compare r1 r2
+  | `TVariant r1, `TVariant r2 -> compare r1 r2
+  | `TRowEmpty, `TRowEmpty -> 0
+  | `TRowExtend (l1, t1, r1), `TRowExtend (l2, t2, r2) ->
+    ( if (not (l1 = l2)) then (if l1 < l2 then -1 else 1)
+    else
+      let cmp = compare t1 t2 in
+      if (cmp = 0) then
+        compare r1 r2
+      else
+        cmp)
+  | `TVar id1, `TVar id2 -> (id1 - id2)
+  | (_, _) ->
+    let res = (ty_to_num ty1) - (ty_to_num ty2) in
+    assert (res != 0);
+    res
+  in
+  compare ty1 ty2
+
+
+
+module TypeState = struct
+  type t = ty
+  let compare : (t -> t -> int) = compare_tys
+end
+
+module TyUnionFind = UnionFind.UnionFind(TypeState)
