@@ -124,10 +124,6 @@ let unify tvars already_unified ty1 ty2 =
     | `Error e -> `Error e
     | `Ok s -> (
         match (ty1, ty2) with
-        | `TVar id1, `TVar id2
-          when AstTypes.IntPairSet.mem (id1, id2) (snd s)
-               || AstTypes.IntPairSet.mem (id2, id1) (snd s) ->
-            `Ok s
         | _ -> (
             let s =
               ( fst s,
