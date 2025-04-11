@@ -392,4 +392,3 @@ module TypeState = struct
   let compare : (t -> t -> int) = compare_tys
 end
 
-module TyUnionFind = UnionFind.UnionFind(TypeState)
