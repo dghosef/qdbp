@@ -6,7 +6,7 @@
 qdbp is small. Really, really small. The language has just one keyword and a small handful of core constructs(along with full type inference and a little bit of syntax sugar to sweeten the deal). In fact here is a small program that demonstrates *every single primitive* of the language:
 ```ocaml
 int_var: 0
-float_var: 0
+float_var: 0.0
 string_var: "hello world"
 object: {
   Method1[arg1 arg2 | arg1 + arg2.]
