@@ -5,19 +5,24 @@
 <!--- % Maybe add: the entire language is based around 4 ideas: extension, replacement, variatn creation, pattern matching.--->
 qdbp is small. Really, really small. The language has just one keyword and a small handful of core constructs(along with full type inference and a little bit of syntax sugar to sweeten the deal). In fact here is a small program that demonstrates *every single primitive* of the language:
 ```ocaml
-object := {
+int_var: 0
+float_var: 0
+string_var: "hello world"
+object: {
   Method1[arg1 arg2 | arg1 + arg2.]
-  Method2[arg1 arg2 | $foreign_fn_bool(0 0.01 "hello world")]
 }
-extended_object := { object ::
-  Method3[arg1 arg2 | (arg1 * arg2)]
+extended_object: { object ::
+  Method2[arg1 arg2 | (arg1 * arg2)]
 }
-six := extended_object Method3 arg1: 3 arg2: (@math Factorial 2).
-tagged_object := #Ok string
+modified_object: { object
+  Method1[arg1 arg2 | arg1 - arg2.]
+}
+six: extended_object Method2 3 arg2: (2).
+tagged_object: #Ok string_var
 tagged_object
-  Ok? [that| that Print.]
-  Error? [ {} ]
-  Other? [ @abort!. ].
+  Ok? [s| s Print.]
+  Error? [ {} ].
+
 ```
 As a comparison, Go 1.20 has 25 keywords, Python 3.10 has 38, C++14 has 84, and Lua 5.4 has 22. Neither keyword nor feature count are sufficient to judge language simplicity, but they are good approximations, and the magnitude of the difference between qdbp and its closest competitor is striking. Though the snippet above may seem unfamiliar, understanding those 15 lines, along with learning a little bit of syntax sugar, is all that is required to understand the *entire* language.
 
