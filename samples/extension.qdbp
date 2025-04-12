@@ -1,15 +1,15 @@
-basic_circle := {
+basic_circle: {
   Radius[3]
-  Print[this Radius. Print.]
+  Print[self Radius. Print.]
 }
 
-colored_circle := { basic_circle
+colored_circle: { basic_circle ::
   Color["red"]
   Print[
-    _ := this Color. Print.
-    this Radius. Print.
+    _: self Color. Print.
+    self Radius. Print.
   ]
 }
 
-_ := basic_circle Print.
+_: basic_circle Print.
 colored_circle Print.

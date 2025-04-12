@@ -1,18 +1,18 @@
-pows_of_2_list := {
+pows_of_2_list: {
   Val[1]
   Next[
-    cur_val := this Val.
-    { this Val[cur_val * 2.] }
+    cur_val: self Val.
+    { self Val[cur_val * 2.] }
   ]
 }
 
-_ := pows_of_2_list Val. Print.
-pows_of_2_list := pows_of_2_list Next.
+_: pows_of_2_list Val. Print.
+pows_of_2_list: pows_of_2_list Next.
 
-_ := pows_of_2_list Val. Print.
-pows_of_2_list := pows_of_2_list Next.
+_: pows_of_2_list Val. Print.
+pows_of_2_list: pows_of_2_list Next.
 
-_ := pows_of_2_list Val. Print.
-pows_of_2_list := pows_of_2_list Next.
+_: pows_of_2_list Val. Print.
+pows_of_2_list: pows_of_2_list Next.
 
 pows_of_2_list Val. Print.

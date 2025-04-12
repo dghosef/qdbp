@@ -1,12 +1,12 @@
 (* FIXME: Change the parameter names? *)
-defer := {that after|
-  result := after!.
-  _ := that!.
+defer: {deferee after|
+  result: after!.
+  _: deferee!.
   result
 }
 
 defer! {"finished doing fancy math" Print.}
   after: {
-    _ := "doing fancy math" Print.
+    _: "doing fancy math" Print.
     1 + 1. + 3. * 15.
   }.

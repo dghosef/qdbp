@@ -1,8 +1,8 @@
-while := {that body|
+while: {that body|
   that!.
     True? [
-      _ := body!.
-      this! that: that body: body.
+      _: body!.
+      self! that body: body.
     ]
     False? [{}].
 }
@@ -10,5 +10,5 @@ while := {that body|
 ; Will loop infinitely
 while! {1 < 2.}
   body: {
-    "hello world" ++ @newline. Print.
+    "hello world" Print.
   }.

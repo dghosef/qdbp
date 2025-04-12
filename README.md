@@ -44,5 +44,3 @@ dune exec ../bin/main.exe -- <filename> --runtime-dir ./runtime
 ```
 
 Note that `runtime-dir` is a mandatory argument and must be set to the runtime directory in this repo.
-
-A copy of [samples/string.qdbp](samples/string.qdbp) must be in the same directory as the program in question

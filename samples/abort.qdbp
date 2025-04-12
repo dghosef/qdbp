@@ -1,13 +1,4 @@
-panic := {that |
-  _ := that Print.
-  ABORT.
+; TODO: abort should actually abort
+{
+  self!.
 }
-
-safe_divide := {a b|
-  b = 0.
-    True? [panic! ("divide by 0" ++ @newline).]
-    False? [a / b.].
-}
-
-_ := safe_divide! a: 1 b: 0.
-"Shouldn't get here!!!" Print.

@@ -1,5 +1,5 @@
-print := {that|
-  _ := that Print.
-  this
+print: {that|
+  _: that Print.
+  self
 }
-print!"string1".! "string2".! "string3".! 4.
+print! "string1".! "string2".! "string3".! 4.

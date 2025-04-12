@@ -1,14 +1,13 @@
-true := {
+true: {
   BoolVal[#True{}]
   If[then else|
-    this BoolVal.
+    self BoolVal.
       True? [then!.]
       False? [else!.].
   ]
 }
 
-true If
-  then: { 
+true If { 
     "true" Print. 
  }
   else: {

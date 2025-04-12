@@ -1,39 +1,34 @@
-expr := {
+expr: {
   +[that|
-    me := this
-    {this
+    me: self
+    {self
       L[(me L) + (that L).]
       R[(me R) + (that R).]
-      AsString[(me AsString) ++ " + ". ++ (that AsString).]
     }
   ]
   *[that|
-    me := this
-    {this
+    me: self
+    {self
       L[(me L) * (that L).]
       R[(me R. * that L.) + (that R. * me L.).]
-      AsString[(me AsString) ++ " * ". ++ (that AsString).]
     }
   ]
   Exp[
-    me := this
-    {this
-      AsString["exp(" ++ (me AsString). ++ ")".]
-      L[this]
-      R[this * (me R).]
+    me: self
+    {self
+      L[self]
+      R[self * (me R).]
     }
   ]
-  Derive[this R.]
-  Print[this AsString. Print.]
+  Derive[self R.]
 }
-zero := {expr L[this] R[this] AsString["0"] }
-const := {that|
+zero: {expr :: L[self] R[self] }
+const: {that|
   that = 0.
     True? [zero]
-    False? [{expr L[this] R[zero] AsString[that AsString.] }].
+    False? [{expr :: L[self] R[zero]}].
 }
-one := const! 1.
-x := {expr L[this] R[one] AsString["x"] }
-expr := x * (const! 1). + (x * x). Exp.
-expr' := expr Derive.
-expr' Print.
+one: const! 1.
+x: {expr :: L[self] R[one]}
+expr: x * (const! 1). + (x * x). Exp.
+expr Derive.

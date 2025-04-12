@@ -1,11 +1,11 @@
-true := {
+true: {
   BoolVal[#True{}]
   &&[that|
-    this BoolVal.
+    self BoolVal.
       True? [that]
-      False? [this].
+      False? [self].
   ]
 }
 
-false := {true BoolVal[#False{}]}
+false: {true BoolVal[#False{}]}
 true && false.

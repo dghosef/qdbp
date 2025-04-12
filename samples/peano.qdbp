@@ -1,48 +1,49 @@
-zero := {
+zero: {
   Val[#Zero{}]
   ++[
-    new_val := #Succ this Val.
-    {this Val[new_val]}
+    new_val: #Succ self Val.
+    {self Val[new_val]}
   ]
   --[
-    new_val :=
-      this Val.
-        Zero? [ABORT.]
+    new_val:
+      self Val.
+        ; TODO: make this abort
+        Zero? [_: "Negative" Print. @abort!.]
         Succ? [n| n].
-    {this Val[new_val]}
+    {self Val[new_val]}
   ]
   +[that|
-    add := {a b|
+    add: {a b|
       b
         Zero? [a]
         Succ? [n| 
-          this! a: #Succ a b: n.
+          self! #Succ a b: n.
         ].
     }
-    new_val := add! a: (this Val) b: (that Val).
-    {this Val[new_val]}
+    new_val: add! (self Val) b: (that Val).
+    {self Val[new_val]}
   ]
   -[that|
-    sub := {a b|
+    sub: {a b|
       b
         Zero? [a]
         Succ? [n| 
           a
-            Zero? [ABORT.]
+            Zero? [_: "Negative" Print. @abort!.]
             Succ? [m| 
-              this! a: m b: n.
+              self! m b: n.
             ].
         ].
     }
-    new_val := sub! a: (this Val) b: (that Val).
-    {this Val[new_val]}
+    new_val: sub! (self Val) b: (that Val).
+    {self Val[new_val]}
   ]
 }
-zero := zero + zero.
-one := zero++.
-two := one + one.
-three := two + one.
-four := three + one.
-seven := four + three.
-three := seven - four.
+zero: zero + zero.
+one: zero++.
+two: one + one.
+three: two + one.
+four: three + one.
+seven: four + three.
+three: seven - four.
 zero

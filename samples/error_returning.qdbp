@@ -1,10 +1,10 @@
-safe_divide := {a b|
+safe_divide: {a b|
   b = 0.
     True? [#Error{}]
     False? [#Ok a / b.].
 }
 
-result := safe_divide! a: 1 b: 0.
+result: safe_divide! 1 b: 0.
 
 result
   Error? ["error" Print.]

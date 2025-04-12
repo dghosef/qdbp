@@ -1,18 +1,16 @@
-day_12_of_month := {
-  12
+day_12_of_month: { 12 ::
   DayOfMonthUnit[{}]
 }
 
-five_cookies := {
-  5
+five_cookies: { 5 ::
   CookieUnit[{}]
 }
 
-fn_involving_days := {that |
-  typecheck := {that DayOfMonthUnit.} ; compiletime check for unit
+fn_involving_days: {that |
+  typecheck: {that DayOfMonthUnit.} ; compiletime check for unit
   ; Do something with that
   that Print.
 }
 
-_ := fn_involving_days! day_12_of_month. ; ok
+_: fn_involving_days! day_12_of_month. ; ok
 fn_involving_days! five_cookies. ; compilation error

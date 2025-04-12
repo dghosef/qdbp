@@ -2,7 +2,7 @@
   Factorial[that|
     that = 0.
       True? [1]
-      False? [that * (this Factorial (that - 1)).].
+      False? [that * (self Factorial (that - 1)).].
   ]
   Abs[that|
     that < 0.

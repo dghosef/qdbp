@@ -5,121 +5,111 @@
 ; And here is a single line comment
 
 (* Variables, ints, and strings *)
-three := 3
-hello_world := "Hello, world!"
-y := "some text"
+three: 3
+hello_world: "Hello, world!"
+y: "some text"
 (* variables are shadowed *)
-y := 3 ; y is now 3
+y: 3 ; y is now 3
 
 (* We can bundle data together using prototype objects
    A prototype is a collection of labeled methods *)
-prototype := {
+prototype: {
   Method1 [3] (* A method that just returns 3 *)
-  (* This method takes an argument and returns it *)
-  Method2[arg1 | arg1 ]
+  (* This method takes 1 argument and returns it *)
+  Method2[arg1 | arg1]
+  (* This method takes 3 arguments and returns the third *)
+  Method3[arg1 arg2 arg3 | arg3 ]
   (* All methods take in implicit this argument that is always set to the value of
      the prototype it is in. Method3's return is equivalent to `prototype`*)
-  Method3[ this ]
+  Method4[ self ]
 }
-empty_prototype := {}
+empty_prototype: {}
 
 (* We can invoke methods on prototypes. Note the period at the end *)
-three := prototype Method1.
-(* Methods with arguments must have the names specified *)
-four := prototype Method2 arg1: 4.
+three: prototype Method1.
+(* Invoke a method with one argumnet*)
+seven: prototype Method2 7.
+(* We must specify argument names for all other than the first *)
+four: prototype Method3 4 arg2: 3 arg3: 4.
 
 (* qdbp has no concept of functions in the traditional sense. However,
    we can use a prototype with a single label to simulate a function. By
    convention, we use the label `!` *)
-identity_fn := {![x| x]}
+identity_fn: {![x| x]}
 (* From now on, we will refer to anything with the label `!` as a function *)
 (* We can invoke the function by calling the `!` method *)
-five := identity_fn! x: 5.
+five: identity_fn! 5.
 
-(* Methods within a prototype can be overloaded by parameter names *)
-print_args := {
+(* Methods within a prototype can be overloaded. Argument counts and names are used to differentiate *)
+print_args: {
   ![arg1 | arg1 Print.]
   ![arg1 arg2 | 
-    _ := arg1 Print.
+    _: arg1 Print.
     arg2 Print.
   ]
 }
 (* qdbp has no sequence expression. To evaluate multiple expressions, we just assign
    them to successive variables *)
-_ := print_args! arg1: "Hello World".
-_ := print_args! arg1: "Hello " arg2: "World".
+_: print_args! "Hello World".
+_: print_args! "Hello " arg2: "World".
 
 (* qdbp has no type annotations. Instead, it infers types.
    For example, if `arg1` to `print_args` doesn't have a `Print` method, the 
    program will refuse to compile. Therefore, `print_args! arg1: {}.` will fail. *)
 
-_ := print_args! arg1: 3. (* `print_args` is generic *)
+_: print_args! 3. ; `print_args` is generic
 
 (* To be specific, variable names must start with a lowercase letter.
    Method names within a prototype must start with an uppercase letter or a symbol.
    We can use method names with symbols to emulate operators. For example, int
-   objects have a `+` method with a single argument, `that` *)
-five := 3 + that: 2.
+   objects have a `+` method with a single argument *)
+five: 3 + 2.
 
 (* Here is some syntax sugar that makes common prototype patterns less verbose *)
 (* To make "functions" easier to define, this: *)
-my_fn := { ![x| x] }
+my_fn: { ![x| x] }
 (* is equivalent to this: *)
-my_fn := {x | x} 
+my_fn: {x | x} 
 (* In other words, to make an object with a single method `!`, we can omit the
    `[`, `]`, and `!` *)
-(* Also, if we omit the name of the first argument, it is automatically assumed
-   to be `that` *)
-five := 3 + that: 2. (* is equivalent to *) five := 3 + 2.
+
 (* Periods are optional when invocation is surrounded by parentheses *)
-three := identity_fn! x: 3. (* is the same as *) three := (identity_fn! x: 3)
+three: identity_fn! 3. (* is the same as *) three: (identity_fn! 3)
 
 (* Variables are all immutable. However, you can copy a prototype and change
    one or more of its methods *)
-small_circle := {
+small_circle: {
   Radius[3]
-  Diameter[(this Radius) * 2.]
+  Diameter[(self Radius) * 2.]
 }
 (* Same as `small_circle` but `Radius` now returns 6 *)
-big_circle := { small_circle
+big_circle: { small_circle
   (* `Radius` still needs to have the same type as the original `Radius`*)
   Radius[6]
 }
-twelve := big_circle Diameter.
+twelve: big_circle Diameter.
 
 (* Unfortunately we don't have floats fully supported yet, but stay tuned! *)
-pi := 3
+pi: 3
 
-(* Prototypes can also be extended with new methods *)
-big_circle := { big_circle
-  Area[(this Radius) * (this Radius). * pi.]
+(* Prototypes can also be extended with new methods. Note the `::` *)
+big_circle: { big_circle ::
+  Area[(self Radius) * (self Radius). * pi.]
 }
-one_hundred_eight := big_circle Area.
+one_hundred_eight: big_circle Area.
 
-(* Most of the time, the compiler can disambiguate between whether to extend
-   or replace. The one exception is when the original's prototype's field list
-   is dependent on a parameter. For example, *)
-fn := {x | 
-  { x
-    Method[that | that]
-  }
-}
-(* The compiler can't disambiguate whether or not to replace the `Method` field in  `x`
-   or to extend `x`. In situations like this, the compiler will always expect that
-   the original prototype contains the field and so will replace it. *)
-
-(* We also can tag an object *)
-object := {}
-tagged_object := #TagName object
+(* We can also create a tagged object(aka a sum type). *)
+object: {}
+tagged_object: #TagName object
 (* In qdbp, everything is right associative *)
-tagged_object := #Tag #Tag #Tag {} (* parsed as (#Tag (#Tag (#Tag {}))) *)
+tagged_object: #Tag #Tag #Tag {} (* parsed as (#Tag (#Tag (#Tag {}))) *)
 (* An example application of tagged objects is to represent booleans *)
-true := #True{}
-false := #False{}
+true: #True{}
+false: #False{}
 
 (* We can pattern match on tagged objects. For example, this is a function that
    negates a bool. Like method invocation, notice the `.` at the end *)
-negate := {that |
+negate: {that |
   that
     True? [#False{}]
     False? [#True{}].
@@ -130,51 +120,34 @@ negate := {that |
 
 (* Another application of tagged objects is error types. Here is a safe
    division by 0 function *)
-safe_divide := {a b|
+safe_divide: {a b|
   b = 0.
     True? [#Error{}]
     False? [#Ok a / b.].
 }
-two := safe_divide! a: 4 b: 2.
-_ := 
+two: safe_divide! 4 b: 2.
+_: 
   two
     Ok? [that| 
       that Print.
     ]
     Error? [
-      "Error" ++ @newline . Print.
+      "Error" Print.
     ].
 (* Like any language, we want to be able to split our programs across multiple
    files. Each qdbp program is a single expression that returns a value. 
    `@filename`'s result is the result of evaluating `filename.qdbp`. Filenames
    can only have letters, `/`, `_`, and `.` *)
 
-empty_list := @list
-intlist := empty_list Append 3. Append 2.
+empty_list: @list
+intlist: empty_list Append 3. Append 2.
 (* qdbp does not support cyclic imports. For example, this file cannot import itself
-   However, a check for that is a todo. Currently, the compiler will just
+   However, a check for that is a WIP. Currently, the compiler will just
    loop infinitely *)
 
-(* We can also call functions in the target language. See `./int.qdbp` for example *)
+(* We can also call external C functions *)
 (* The return type of the function must be encoded in the function name.
-   It can either end with `_int`, `_string`, or `_bool` *)
+   It can either end with `_int`, `_string`, or `_bool`. For example $call_chatGPT_string("The cat ran out of the ") *)
 
-(* To end a program abruptly, the special keyword ABORT will kill it *)
-(* The "return type" of the `ABORT` changes according to the context *)
-get_val := {that |
-  that
-    Ok? [val| val]
-    Error? [ABORT.].
-}
-
-(* The value of the literal 3 is actually the result of evaluating `@int`, 
-   and then invoking `!` method of the result, passing in an object of type `int64`
-   in the target language* to the `that` parameter. In other words,  *)
-  three := 3
-  (* expands to 
-  three := @int! that: 3.  Where this `3` has type `int64` in the target language *)
-(* This allows users to have complete control over every aspect of their code,
-   down to the methods of literals.
-   A similar strategy is used for strings, doubles, etc *)
-(* If you were to import this file from another file, the result would be this string*)
+(* If you were to import this tutorial from another file, the result would be this string*)
 " This concludes the language reference and tutorial "

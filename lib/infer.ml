@@ -464,7 +464,7 @@ let infer files expr =
                 loc,
                 `Extend ) )
         | AstTypes.Replace ->
-            print_string("\nTHE NEW VERSION - IT'S PROLLY WRONG, GO BACK TO THE ':(' COMMIT IF IN DOUBT )\n");
+            (* print_string("\nTHE NEW VERSION - IT'S PROLLY WRONG, GO BACK TO THE ':(' COMMIT IF IN DOUBT )\n"); *)
             let state, old_record_ty, record = infer state env level extension in
             let (tvars, already_unified) = state in
             let tvars, extension_ty = make_new_unbound_var tvars level in

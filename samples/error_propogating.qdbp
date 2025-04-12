@@ -1,25 +1,25 @@
-error := {
+error: {
   Transform[fn|
-    this Val.
-      Error? [err| this]
-      Ok? [that| {this Val[#Ok fn! that.]}].
+    self Val.
+      Error? [err| self]
+      Ok? [that| {self Val[#Ok fn! that.]}].
   ]
 }
 
-safe_divide := {a b|
+safe_divide: {a b|
   b = 0.
-    True? [{error Val[#Error{}]}]
-    False? [{error Val[#Ok a / b.]}].
+    True? [{error :: Val[#Error{}]}]
+    False? [{error :: Val[#Ok a / b.]}].
 }
 
-safe_divide_6 := {a b c d e f|
-  (safe_divide! a: a b: b) 
-    Transform fn: {that | that / c.}.
-    Transform fn: {that | that / d.}.
-    Transform fn: {that | that / e.}.
-    Transform fn: {that | that / f.}.
+partially_safe_divide_6: {a b c d e f|
+  (safe_divide! a b: b) 
+    Transform {that | that / c.}.
+    Transform {that | that / d.}.
+    Transform {that | that / e.}.
+    Transform {that | that / f.}.
 }
 
-safe_divide_6! a: 3996 b: 3 c: 1 d: 2 e: 2 f: 1. Val.
+partially_safe_divide_6! 3996 b: 3 c: 1 d: 2 e: 2 f: 1. Val.
   Error? ["Error" Print.]
   Ok? [that | that Print.].

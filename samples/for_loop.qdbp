@@ -1,31 +1,31 @@
-for := {iter body|
+for: {iter body|
   iter Data.
     None? [{}]
     Some?[data|
-      _ := body! (data Val).
-      this! iter: data Next. body: body.
+      _: body! (data Val).
+      self! data Next. body: body.
     ].
 }
 
-from := {that to|
+from: {that to|
   {
     Start[that]
     End[to]
-    Val[this Start.]
+    Val[self Start.]
     Next[
-      start := (this Start) + 1.
-      { this
+      start: (self Start) + 1.
+      { self
         Start[start]
       }
     ]
     Data[
-      (this Start) <= (this End).
-        True? [ #Some this ]
+      (self Start) <= (self End).
+        True? [ #Some self ]
         False? [#None{}].
     ]
   }
 }
 
 for!
-  iter: (from! 1 to: 10)
+  (from! 1 to: 10)
   body: {that | that Print.}.

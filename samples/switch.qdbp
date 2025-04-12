@@ -1,28 +1,28 @@
-switch := {that |
+switch: {that |
   {
     Val[that]
     Result[#None{}]
     Case[that then|
-      this Val. = that.
+      self Val. = that.
         True? [
-          result := then!.
-          {this Result[#Some result]}]
-        False? [this].
+          result: then!.
+          {self Result[#Some result]}]
+        False? [self].
     ]
     Default[then|
-      this Result.
+      self Result.
         Some? [that| that]
         None? [then!.].
     ]
   }
 }
 
-str := switch! 5.
+str: switch! 5.
   Case 1 then: {"one"}.
   Case 2 then: {"two"}.
   Case 3 then: {"three"}.
   Case 4 then: {"four"}.
   Case 5 then: {"five"}.
-  Default then: {"None of the above"}.
+  Default {"None of the above"}.
 
 str Print.

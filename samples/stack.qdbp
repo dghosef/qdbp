@@ -1,8 +1,8 @@
-stack := {
+stack: {
   Data[#Empty{}]
   Push[that|
-    curr_data := this Data.
-    { this
+    curr_data: self Data.
+    { self
       Data[#NonEmpty {
         Val[that]
         Next[curr_data]
@@ -10,8 +10,8 @@ stack := {
     }
   ]
   Peek[
-    this Data.
-      Empty?[ABORT.]
+    self Data.
+      Empty?[@abort!.]
       NonEmpty?[data| data Val.].
   ]
 }

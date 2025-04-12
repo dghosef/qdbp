@@ -1,9 +1,9 @@
-make_circle := {radius |
+make_circle: {radius |
   {
     Radius[radius]
-    Print[this Radius. Print.]
+    Print[self Radius. Print.]
   }
 }
 
-my_circle := make_circle! radius: 3.
+my_circle: make_circle! 3.
 my_circle Print.
