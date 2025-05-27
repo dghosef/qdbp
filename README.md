@@ -44,7 +44,8 @@ That qdbp's core feature set can be so naturally wielded to express complex abst
 
 qdbp requires ocaml, dune, menhir, and libgmp. To use the compiler, write your program in your text editor or IDE of your choice, clone this repo and, run
 ```bash
-dune exec ../bin/main.exe -- <filename> --runtime-dir ./runtime
+dune exec ../bin/main.exe -- ./stack.qdbp --runtime-dir ../runtime
 ```
+from the `./samples` directory
 
 Note that `runtime-dir` is a mandatory argument and must be set to the runtime directory in this repo.
