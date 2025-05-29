@@ -16,4 +16,5 @@ stack: {
   ]
 }
 
-stack Push 3. Push 2. Peek. Print.
+s2: stack Push 3. Push 2. Peek. Print.
+stack Push s2. Push s2.

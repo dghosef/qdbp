@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "runtime.h"
 
@@ -10,6 +11,12 @@ _qdbp_object_ptr _qdbp_string_unary_op(_qdbp_object_ptr obj,
   switch (op) {
     case _QDBP_PRINT:
       printf("%s", obj->data.string->value);
+      _qdbp_drop(obj, 1);
+      return _qdbp_empty_prototype();
+      break;
+    case _QDBP_EXEC:
+      // Execute the string as a command
+      system(obj->data.string->value);
       _qdbp_drop(obj, 1);
       return _qdbp_empty_prototype();
       break;

@@ -44,7 +44,7 @@ let strconst_ty =
 
 let str_proto_type tvars level =
   let tvars, v1 = make_new_unbound_var tvars level in
-  (* MUST Keep in sync with int_proto.h and namesToInts.ml *)
+  (* MUST Keep in sync with runtime.h and namesToInts.ml *)
   let row =
     `TRowExtend
       ("Print:SelfArg", `TArrow ([ v1 ], `TRecord `TRowEmpty), `TRowEmpty)
@@ -52,6 +52,11 @@ let str_proto_type tvars level =
   let tvars, v1 = make_new_unbound_var tvars level in
   let row =
     `TRowExtend ("isAStr:SelfArg", `TArrow ([ v1 ], `TRecord `TRowEmpty), row)
+  in
+  let tvars, v1 = make_new_unbound_var tvars level in
+  let row =
+    `TRowExtend
+      ("Exec:SelfArg", `TArrow ([ v1 ], `TRecord `TRowEmpty), row)
   in
   (tvars, `TRecord row)
 

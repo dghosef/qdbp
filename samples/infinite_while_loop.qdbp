@@ -7,8 +7,6 @@ while: {that body|
     False? [{}].
 }
 
-; Will loop infinitely
+; Will loop infinitely. But currently it's stack overflowing
 while! {1 < 2.}
-  body: {
-    "hello world" Print.
-  }.
+  body: { {} }.

@@ -15,6 +15,7 @@ let names_to_ints ast =
   (* Must be less than 1000 *)
   Hashtbl.add label_map "isAnInt:SelfArg" (Int64.of_int 64);
   Hashtbl.add label_map "Print:SelfArg" (Int64.of_int 69);
+  Hashtbl.add label_map "Exec:SelfArg" (Int64.of_int 75);
   Hashtbl.add label_map "+:SelfArg:Arg0" (Int64.of_int 84);
   Hashtbl.add label_map "-:SelfArg:Arg0" (Int64.of_int 139);
   Hashtbl.add label_map "*:SelfArg:Arg0" (Int64.of_int 140);

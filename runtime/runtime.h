@@ -122,11 +122,20 @@ struct _qdbp_object {
 // MUST KEEP IN SYNC WITH namesToInts.ml
 enum _QDBP_ARITH_OP {
   _QDBP_PRINT = 69,
+  _QDBP_EXEC = 75,
+  // ===============================================================
+  // END UNARY OPS
+  // Start of arithmetic ops
+  // ===============================================================
   _QDBP_ADD = 84,  // MUST be the first arith op after all unary ops
   _QDBP_SUB = 139,
   _QDBP_MUL = 140,
   _QDBP_DIV = 193,
   _QDBP_MOD = 254,  // MUST be the last op before all the comparison ops
+  // ===============================================================
+  // END arithmetic OPS
+  // Start of comparison ops
+  // ===============================================================
   _QDBP_EQ = 306,   // MUST be the first op after all the arithmetic ops
   _QDBP_NEQ = 355,
   _QDBP_LT = 362,

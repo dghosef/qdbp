@@ -49,6 +49,7 @@ let invoke_fns methods =
     let fn_args = List.init arity (fun a -> "arg" ^ string_of_int a) in
     let fn_args = "captures" :: fn_args in
     let fn_args_str = String.concat ", " fn_args in
+    "__attribute__((always_inline)) " ^
     "_qdbp_object_ptr " ^ fn_name
     ^ paren (String.concat ", " args)
     ^ " {" ^ newline 1 ^ "void* code;" ^ newline 1

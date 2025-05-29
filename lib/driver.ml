@@ -97,8 +97,8 @@ let compile args =
   close_out oc;
   ignore
     (Sys.command
-       (" clang out.c " ^ !runtime_dir ^ "/lib/*.c" ^ " -I" ^ !runtime_dir
-      ^ " -g" ^ " -lgmp " ^ " -Wall -Wextra -Werror" ^ " -Wno-unused-parameter"
+       (" clang out.c  " ^ !runtime_dir ^ "/lib/*.c" ^ " -I" ^ !runtime_dir
+      ^ " -g" ^ " -lgmp " ^ " -Wall -Wextra -Werror" ^ " -Wno-unused-parameter" ^ " -O3" ^ " -foptimize-sibling-calls"
       ^ " -Wno-unused-function" ^ " -Wno-unused-variable -Wno-unused-command-line-argument"
       ^ " -fbracket-depth=10000000 -flto"
       ^ " -fsanitize=address,undefined,pointer-compare,"
