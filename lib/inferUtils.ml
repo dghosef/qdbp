@@ -58,6 +58,20 @@ let str_proto_type tvars level =
     `TRowExtend
       ("Exec:SelfArg", `TArrow ([ v1 ], `TRecord `TRowEmpty), row)
   in
+  let add_arith_binop tvars level binop row =
+    let tvars, v1 = make_new_unbound_var tvars level in
+    let tvars, v2 = make_new_unbound_var tvars level in
+    let tvars, v3 = make_new_unbound_var tvars level in
+    let arg0_ty =
+      `TRecord
+        (`TRowExtend
+          ("isAStr:SelfArg", `TArrow ([ v2 ], `TRecord `TRowEmpty), v3))
+    in
+    ( tvars,
+      `TRowExtend
+        (binop ^ ":SelfArg" ^ ":Arg0", `TArrow ([ v1; arg0_ty ], v1), row) )
+  in
+  let tvars, row = add_arith_binop tvars level "+" row in
   (tvars, `TRecord row)
 
 
