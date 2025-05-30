@@ -1,0 +1,21 @@
+foo: {self!.}
+stack: {
+  Data[#Empty{}]
+  Push[that|
+    curr_data: self Data.
+    { self
+      Data[#NonEmpty {
+        Val[that]
+        Next[curr_data]
+      }]
+    }
+  ]
+  Peek[
+    self Data.
+      Empty?[foo!.]
+      NonEmpty?[data| data Val.].
+  ]
+}
+
+s2: stack Push 3. Push 2. Peek. Print.
+stack Push s2. Push s2. Push 3. Peek.
