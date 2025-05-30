@@ -42,3 +42,10 @@ a.out*
 
 # VSCode
 .vscode/
+
+# Assembly
+*.s
+*.ll
+
+# OThers
+*.pch

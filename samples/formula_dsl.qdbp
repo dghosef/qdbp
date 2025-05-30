@@ -1,0 +1,82 @@
+expr: {
+  Expr[#Variable "a"]
+  Print[
+    me: self
+    mkexpr: {e| {me Expr[e]}}
+
+    print_binop: {e binop | 
+      _: mkexpr! (e L). Print.
+      _: " " + binop. + " ". Print.
+      mkexpr! (e R). Print.
+    }
+
+    _: "(" Print.
+    _: self Expr.
+      Variable? [v| v Print.]
+      And? [v| print_binop! v binop: "And".]
+      Or? [v| print_binop! v binop: "Or".]
+      Xor? [v| print_binop! v binop: "Xor".]
+      Nand? [v| print_binop! v binop: "Nand".]
+      Not? [v| 
+        _: "~" Print.
+        mkexpr! v. Print.
+      ].
+    ")" Print.
+  ]
+  &&[other| 
+    ogexpr: self Expr.
+    newexpr: #And {L[ogexpr] R[other Expr.]}
+    { self Expr[newexpr] }
+  ]
+  Or[other| 
+    ogexpr: self Expr.
+    newexpr: #Or {L[ogexpr] R[other Expr.]}
+    { self Expr[newexpr] }
+  ]
+  Xor[other| 
+    ogexpr: self Expr.
+    newexpr: #Xor {L[ogexpr] R[other Expr.]}
+    { self Expr[newexpr] }
+  ]
+  Nand[other| 
+    ogexpr: self Expr.
+    newexpr: #Nand {L[ogexpr] R[other Expr.]}
+    { self Expr[newexpr] }
+  ]
+  Not[
+    newexpr: #Not (self Expr)
+    {self Expr[newexpr]}
+  ]
+  ToNands[
+    recurse: {e|
+      e
+        Variable?[v| #Variable v]
+        Not? [v | 
+          asnands: self! v.
+          #Nand{L[asnands] R[asnands]}
+        ]
+        And? [ v |
+          l: self! (v L).
+          r: self! (v R).
+          toneg: #Nand{L[l] R[r]}
+          #Nand{L[l] R[r]}
+        ]
+        Nand? [v| l: self! (v L). r: self! (v R). #Nand {L[l] R[r]}]
+        Or? [v |
+          l: v L.
+          r: v R.
+          self! (#Not #And{ L[#Not l] R[#Not r]}).
+        ]
+        Xor? [v|
+          l: self! (v L).
+          r: self! (v R).
+          self! (#Or {L[#And {L[l] R[#Not r]}] R[#And {L[#Not l] R[r]}]}).
+        ]
+      .
+    }
+    newexpr: recurse! (self Expr).
+    {self Expr[newexpr]}
+  ]
+}
+expr Xor (expr Or expr. && expr. Not. Nand expr. ToNands.). Print.
+

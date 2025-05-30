@@ -1,0 +1,17 @@
+int_var: 0
+float_var: 0.0
+string_var: "hello world"
+object: {
+  Method1[arg1 arg2 | arg1 + arg2.]
+}
+extended_object: { object ::
+  Method2[arg1 arg2 | (arg1 * arg2)]
+}
+modified_object: { object
+  Method1[arg1 arg2 | arg1 - arg2.]
+}
+six: extended_object Method2 3 arg2: (2).
+tagged_object: #Ok string_var
+tagged_object
+  Ok? [s| s Print.]
+  Error? [ {} ].

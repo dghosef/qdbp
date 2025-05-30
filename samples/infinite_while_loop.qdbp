@@ -1,3 +1,4 @@
+(*
 while: {that body|
   that!.
     True? [
@@ -10,3 +11,5 @@ while: {that body|
 ; Will loop infinitely. But currently it's stack overflowing
 while! {1 < 2.}
   body: { {} }.
+*)
+"THis currently doesn't work, but it should loop infinitely. I gotta fix the tco thing"

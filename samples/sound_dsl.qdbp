@@ -1,0 +1,45 @@
+sound: {
+  Path[""]
+  Play[("ffplay -loglevel quiet -nodisp -autoexit " + self Path.) Exec.]
+  +[other | 
+      _: "cat " + (self Path). + " ". + (other Path). + " > ". + (self Path). + (other Path). Exec.
+      ogpath: self Path.
+      {self Path[(ogpath) + (other Path).]}
+   ]
+  *[times |
+    recurse: {count original result| 
+      (count > 0)
+        False?[result]
+        True?[self! (count - 1) original: original result: (result + original).].
+    }
+    recurse! 3 original: self result: self.
+  ]
+  &[other |
+    outpath: (self Path) + "_And_". + (other Path).
+    _: "ffmpeg -i " + (self Path). + " -i ". + (other Path). + " -filter_complex amix=inputs=2:duration=longest ". + outpath. Exec.
+    {self Path[outpath]}
+  ]
+  WithVolume[volume|
+    newpath: self Path. + volume. + "NewVol.mp3".
+    _: "ffmpeg -i " + (self Path). + " -filter:a 'volume=". + volume. + " ' ". + newpath. Exec.
+    {self Path[newpath]}
+  ]
+
+  WithSpeed[speed|
+    newpath: self Path. + speed. + "NewSpeed.mp3".
+    _: "ffmpeg -i " + (self Path). + " -filter:a 'atempo=". + speed. + " ' ". + newpath. Exec.
+    {self Path[newpath]}
+  ]
+
+  From[from to|
+    newpath: self Path. + from. + to. + "sliced.mp3".
+    _: "ffmpeg -i " + (self Path). + " -af atrim=". + from. + ":". + to. + " ". + newpath. Exec.
+    {self Path[newpath]}
+  ]
+}
+
+new_sound: {filename | {sound Path[filename]}}
+guitar: new_sound! "guitar.mp3".
+snare: new_sound! "snare.mp3".
+(snare * 4) & (guitar WithSpeed "2"). From "0" to: "1". Play.
+

@@ -1,0 +1,12 @@
+start_cmd: "date +%s > ~/start_time.txt"
+end_cmd: "END_TIME=$(date +%s) && START_TIME=$(cat ~/start_time.txt) && DIFF=$((END_TIME - START_TIME)) && echo Time difference: $DIFF seconds"
+
+benchmark: {fn|
+  _: start_cmd Exec.
+  _: fn!.
+  end_cmd Exec.
+}
+
+benchmark! {
+  "sleep 5" Exec.
+}.
