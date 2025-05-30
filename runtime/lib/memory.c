@@ -91,6 +91,7 @@ void _qdbp_memcpy(void* dest, const void* src, size_t size) {
 }
 
 void _qdbp_cleanup() {
+  // TODO: Make some sort of leak detection
   pthread_attr_destroy(&_qdbp_thread_attr);
   pthread_exit(NULL);
 }

@@ -89,6 +89,7 @@ _qdbp_object_arr _qdbp_get_method_opt(_qdbp_object_ptr obj, _qdbp_label_t label,
   } else if (_qdbp_get_kind(obj) == _QDBP_BOXED_INT) {
     proto = &(obj->data.boxed_int->prototype);
   } else {
+    printf("\n%u\n", _qdbp_get_kind(obj));
     _qdbp_assert(false);
     __builtin_unreachable();
   }
