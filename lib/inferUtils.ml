@@ -21,98 +21,95 @@ let make_new_generic_id tvars id =
   let tvars' = (new_id, AstTypes.IntMap.add var_id (`Generic id) varmap) in
   (tvars', var_id)
 
-let make_new_unbound_var tvars level =
+let make_new_unbound_var tvars loc level =
   let tvars, var_id = make_new_unbound_id tvars level in
-  (tvars, `TVar var_id)
+  (tvars, `TVar (var_id, loc))
 
 let update_tvars tvars var_id new_var =
   (fst tvars, AstTypes.IntMap.add var_id new_var (snd tvars))
 
-let bool_ty level tvars =
-  let tvars, var = make_new_unbound_var tvars level in
+let bool_ty level loc tvars =
+  let tvars, var = make_new_unbound_var tvars loc level in
   let ty =
     `TVariant
       (`TRowExtend
         ( "True",
-          `TRecord `TRowEmpty,
-          `TRowExtend ("False", `TRecord `TRowEmpty, var) ))
+          `TRecord ((`TRowEmpty loc), loc),
+          `TRowExtend ("False", `TRecord ((`TRowEmpty loc), loc), var, loc), loc ), loc)
   in
   (tvars, ty)
 
-let strconst_ty =
-  `TVariant (`TRowExtend ("isString", `TRecord `TRowEmpty, `TRowEmpty))
-
-let str_proto_type tvars level =
-  let tvars, v1 = make_new_unbound_var tvars level in
+let str_proto_type tvars loc level =
+  let tvars, v1 = make_new_unbound_var tvars loc level in
   (* MUST Keep in sync with runtime.h and namesToInts.ml *)
   let row =
     `TRowExtend
-      ("Print:SelfArg", `TArrow ([ v1 ], `TRecord `TRowEmpty), `TRowEmpty)
+      ("Print:SelfArg", `TArrow ([ v1 ], `TRecord ((`TRowEmpty loc), loc), loc), (`TRowEmpty loc), loc)
   in
-  let tvars, v1 = make_new_unbound_var tvars level in
+  let tvars, v1 = make_new_unbound_var tvars loc level in
   let row =
-    `TRowExtend ("isAStr:SelfArg", `TArrow ([ v1 ], `TRecord `TRowEmpty), row)
+    `TRowExtend ("isAStr:SelfArg", `TArrow ([ v1 ], `TRecord ((`TRowEmpty loc), loc), loc), row, loc)
   in
-  let tvars, v1 = make_new_unbound_var tvars level in
+  let tvars, v1 = make_new_unbound_var tvars loc level in
   let row =
     `TRowExtend
-      ("Exec:SelfArg", `TArrow ([ v1 ], `TRecord `TRowEmpty), row)
+      ("Exec:SelfArg", `TArrow ([ v1 ], `TRecord ((`TRowEmpty loc), loc), loc), row, loc)
   in
   let add_arith_binop tvars level binop row =
-    let tvars, v1 = make_new_unbound_var tvars level in
-    let tvars, v2 = make_new_unbound_var tvars level in
-    let tvars, v3 = make_new_unbound_var tvars level in
+    let tvars, v1 = make_new_unbound_var tvars loc level in
+    let tvars, v2 = make_new_unbound_var tvars loc level in
+    let tvars, v3 = make_new_unbound_var tvars loc level in
     let arg0_ty =
       `TRecord
         (`TRowExtend
-          ("isAStr:SelfArg", `TArrow ([ v2 ], `TRecord `TRowEmpty), v3))
+          ("isAStr:SelfArg", `TArrow ([ v2 ], `TRecord ((`TRowEmpty loc), loc), loc), v3, loc), loc)
     in
     ( tvars,
       `TRowExtend
-        (binop ^ ":SelfArg" ^ ":Arg0", `TArrow ([ v1; arg0_ty ], v1), row) )
+        (binop ^ ":SelfArg" ^ ":Arg0", `TArrow ([ v1; arg0_ty ], v1, loc), row, loc) )
   in
   let tvars, row = add_arith_binop tvars level "+" row in
-  (tvars, `TRecord row)
+  (tvars, `TRecord (row, loc))
 
 
-let int_proto_type tvars level =
+let int_proto_type tvars loc level =
   let add_arith_binop tvars level binop row =
-    let tvars, v1 = make_new_unbound_var tvars level in
-    let tvars, v2 = make_new_unbound_var tvars level in
-    let tvars, v3 = make_new_unbound_var tvars level in
+    let tvars, v1 = make_new_unbound_var tvars loc level in
+    let tvars, v2 = make_new_unbound_var tvars loc level in
+    let tvars, v3 = make_new_unbound_var tvars loc level in
     let arg0_ty =
       `TRecord
         (`TRowExtend
-          ("isAnInt:SelfArg", `TArrow ([ v2 ], `TRecord `TRowEmpty), v3))
+          ("isAnInt:SelfArg", `TArrow ([ v2 ], `TRecord ((`TRowEmpty loc), loc), loc), v3, loc), loc)
     in
     ( tvars,
       `TRowExtend
-        (binop ^ ":SelfArg" ^ ":Arg0", `TArrow ([ v1; arg0_ty ], v1), row) )
+        (binop ^ ":SelfArg" ^ ":Arg0", `TArrow ([ v1; arg0_ty ], v1, loc), row, loc) )
   in
   let add_cmp_binop tvars level binop row =
-    let tvars, v1 = make_new_unbound_var tvars level in
-    let tvars, v2 = make_new_unbound_var tvars level in
-    let tvars, v3 = make_new_unbound_var tvars level in
+    let tvars, v1 = make_new_unbound_var tvars loc level in
+    let tvars, v2 = make_new_unbound_var tvars loc level in
+    let tvars, v3 = make_new_unbound_var tvars loc level in
     let arg0_ty =
       `TRecord
         (`TRowExtend
-          ("isAnInt:SelfArg", `TArrow ([ v2 ], `TRecord `TRowEmpty), v3))
+          ("isAnInt:SelfArg", `TArrow ([ v2 ], `TRecord ((`TRowEmpty loc), loc), loc), v3, loc), loc)
     in
-    let tvars, ret_ty = bool_ty level tvars in
+    let tvars, ret_ty = bool_ty level loc tvars in
     ( tvars,
       `TRowExtend
-        (binop ^ ":SelfArg" ^ ":Arg0", `TArrow ([ v1; arg0_ty ], ret_ty), row)
+        (binop ^ ":SelfArg" ^ ":Arg0", `TArrow ([ v1; arg0_ty ], ret_ty, loc), row, loc)
     )
   in
-  let tvars, v1 = make_new_unbound_var tvars level in
+  let tvars, v1 = make_new_unbound_var tvars loc level in
   (* MUST Keep in sync with int_proto.h and namesToInts.ml *)
   let row =
     `TRowExtend
-      ("Print:SelfArg", `TArrow ([ v1 ], `TRecord `TRowEmpty), `TRowEmpty)
+      ("Print:SelfArg", `TArrow ([ v1 ], `TRecord ((`TRowEmpty loc), loc), loc), (`TRowEmpty loc), loc)
   in
-  let tvars, v1 = make_new_unbound_var tvars level in
+  let tvars, v1 = make_new_unbound_var tvars loc level in
   let row =
-    `TRowExtend ("isAnInt:SelfArg", `TArrow ([ v1 ], `TRecord `TRowEmpty), row)
+    `TRowExtend ("isAnInt:SelfArg", `TArrow ([ v1 ], `TRecord ((`TRowEmpty loc), loc), loc), row, loc)
   in
   let tvars, row = add_arith_binop tvars level "+" row in
   let tvars, row = add_arith_binop tvars level "-" row in
@@ -125,7 +122,7 @@ let int_proto_type tvars level =
   let tvars, row = add_cmp_binop tvars level ">" row in
   let tvars, row = add_cmp_binop tvars level "<=" row in
   let tvars, row = add_cmp_binop tvars level ">=" row in
-  (tvars, `TRecord row)
+  (tvars, `TRecord (row, loc))
 
 let paren s = "(" ^ s ^ ")"
 let bracket s = "{" ^ s ^ "}"
@@ -136,7 +133,7 @@ let pipe s = "|" ^ s ^ "|"
 let annotate_rec_tvars tvars ty =
   let rec annotate_rec_tvars seen ty =
     match ty with
-    | `TArrow (params, ret) ->
+    | `TArrow (params, ret, loc) ->
         let rec_tvars, param_tys =
           List.fold_left_map
             (fun rec_tvars param_ty ->
@@ -145,20 +142,20 @@ let annotate_rec_tvars tvars ty =
             AstTypes.IntSet.empty params
         in
         let rec_tvars', ret_ty = annotate_rec_tvars seen ret in
-        (AstTypes.IntSet.union rec_tvars' rec_tvars, `TArrow (param_tys, ret_ty))
-    | `TRecord row ->
+        (AstTypes.IntSet.union rec_tvars' rec_tvars, `TArrow (param_tys, ret_ty, loc))
+    | `TRecord (row, loc) ->
         let rec_tvars, row = annotate_rec_tvars seen row in
-        (rec_tvars, `TRecord row)
-    | `TVariant row ->
+        (rec_tvars, `TRecord (row, loc))
+    | `TVariant (row, loc) ->
         let rec_tvars, row = annotate_rec_tvars seen row in
-        (rec_tvars, `TVariant row)
-    | `TRowEmpty -> (AstTypes.IntSet.empty, `TRowEmpty)
-    | `TRowExtend (label, field_ty, extension) ->
+        (rec_tvars, `TVariant (row, loc))
+    | `TRowEmpty loc -> (AstTypes.IntSet.empty, (`TRowEmpty loc))
+    | `TRowExtend (label, field_ty, extension, loc) ->
         let rec_tvars, field_ty = annotate_rec_tvars seen field_ty in
         let rec_tvars', extension_ty = annotate_rec_tvars seen extension in
         ( AstTypes.IntSet.union rec_tvars rec_tvars',
-          `TRowExtend (label, field_ty, extension_ty) )
-    | `TVar id -> (
+          `TRowExtend (label, field_ty, extension_ty, loc) )
+    | `TVar (id, _) -> (
         match get_tyvar id tvars with
         | `Link ty ->
             if AstTypes.IntSet.mem id seen then
@@ -181,7 +178,7 @@ let newline indent = "\n" ^ String.make (indent * 2) ' '
 let str_of_ty tvars ty =
   let rec str_of_ty indent fixpoint_ids unbound_ids ty =
     match ty with
-    | `TArrow (params, ret) ->
+    | `TArrow (params, ret, _) ->
         let unbound_ids, param_ty_strs =
           List.fold_left_map
             (str_of_ty (indent + 1) fixpoint_ids)
@@ -192,19 +189,19 @@ let str_of_ty tvars ty =
           str_of_ty (indent + 1) fixpoint_ids unbound_ids ret
         in
         (unbound_ids, paren (params_ty_str ^ " -> " ^ ret_str))
-    | `TRecord row ->
+    | `TRecord (row, _) ->
         let unbound_ids, row_ty_str =
           str_of_ty (indent + 1) fixpoint_ids unbound_ids row
         in
         ( unbound_ids,
           bracket (newline (indent + 1) ^ row_ty_str ^ newline indent) )
-    | `TVariant row ->
+    | `TVariant (row, _) ->
         let unbound_ids, row_ty_str =
           str_of_ty (indent + 1) fixpoint_ids unbound_ids row
         in
         (unbound_ids, brace (newline (indent + 1) ^ row_ty_str ^ newline indent))
-    | `TRowEmpty -> (unbound_ids, "<>")
-    | `TRowExtend (label, field_ty, extension_ty) ->
+    | `TRowEmpty _ -> (unbound_ids, "<>")
+    | `TRowExtend (label, field_ty, extension_ty, _) ->
         let unbound_ids, field_ty_str =
           str_of_ty (indent + 1) fixpoint_ids unbound_ids field_ty
         in
@@ -253,9 +250,9 @@ let rec kind_of tvars ty =
   | `TArrow _ -> "Method"
   | `TRecord _ -> "Nonempty Prototype"
   | `TVariant _ -> "Tagged Object"
-  | `TRowEmpty -> "Empty Row"
-  | `TRowExtend (label, _, _) -> "Row Extend with first label = " ^ label
-  | `TVar id -> (
+  | `TRowEmpty _ -> "Empty Row"
+  | `TRowExtend (label, _, _, _) -> "Row Extend with first label = " ^ label
+  | `TVar (id, _) -> (
       match get_tyvar id tvars with
       | `Unbound (_, _) -> "Unbound " ^ string_of_int id
       | `Link ty -> "Link " ^ kind_of tvars ty
@@ -266,7 +263,7 @@ let rec kind_of tvars ty =
 let str_of_ty2 tvars ty =
   let rec str_of_ty indent fixpoint_ids unbound_ids ty =
     match ty with
-    | `TArrow (params, ret) ->
+    | `TArrow (params, ret, _) ->
         let unbound_ids, param_ty_strs =
           List.fold_left_map
             (str_of_ty (indent + 1) fixpoint_ids)
@@ -277,19 +274,19 @@ let str_of_ty2 tvars ty =
           str_of_ty (indent + 1) fixpoint_ids unbound_ids ret
         in
         (unbound_ids, paren (params_ty_str ^ " -> " ^ ret_str))
-    | `TRecord row ->
+    | `TRecord (row, _) ->
         let unbound_ids, row_ty_str =
           str_of_ty (indent + 1) fixpoint_ids unbound_ids row
         in
         ( unbound_ids,
           bracket (newline (indent + 1) ^ row_ty_str ^ newline indent) )
-    | `TVariant row ->
+    | `TVariant (row, _) ->
         let unbound_ids, row_ty_str =
           str_of_ty (indent + 1) fixpoint_ids unbound_ids row
         in
         (unbound_ids, brace (newline (indent + 1) ^ row_ty_str ^ newline indent))
-    | `TRowEmpty -> (unbound_ids, "<>")
-    | `TRowExtend (label, field_ty, extension_ty) ->
+    | `TRowEmpty _ -> (unbound_ids, "<>")
+    | `TRowExtend (label, field_ty, extension_ty, _) ->
         let unbound_ids, field_ty_str =
           str_of_ty (indent + 1) fixpoint_ids unbound_ids field_ty
         in
@@ -332,82 +329,3 @@ let str_of_ty2 tvars ty =
     snd (str_of_ty 0 AstTypes.IntMap.empty AstTypes.IntMap.empty ty)
   else
     Error.internal_error "Didn't resolve all the recursive types in `str_of_ty`"
-
-let splat tvars ty =
-  match ty with
-  | `TArrow t -> `TArrow t
-  | `TRecord t -> `TRecord t
-  | `TVariant t -> `TVariant t
-  | `TRowEmpty -> `TRowEmpty
-  | `TRowExtend (l, t, r) -> `TRowExtend (l, t, r)
-  | `TVar id -> (
-      match get_tyvar id tvars with
-      | `Link ty -> `Link (id, ty)
-      | `Unbound v -> `Unbound (id, v)
-      | `Generic v -> `Generic (id, v))
-
-let unsplat ty =
-  match ty with
-  | `TArrow t -> `TArrow t
-  | `TRecord t -> `TRecord t
-  | `TVariant t -> `TVariant t
-  | `TRowEmpty -> `TRowEmpty
-  | `TRowExtend (l, t, r) -> `TRowExtend (l, t, r)
-  | `Link (id, _) -> `TVar id
-  | `Unbound (id, _) -> `TVar id
-  | `Generic (id, _) -> `TVar id
-(* Return negative if ty1 < ty2, positive if ty1 > ty2, 0 if ty1 = ty2. Performs a
-  structural comparison but doesn't follow type variables
-*)
-type ty =  [
-  | `TArrow of ty list * ty
-  | `TRecord of ty
-  | `TVariant of ty
-  | `TRowEmpty
-  | `TRowExtend of string * ty * ty
-  | `TVar of int
-]
-let compare_tys (ty1: ty) (ty2: ty) =
-  let ty_to_num ty = match ty with
-  | `TArrow _ -> 0
-  | `TRecord _ -> 1
-  | `TVariant _ -> 2
-  | `TRowEmpty -> 3
-  | `TRowExtend _ -> 4
-  | `TVar _ -> 5
-  in
-  let rec compare (ty1: ty) (ty2: ty) = match ty1, ty2 with
-  | `TArrow (p1, r1), `TArrow (p2, r2) ->
-    (let cmp = List.fold_left2 (fun acc t1 t2 ->
-      if (acc != 0) then acc else compare t1 t2 ) 0 p1 p2
-   in
-    if (cmp = 0) then
-      compare r1 r2
-    else
-      cmp)
-  | `TRecord r1, `TRecord r2 -> compare r1 r2
-  | `TVariant r1, `TVariant r2 -> compare r1 r2
-  | `TRowEmpty, `TRowEmpty -> 0
-  | `TRowExtend (l1, t1, r1), `TRowExtend (l2, t2, r2) ->
-    ( if (not (l1 = l2)) then (if l1 < l2 then -1 else 1)
-    else
-      let cmp = compare t1 t2 in
-      if (cmp = 0) then
-        compare r1 r2
-      else
-        cmp)
-  | `TVar id1, `TVar id2 -> (id1 - id2)
-  | (_, _) ->
-    let res = (ty_to_num ty1) - (ty_to_num ty2) in
-    assert (res != 0);
-    res
-  in
-  compare ty1 ty2
-
-
-
-module TypeState = struct
-  type t = ty
-  let compare : (t -> t -> int) = compare_tys
-end
-

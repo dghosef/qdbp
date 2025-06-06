@@ -13,4 +13,4 @@ while: {that body|
 while! {1 < 2.}
   body: { {} }.
 *)
-"THis currently doesn't work, but it should loop infinitely. I gotta fix the tco thing"
+"This currently doesn't work, but it should loop infinitely. I gotta fix the tco thing"

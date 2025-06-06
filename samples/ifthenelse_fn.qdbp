@@ -1,10 +1,4 @@
-if: {condition then else|
-  condition
-    True? [then!.]
-    False? [else!.].
-}
-
-if! 1 > 2.
+@if! 1 > 2.
   then: { 
     "true" Print. 
  }
