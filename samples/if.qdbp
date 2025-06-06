@@ -1,0 +1,5 @@
+{condition then else|
+  condition
+    True? [then!.]
+    False? [else!.].
+}

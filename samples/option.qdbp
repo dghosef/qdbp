@@ -1,0 +1,14 @@
+some: { value |
+  {
+    Value[value]
+    >>[fn|
+      self Value.
+        Some? [v | #Some (fn! v)]
+        None? [#None{}].
+    ]
+  }
+}
+{
+  Some[{value | some! #Some value.}]
+  None[some! #None{}.]
+}

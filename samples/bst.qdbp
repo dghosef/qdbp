@@ -1,0 +1,49 @@
+if: @if
+some: @option Some.
+none: @option None.
+insert: {tree key value|
+    tree
+        Empty? [#Node {Value[value] Key[key] Left[#Empty{}] Right[#Empty{}]}]
+        Node? [ node |
+          me: self
+          if! (node Key. < key) then: {
+            #Node { node
+              Right[me! (node Right) key: key value: value.]
+            }
+          } else: {
+            #Node { node
+              Left[me! (node Left) key: key value: value.]
+            }
+          }.
+        ].
+}
+lookup: {tree key|
+    me: self
+    tree
+        Empty? [none]
+        Node? [ node |
+          if! ((node Key) = key) then: {
+              some! (node Value).
+          } else: {
+              if! ((node Key) < key) then: {
+                  me! (node Right) key: key.
+              } else: {
+                  me! (node Left) key: key.
+              }.
+          }.
+        ].
+}
+
+table: {
+  Data[#Empty{}]
+  At[key|
+    lookup! (self Data) key: key.
+  ]
+  At[key put|
+    newdata: insert! self Data.
+      key: key 
+      value: put.
+    {self Data[newdata]}
+  ]
+}
+table At 3 put: 4. At 3.
